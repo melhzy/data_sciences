@@ -1,0 +1,11 @@
+{
+    "r.rterm.windows": "C:\\Program Files\\R\\R-4.5.2\\bin\\x64\\R.exe",
+    "r.rpath.windows": "C:\\Program Files\\R\\R-4.5.2\\bin\\x64\\R.exe",
+    "r.rterm.option": [
+        "--no-restore",
+        "--no-save"
+    ],
+    "r.bracketedPaste": true,
+    "r.sessionWatcher": true,
+    "r.rtermSendDelay": 8
+}
