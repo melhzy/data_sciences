@@ -1,7 +1,7 @@
 # ANLY500: Principles of Analytics I
 
 **Harrisburg University - Online**  
-**2025-2026 Academic Year - Late Fall (7-Week Course)**
+**2025-2026 Academic Year - Late Fall**
 
 ## Course Overview
 
