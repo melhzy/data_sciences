@@ -39,7 +39,7 @@ cat("MD5 Hash:", gen$get_hash(), "\n")
 cat("Using seed:", seeds[1], "\n")
 ```
 
-# Introduction {.tabset}
+# Introduction
 
 ## Overview
 
@@ -84,7 +84,7 @@ cat("\nAvailable Seeds:", paste(seeds[1:5], collapse = ", "), "...\n\n")
 
 ---
 
-# Part 1: Understanding Data Types {.tabset}
+# Part 1: Understanding Data Types
 
 ## Variable Types in R
 
@@ -216,7 +216,7 @@ hist(heights,
 
 ---
 
-# Part 2: Descriptive Analytics {.tabset}
+# Part 2: Descriptive Analytics
 
 ## Loading Data
 
@@ -554,7 +554,7 @@ cat("Interpretation:",
 
 ---
 
-# Part 3: Exploratory Data Analysis {.tabset}
+# Part 3: Exploratory Data Analysis
 
 ## Summary Statistics
 
@@ -702,7 +702,7 @@ outlier_summary %>%
 
 ---
 
-# Part 4: Predictive Analytics {.tabset}
+# Part 4: Predictive Analytics
 
 ## Simple Linear Regression
 
@@ -819,7 +819,7 @@ prediction_results %>%
 
 ---
 
-# Part 5: Hypothesis Testing {.tabset}
+# Part 5: Hypothesis Testing
 
 ## Understanding Hypotheses
 
@@ -1311,7 +1311,7 @@ test_summary %>%
 
 ---
 
-# Part 6: Practical Applications {.tabset}
+# Part 6: Practical Applications
 
 ## Case Study 1: Air Quality Analysis
 
@@ -1446,7 +1446,7 @@ par(mfrow = c(1, 1))
 
 ---
 
-# Part 7: Summary and Best Practices {.tabset}
+# Part 7: Summary and Best Practices
 
 ## Key Takeaways
 
