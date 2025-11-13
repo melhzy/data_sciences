@@ -41,7 +41,7 @@ cat("Using seed:", seeds[1], "\n")
 
 # Introduction
 
-## Overview
+## 1. Overview
 
 This tutorial demonstrates how to use R to perform **data analytics** tasks covered in Week 02. We'll explore:
 
@@ -49,7 +49,7 @@ This tutorial demonstrates how to use R to perform **data analytics** tasks cove
 - **Predictive Analytics**: Predicting what could happen  
 - **Prescriptive Analytics**: Determining what should happen
 
-## Learning Objectives
+## 2. Learning Objectives
 
 By the end of this tutorial, you will be able to:
 
@@ -60,7 +60,7 @@ By the end of this tutorial, you will be able to:
 5. Build simple predictive models
 6. Apply the research process using R
 
-## Required Packages
+## 3. Required Packages
 
 ```{r load-packages}
 # Install packages if needed (uncomment to install)
@@ -86,7 +86,7 @@ cat("\nAvailable Seeds:", paste(seeds[1:5], collapse = ", "), "...\n\n")
 
 # Part 1: Understanding Data Types
 
-## Variable Types in R
+## 1.1 Variable Types in R
 
 R handles different types of variables. Let's explore them:
 
@@ -119,7 +119,7 @@ cat("Type of is_student:", class(is_student), "\n")
 cat("Type of education_level:", class(education_level), "\n")
 ```
 
-## Categorical Variables
+## 1.2 Categorical Variables
 
 ### Binary Variables
 
@@ -172,7 +172,7 @@ barplot(table(satisfaction),
         cex.names = 0.8)
 ```
 
-## Continuous Variables
+## 1.3 Continuous Variables
 
 ### Interval Variables
 
@@ -218,7 +218,7 @@ hist(heights,
 
 # Part 2: Descriptive Analytics
 
-## Loading Data
+## 2.1 Loading Data
 
 Let's work with built-in R datasets and real examples:
 
@@ -233,7 +233,7 @@ cat("Iris dataset (first 6 rows):\n")
 head(iris) %>% kable() %>% kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-## Central Tendency Measures
+## 2.2 Central Tendency Measures
 
 ### The Mean
 
@@ -363,7 +363,7 @@ iris_summary %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
-## Measures of Dispersion
+## 2.3 Measures of Dispersion
 
 ### Range
 
@@ -479,7 +479,7 @@ dispersion_summary %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-## Frequency Distributions
+## 2.4 Frequency Distributions
 
 ```{r frequency-distribution}
 # Create frequency table
@@ -556,7 +556,7 @@ cat("Interpretation:",
 
 # Part 3: Exploratory Data Analysis
 
-## Summary Statistics
+## 3.1 Summary Statistics
 
 ```{r summary-stats}
 # Comprehensive summary statistics
@@ -583,7 +583,7 @@ iris_detailed %>%
   scroll_box(width = "100%")
 ```
 
-## Data Visualization
+## 3.2 Data Visualization
 
 ### Univariate Analysis
 
@@ -664,7 +664,7 @@ ggplot(iris, aes(x = Sepal.Length, fill = Species)) +
   )
 ```
 
-## Data Quality Checks
+## 3.3 Data Quality Checks
 
 ```{r data-quality}
 # Check for missing values
@@ -704,7 +704,7 @@ outlier_summary %>%
 
 # Part 4: Predictive Analytics
 
-## Simple Linear Regression
+## 4.1 Simple Linear Regression
 
 ```{r simple-regression}
 # Build a simple linear regression model
@@ -759,7 +759,7 @@ cat("3. Scale-Location: Check homoscedasticity\n")
 cat("4. Residuals vs Leverage: Identify influential points\n")
 ```
 
-## Multiple Linear Regression
+## 4.2 Multiple Linear Regression
 
 ```{r multiple-regression}
 # Build multiple regression model
@@ -795,7 +795,7 @@ comparison %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-## Making Predictions
+## 4.3 Making Predictions
 
 ```{r predictions}
 # Create new data for predictions
@@ -821,7 +821,7 @@ prediction_results %>%
 
 # Part 5: Hypothesis Testing
 
-## Understanding Hypotheses
+## 5.1 Understanding Hypotheses
 
 ### What is a Hypothesis?
 
@@ -899,7 +899,7 @@ arrows(4.5, 5.5, 5.5, 4.25, lwd = 2, length = 0.15)
 title("Hypothesis Testing Logic Flow", cex.main = 1.5, font.main = 2)
 ```
 
-## Hypothesis Testing in R
+## 5.2 Hypothesis Testing in R
 
 ### The p-value
 
@@ -1125,7 +1125,7 @@ legend("topright",
 par(mfrow = c(1, 1))
 ```
 
-## Other Common Tests
+## 5.3 Other Common Tests
 
 ### Chi-Square Test (Categorical Data)
 
@@ -1219,7 +1219,7 @@ plot(mtcars$wt, mtcars$mpg,
 abline(lm(mpg ~ wt, data = mtcars), col = "red", lwd = 2)
 ```
 
-## Effect Size and Power
+## 5.4 Effect Size and Power
 
 ### Understanding Effect Size
 
@@ -1265,7 +1265,7 @@ if(abs(cohens_d$estimate) < 0.2) {
 }
 ```
 
-## Summary of Hypothesis Testing
+## 5.5 Summary of Hypothesis Testing
 
 ```{r hypothesis-summary, echo=FALSE}
 test_summary <- data.frame(
@@ -1313,7 +1313,7 @@ test_summary %>%
 
 # Part 6: Practical Applications
 
-## Case Study 1: Air Quality Analysis
+## 6.1 Case Study 1: Air Quality Analysis
 
 ```{r airquality-analysis}
 # Load and explore air quality data
@@ -1345,7 +1345,7 @@ ggplot(airquality, aes(x = Temp, y = Ozone)) +
   theme(plot.title = element_text(hjust = 0.5, face = "bold"))
 ```
 
-## Case Study 2: Motor Trends Analysis
+## 6.2 Case Study 2: Motor Trends Analysis
 
 ```{r mtcars-analysis}
 # Motor cars dataset
@@ -1388,7 +1388,7 @@ ggplot(mtcars, aes(x = factor(am, labels = c("Automatic", "Manual")), y = mpg)) 
   scale_fill_brewer(palette = "Set2")
 ```
 
-## Case Study 3: Population vs Sample
+## 6.3 Case Study 3: Population vs Sample
 
 ```{r population-sample}
 # Demonstrate population vs sample concepts
@@ -1448,7 +1448,7 @@ par(mfrow = c(1, 1))
 
 # Part 7: Summary and Best Practices
 
-## Key Takeaways
+## 7.1 Key Takeaways
 
 ### 1. Data Types Matter
 
@@ -1482,7 +1482,7 @@ par(mfrow = c(1, 1))
 - Compare model performance metrics
 - Validate predictions on new data
 
-## R Code Cheat Sheet
+## 7.2 R Code Cheat Sheet
 
 ```{r cheatsheet, eval=FALSE}
 # ===== DATA EXPLORATION =====
@@ -1533,7 +1533,7 @@ chisq.test(x, y)      # Chi-square test
 shapiro.test(x)       # Normality test
 ```
 
-## Common Mistakes to Avoid
+## 7.3 Common Mistakes to Avoid
 
 ```{r common-mistakes, eval=FALSE}
 # ❌ BAD: Not checking for missing values
@@ -1573,7 +1573,7 @@ model <- lm(y ~ x)
 plot(model)  # Check diagnostic plots
 ```
 
-## Additional Resources
+## 7.4 Additional Resources
 
 ### Recommended Packages
 
