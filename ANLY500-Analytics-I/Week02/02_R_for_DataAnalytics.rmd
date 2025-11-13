@@ -121,7 +121,7 @@ cat("Type of education_level:", class(education_level), "\n")
 
 ## 1.2 Categorical Variables
 
-### Binary Variables
+### 1.2.1 Binary Variables
 
 ```{r binary-variables}
 # Binary variable example: Pass/Fail
@@ -132,7 +132,7 @@ cat("Binary variable levels:", levels(pass_fail_factor), "\n")
 table(pass_fail_factor)
 ```
 
-### Nominal Variables
+### 1.2.2 Nominal Variables
 
 ```{r nominal-variables}
 # Nominal: Categories without order
@@ -149,7 +149,7 @@ barplot(table(departments),
         las = 1)
 ```
 
-### Ordinal Variables
+### 1.2.3 Ordinal Variables
 
 ```{r ordinal-variables}
 # Ordinal: Categories with logical order
@@ -174,7 +174,7 @@ barplot(table(satisfaction),
 
 ## 1.3 Continuous Variables
 
-### Interval Variables
+### 1.3.1 Interval Variables
 
 ```{r interval-variables}
 # Interval: Equal intervals but no true zero (e.g., temperature in Celsius)
@@ -193,7 +193,7 @@ hist(temperatures,
      border = "white")
 ```
 
-### Ratio Variables
+### 1.3.2 Ratio Variables
 
 ```{r ratio-variables}
 # Ratio: Equal intervals AND true zero (e.g., height, weight, income)
@@ -235,7 +235,7 @@ head(iris) %>% kable() %>% kable_styling(bootstrap_options = c("striped", "hover
 
 ## 2.2 Central Tendency Measures
 
-### The Mean
+### 2.2.1 The Mean
 
 ```{r mean-calculation}
 # Calculate mean
@@ -271,7 +271,7 @@ cat("Manual mean calculation:", round(manual_mean, 2), "\n")
 cat("R's mean() function:", round(mean(sepal_lengths), 2), "\n")
 ```
 
-### The Median
+### 2.2.2 The Median
 
 ```{r median-calculation}
 # Calculate median
@@ -318,7 +318,7 @@ cat("New median:", median(friends_no_extreme), "\n")
 cat("Change:", median(facebook_friends) - median(friends_no_extreme), "\n")
 ```
 
-### The Mode
+### 2.2.3 The Mode
 
 ```{r mode-calculation}
 # R doesn't have a built-in mode function, so we create one
@@ -343,7 +343,7 @@ barplot(table(grades),
         ylab = "Frequency")
 ```
 
-### Comparing Central Tendency Measures
+### 2.2.4 Comparing Central Tendency Measures
 
 ```{r central-tendency-comparison}
 # Create a comparison table
@@ -365,7 +365,7 @@ iris_summary %>%
 
 ## 2.3 Measures of Dispersion
 
-### Range
+### 2.3.1 Range
 
 ```{r range-calculation}
 # Calculate range
@@ -383,7 +383,7 @@ cat("Without extreme (252):", diff(range(friends_no_extreme)), "\n")
 cat("Reduction:", diff(range(facebook_friends)) - diff(range(friends_no_extreme)), "\n")
 ```
 
-### Interquartile Range (IQR)
+### 2.3.2 Interquartile Range (IQR)
 
 ```{r iqr-calculation}
 # Calculate quartiles
@@ -408,7 +408,7 @@ text(x = q2, y = 1.3, labels = "Q2 (Median)", col = "red", cex = 1.2)
 text(x = q3, y = 1.3, labels = "Q3", col = "red", cex = 1.2)
 ```
 
-### Variance and Standard Deviation
+### 2.3.3 Variance and Standard Deviation
 
 ```{r variance-std}
 # Calculate variance and standard deviation
@@ -457,7 +457,7 @@ cat("Manual SD:", round(manual_sd, 4), "\n")
 cat("R's sd():", round(sd(sepal_lengths), 4), "\n")
 ```
 
-### Complete Dispersion Summary
+### 2.3.4 Complete Dispersion Summary
 
 ```{r dispersion-summary}
 # Comprehensive dispersion measures
@@ -503,7 +503,7 @@ lines(density(sepal_lengths), col = "red", lwd = 3)
 legend("topright", legend = "Density Curve", col = "red", lwd = 3)
 ```
 
-### Distribution Shapes
+### 2.4.1 Distribution Shapes
 
 ```{r distribution-shapes}
 # Create different distribution shapes
@@ -532,7 +532,7 @@ hist(uniform_data, main = "Uniform Distribution",
 par(mfrow = c(1, 1))
 ```
 
-### Describing Distribution Shape
+### 2.4.2 Describing Distribution Shape
 
 ```{r distribution-describe}
 library(moments)  # For skewness and kurtosis
@@ -585,7 +585,7 @@ iris_detailed %>%
 
 ## 3.2 Data Visualization
 
-### Univariate Analysis
+### 3.2.1 Univariate Analysis
 
 ```{r univariate-viz}
 # Multiple ways to visualize single variable
@@ -619,7 +619,7 @@ qqline(iris$Sepal.Length, col = "red", lwd = 2)
 par(mfrow = c(1, 1))
 ```
 
-### Bivariate Analysis
+### 3.2.2 Bivariate Analysis
 
 ```{r bivariate-viz}
 # Relationship between two variables
@@ -635,7 +635,7 @@ ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
   theme(plot.title = element_text(hjust = 0.5, face = "bold"))
 ```
 
-### Multivariate Analysis
+### 3.2.3 Multivariate Analysis
 
 ```{r multivariate-viz}
 # Pairs plot for multiple variables
@@ -645,7 +645,7 @@ pairs(iris[, 1:4],
       bg = c("red", "green", "blue")[unclass(iris$Species)])
 ```
 
-### Advanced ggplot2 Visualizations
+### 3.2.4 Advanced ggplot2 Visualizations
 
 ```{r ggplot-advanced}
 # Faceted visualization
@@ -727,7 +727,7 @@ cat("R-squared:", round(r_squared, 4), "\n")
 cat("Adjusted R-squared:", round(adj_r_squared, 4), "\n")
 ```
 
-### Visualize Regression
+### 4.1.1 Visualize Regression
 
 ```{r visualize-regression}
 # Plot with regression line
@@ -744,7 +744,7 @@ ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width)) +
   theme(plot.title = element_text(hjust = 0.5, face = "bold"))
 ```
 
-### Model Diagnostics
+### 4.1.2 Model Diagnostics
 
 ```{r model-diagnostics}
 # Diagnostic plots
@@ -823,7 +823,7 @@ prediction_results %>%
 
 ## 5.1 Understanding Hypotheses
 
-### What is a Hypothesis?
+### 5.1.1 What is a Hypothesis?
 
 A **hypothesis** is a prediction from a theory that can be tested through data collection and analysis. It's a specific, testable statement about the relationship between variables.
 
@@ -834,7 +834,7 @@ A **hypothesis** is a prediction from a theory that can be tested through data c
 3. **Measurable** - The variables must be quantifiable
 4. **Falsifiable** - It must be possible to prove it wrong
 
-### Types of Hypotheses
+### 5.1.2 Types of Hypotheses
 
 ```{r hypothesis-theory, echo=FALSE}
 hypothesis_types <- data.frame(
@@ -861,7 +861,7 @@ hypothesis_types %>%
   column_spec(4, width = "20em")
 ```
 
-### Why Can't We "Prove" a Hypothesis?
+### 5.1.3 Why Can't We "Prove" a Hypothesis?
 
 **Important Concept:** We can never *prove* the alternative hypothesis using statistics. We can only:
 
@@ -901,7 +901,7 @@ title("Hypothesis Testing Logic Flow", cex.main = 1.5, font.main = 2)
 
 ## 5.2 Hypothesis Testing in R
 
-### The p-value
+### 5.2.1 The p-value
 
 The **p-value** is the probability of obtaining your observed data (or more extreme) **assuming the null hypothesis is true**.
 
@@ -914,7 +914,7 @@ The **p-value** is the probability of obtaining your observed data (or more extr
 - α = 0.01 (1%) - More stringent
 - α = 0.10 (10%) - More lenient (exploratory research)
 
-### Example 1: One-Sample t-test
+### 5.2.2 Example 1: One-Sample t-test
 
 **Research Question:** Is the average sepal length of iris flowers different from 6 cm?
 
@@ -969,7 +969,7 @@ legend("topright",
        lwd = 3)
 ```
 
-### Example 2: Independent Two-Sample t-test
+### 5.2.3 Example 2: Independent Two-Sample t-test
 
 **Research Question:** Do manual transmission cars have different fuel efficiency than automatic transmission cars?
 
@@ -1034,7 +1034,7 @@ points(c(1, 2), c(mean(automatic), mean(manual)),
 legend("bottomright", legend = "Mean", pch = 19, col = "blue", cex = 1.2)
 ```
 
-### Example 3: Paired t-test
+### 5.2.4 Example 3: Paired t-test
 
 **Research Question:** Does a new teaching method improve test scores?
 
@@ -1127,7 +1127,7 @@ par(mfrow = c(1, 1))
 
 ## 5.3 Other Common Tests
 
-### Chi-Square Test (Categorical Data)
+### 5.3.1 Chi-Square Test (Categorical Data)
 
 **Research Question:** Is there a relationship between transmission type and number of cylinders?
 
@@ -1173,7 +1173,7 @@ barplot(contingency_table,
         col = c("lightcoral", "lightgreen"))
 ```
 
-### Correlation Test
+### 5.3.2 Correlation Test
 
 **Research Question:** Is there a linear relationship between car weight and fuel efficiency?
 
@@ -1221,7 +1221,7 @@ abline(lm(mpg ~ wt, data = mtcars), col = "red", lwd = 2)
 
 ## 5.4 Effect Size and Power
 
-### Understanding Effect Size
+### 5.4.1 Understanding Effect Size
 
 **Effect size** measures the magnitude of a difference or relationship, independent of sample size.
 
@@ -1300,7 +1300,7 @@ test_summary %>%
   column_spec(4, monospace = TRUE)
 ```
 
-### Key Reminders
+### 5.5.1 Key Reminders
 
 1. **Always state your hypotheses** before looking at the data
 2. **Check assumptions** before running tests (normality, equal variances, etc.)
@@ -1575,7 +1575,7 @@ plot(model)  # Check diagnostic plots
 
 ## 7.4 Additional Resources
 
-### Recommended Packages
+### 7.4.1 Recommended Packages
 
 ```{r resources, eval=FALSE}
 # Data Manipulation
@@ -1602,7 +1602,7 @@ install.packages("kableExtra")   # Enhanced tables
 install.packages("gt")           # Grammar of tables
 ```
 
-### Learning Resources
+### 7.4.2 Learning Resources
 
 - **R Documentation**: `?function_name` or `help(function_name)`
 - **RStudio Cheatsheets**: https://www.rstudio.com/resources/cheatsheets/
@@ -1610,7 +1610,7 @@ install.packages("gt")           # Grammar of tables
 - **Quick-R**: https://www.statmethods.net/
 - **Stack Overflow**: https://stackoverflow.com/questions/tagged/r
 
-### Getting Help
+### 7.4.3 Getting Help
 
 ```{r getting-help, eval=FALSE}
 # View function documentation
