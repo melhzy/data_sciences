@@ -22,21 +22,61 @@ machine_info <- paste0(Sys.info()['nodename'], ' - ', Sys.info()['sysname'], ' '
 1.	Use logical operations to get R to agree that "two plus two equals 5" is FALSE.
 
 ```{r q1}
-
+2+2==5
 ```
 
 2.	Use logical operations to test whether 8 ^ 13 is less than 15 ^ 9.
 
-```{r q2}
 
+```{r q2}
+8^13<15^9 
 ```
+
 
 # Variables:
 
 3.	Create a variable called potato whose value corresponds to the number of potatoes you've eaten in the last week. Or something equally ridiculous. Print out the value of potato.
 
 ```{r q3}
+# Create potato variable
+potato <- 7
+print(potato)
 
+# Bonus: More complex visualization
+# Create a weekly potato consumption dataset
+days <- c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+potatoes_per_day <- c(1, 2, 0, 1, 1, 2, 0)
+
+# Create a more sophisticated bar plot
+par(mfrow = c(1, 2))  # Create 2 plots side by side
+
+# Plot 1: Daily consumption
+barplot(potatoes_per_day, 
+        names.arg = days,
+        main = "Daily Potato Consumption",
+        xlab = "Day of Week",
+        ylab = "Number of Potatoes",
+        col = colorRampPalette(c("goldenrod", "chocolate4"))(7),
+        border = "brown",
+        las = 1)
+abline(h = mean(potatoes_per_day), col = "red", lwd = 2, lty = 2)
+legend("topright", legend = "Average", col = "red", lty = 2, lwd = 2, cex = 0.8)
+
+# Plot 2: Cumulative consumption
+cumulative <- cumsum(potatoes_per_day)
+plot(1:7, cumulative, 
+     type = "b",
+     main = "Cumulative Potato Consumption",
+     xlab = "Day",
+     ylab = "Total Potatoes",
+     col = "darkgoldenrod4",
+     pch = 19,
+     lwd = 2,
+     xaxt = "n")
+axis(1, at = 1:7, labels = days)
+grid(col = "gray", lty = "dotted")
+
+par(mfrow = c(1, 1))  # Reset plot layout
 ```
 
 4.	Calculate the square root of potato using the sqrt() function. Print out the value of potato again to verify that the value of potato hasn't changed.
