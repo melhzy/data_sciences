@@ -108,7 +108,7 @@ Calculate the following information:
 7)	Which business had:
 
     a.	the highest cost savings?
-    
+        
     b.	the the lowest cost savings?
-    
+        
     c.  Use both cost savings columns and find the ID number of the business with the lowest and highest z-score.

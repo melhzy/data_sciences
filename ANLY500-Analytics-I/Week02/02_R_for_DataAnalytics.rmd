@@ -819,7 +819,495 @@ prediction_results %>%
 
 ---
 
-# Part 5: Practical Applications {.tabset}
+# Part 5: Hypothesis Testing {.tabset}
+
+## Understanding Hypotheses
+
+### What is a Hypothesis?
+
+A **hypothesis** is a prediction from a theory that can be tested through data collection and analysis. It's a specific, testable statement about the relationship between variables.
+
+**Key Characteristics of a Good Hypothesis:**
+
+1. **Clear and understandable** - Anyone should be able to understand what you're predicting
+2. **Testable** - You must be able to collect data to test it
+3. **Measurable** - The variables must be quantifiable
+4. **Falsifiable** - It must be possible to prove it wrong
+
+### Types of Hypotheses
+
+```{r hypothesis-theory, echo=FALSE}
+hypothesis_types <- data.frame(
+  Type = c("Alternative Hypothesis (H₁)", "Null Hypothesis (H₀)", "Directional Hypothesis", "Non-directional Hypothesis"),
+  Symbol = c("H₁ or Hₐ", "H₀", "H₁ (one-tailed)", "H₁ (two-tailed)"),
+  Description = c(
+    "States that an effect WILL occur; the research prediction",
+    "States that NO effect will occur; opposite of alternative hypothesis",
+    "Predicts the DIRECTION of the effect (e.g., 'greater than', 'less than')",
+    "Predicts an effect exists but NOT its direction (e.g., 'different from')"
+  ),
+  Example = c(
+    "Manual transmission cars have higher MPG than automatic cars",
+    "Manual and automatic cars have the same MPG",
+    "Manual cars have HIGHER MPG than automatic cars",
+    "Manual and automatic cars have DIFFERENT MPG"
+  )
+)
+
+hypothesis_types %>%
+  kable(caption = "Types of Hypotheses in Statistical Testing") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  column_spec(1, bold = TRUE, width = "15em") %>%
+  column_spec(4, width = "20em")
+```
+
+### Why Can't We "Prove" a Hypothesis?
+
+**Important Concept:** We can never *prove* the alternative hypothesis using statistics. We can only:
+
+- **Reject the null hypothesis** (providing support for the alternative hypothesis)
+- **Fail to reject the null hypothesis** (insufficient evidence for the alternative hypothesis)
+
+> "We cannot talk about the null hypothesis being true or the experimental hypothesis being true, we can only talk in terms of the **probability of obtaining a particular set of data** if, hypothetically speaking, the null hypothesis was true."
+> 
+> — Field, Miles, & Field (2012)
+
+```{r hypothesis-logic, echo=FALSE, fig.height=4, fig.width=8}
+# Visualize hypothesis testing logic
+par(mar = c(2, 2, 3, 2))
+plot.new()
+plot.window(xlim = c(0, 10), ylim = c(0, 10))
+
+# Boxes
+rect(0.5, 7, 4.5, 9, col = "lightblue", border = "darkblue", lwd = 2)
+text(2.5, 8, "Collect Data", cex = 1.2, font = 2)
+
+rect(0.5, 4.5, 4.5, 6.5, col = "lightyellow", border = "darkgoldenrod", lwd = 2)
+text(2.5, 5.5, "Calculate p-value:\nProbability of data\nIF H₀ is true", cex = 1, font = 2)
+
+rect(5.5, 6.5, 9.5, 9, col = "lightgreen", border = "darkgreen", lwd = 2)
+text(7.5, 7.75, "p < 0.05\nReject H₀\nSupport H₁", cex = 1.1, font = 2)
+
+rect(5.5, 3, 9.5, 5.5, col = "lightcoral", border = "darkred", lwd = 2)
+text(7.5, 4.25, "p ≥ 0.05\nFail to Reject H₀\nNo Support for H₁", cex = 1.1, font = 2)
+
+# Arrows
+arrows(2.5, 7, 2.5, 6.5, lwd = 2, length = 0.15)
+arrows(4.5, 5.5, 5.5, 7.75, lwd = 2, length = 0.15)
+arrows(4.5, 5.5, 5.5, 4.25, lwd = 2, length = 0.15)
+
+title("Hypothesis Testing Logic Flow", cex.main = 1.5, font.main = 2)
+```
+
+## Hypothesis Testing in R
+
+### The p-value
+
+The **p-value** is the probability of obtaining your observed data (or more extreme) **assuming the null hypothesis is true**.
+
+**Interpretation:**
+- **Small p-value** (typically < 0.05): Data is unlikely under H₀ → Reject H₀
+- **Large p-value** (≥ 0.05): Data is plausible under H₀ → Fail to reject H₀
+
+**Common Significance Levels:**
+- α = 0.05 (5%) - Most common in social sciences
+- α = 0.01 (1%) - More stringent
+- α = 0.10 (10%) - More lenient (exploratory research)
+
+### Example 1: One-Sample t-test
+
+**Research Question:** Is the average sepal length of iris flowers different from 6 cm?
+
+**Hypotheses:**
+- H₀: μ = 6 (population mean equals 6)
+- H₁: μ ≠ 6 (population mean is different from 6) [two-tailed]
+
+```{r one-sample-ttest}
+# One-sample t-test
+# Test if mean sepal length differs from 6 cm
+test_value <- 6
+
+# Perform the test
+result_onesample <- t.test(iris$Sepal.Length, mu = test_value)
+
+cat("=== ONE-SAMPLE T-TEST ===\n\n")
+cat("Research Question: Is mean sepal length different from", test_value, "cm?\n\n")
+cat("H₀: μ =", test_value, "\n")
+cat("H₁: μ ≠", test_value, "\n\n")
+
+print(result_onesample)
+
+cat("\n=== INTERPRETATION ===\n")
+cat("Sample mean:", round(mean(iris$Sepal.Length), 3), "cm\n")
+cat("t-statistic:", round(result_onesample$statistic, 3), "\n")
+cat("p-value:", format.pval(result_onesample$p.value, digits = 4), "\n")
+cat("95% CI: [", round(result_onesample$conf.int[1], 3), ",", 
+    round(result_onesample$conf.int[2], 3), "]\n\n")
+
+if(result_onesample$p.value < 0.05) {
+  cat("Decision: REJECT H₀ (p < 0.05)\n")
+  cat("Conclusion: The mean sepal length is significantly different from", test_value, "cm.\n")
+} else {
+  cat("Decision: FAIL TO REJECT H₀ (p ≥ 0.05)\n")
+  cat("Conclusion: Insufficient evidence that mean differs from", test_value, "cm.\n")
+}
+
+# Visualize
+hist(iris$Sepal.Length,
+     main = "Sepal Length Distribution with Test Value",
+     xlab = "Sepal Length (cm)",
+     col = "lightblue",
+     border = "white",
+     breaks = 15)
+abline(v = mean(iris$Sepal.Length), col = "red", lwd = 3, lty = 1)
+abline(v = test_value, col = "blue", lwd = 3, lty = 2)
+legend("topright", 
+       legend = c(paste("Sample Mean =", round(mean(iris$Sepal.Length), 2)),
+                  paste("Test Value =", test_value)),
+       col = c("red", "blue"), 
+       lty = c(1, 2), 
+       lwd = 3)
+```
+
+### Example 2: Independent Two-Sample t-test
+
+**Research Question:** Do manual transmission cars have different fuel efficiency than automatic transmission cars?
+
+**Hypotheses:**
+- H₀: μ_manual = μ_automatic (no difference in mean MPG)
+- H₁: μ_manual ≠ μ_automatic (means are different) [two-tailed]
+
+```{r independent-ttest}
+# Independent samples t-test
+# Compare MPG between automatic and manual transmission
+
+# Prepare data
+automatic <- mtcars$mpg[mtcars$am == 0]
+manual <- mtcars$mpg[mtcars$am == 1]
+
+cat("=== INDEPENDENT TWO-SAMPLE T-TEST ===\n\n")
+cat("Research Question: Do manual and automatic cars differ in fuel efficiency?\n\n")
+cat("H₀: μ_manual = μ_automatic\n")
+cat("H₁: μ_manual ≠ μ_automatic\n\n")
+
+# Perform t-test
+result_independent <- t.test(manual, automatic, var.equal = FALSE)
+
+print(result_independent)
+
+cat("\n=== DESCRIPTIVE STATISTICS ===\n")
+cat("Automatic transmission:\n")
+cat("  n =", length(automatic), "\n")
+cat("  Mean =", round(mean(automatic), 2), "mpg\n")
+cat("  SD =", round(sd(automatic), 2), "\n\n")
+
+cat("Manual transmission:\n")
+cat("  n =", length(manual), "\n")
+cat("  Mean =", round(mean(manual), 2), "mpg\n")
+cat("  SD =", round(sd(manual), 2), "\n\n")
+
+cat("=== INTERPRETATION ===\n")
+cat("Difference in means:", round(mean(manual) - mean(automatic), 2), "mpg\n")
+cat("t-statistic:", round(result_independent$statistic, 3), "\n")
+cat("p-value:", format.pval(result_independent$p.value, digits = 4), "\n\n")
+
+if(result_independent$p.value < 0.05) {
+  cat("Decision: REJECT H₀ (p < 0.05)\n")
+  cat("Conclusion: Manual and automatic transmissions have significantly different MPG.\n")
+  cat("Manual transmission cars have", 
+      ifelse(mean(manual) > mean(automatic), "HIGHER", "LOWER"), 
+      "fuel efficiency.\n")
+} else {
+  cat("Decision: FAIL TO REJECT H₀ (p ≥ 0.05)\n")
+  cat("Conclusion: No significant difference in MPG between transmission types.\n")
+}
+
+# Visualize
+boxplot(mpg ~ am, data = mtcars,
+        names = c("Automatic", "Manual"),
+        main = "Fuel Efficiency by Transmission Type",
+        ylab = "Miles per Gallon (MPG)",
+        col = c("lightcoral", "lightgreen"),
+        border = c("darkred", "darkgreen"))
+points(c(1, 2), c(mean(automatic), mean(manual)), 
+       pch = 19, col = "blue", cex = 2)
+legend("bottomright", legend = "Mean", pch = 19, col = "blue", cex = 1.2)
+```
+
+### Example 3: Paired t-test
+
+**Research Question:** Does a new teaching method improve test scores?
+
+**Hypotheses:**
+- H₀: μ_difference = 0 (no change in scores)
+- H₁: μ_difference > 0 (scores increased) [one-tailed]
+
+```{r paired-ttest}
+# Paired t-test
+# Create example data: before and after scores
+set.seed(seeds[3])
+
+n_students <- 25
+before_scores <- rnorm(n_students, mean = 70, sd = 10)
+# Add improvement effect
+improvement <- rnorm(n_students, mean = 5, sd = 8)
+after_scores <- before_scores + improvement
+
+student_data <- data.frame(
+  Student = 1:n_students,
+  Before = round(before_scores, 1),
+  After = round(after_scores, 1),
+  Difference = round(after_scores - before_scores, 1)
+)
+
+cat("=== PAIRED T-TEST (BEFORE-AFTER DESIGN) ===\n\n")
+cat("Research Question: Did the new teaching method improve test scores?\n\n")
+cat("H₀: μ_difference = 0 (no improvement)\n")
+cat("H₁: μ_difference > 0 (scores improved) [one-tailed]\n\n")
+
+# Show first few students
+cat("Sample Data (first 6 students):\n")
+head(student_data) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Perform paired t-test (one-tailed)
+result_paired <- t.test(student_data$After, student_data$Before, 
+                        paired = TRUE, 
+                        alternative = "greater")
+
+cat("\n")
+print(result_paired)
+
+cat("\n=== DESCRIPTIVE STATISTICS ===\n")
+cat("Before: Mean =", round(mean(student_data$Before), 2), 
+    ", SD =", round(sd(student_data$Before), 2), "\n")
+cat("After:  Mean =", round(mean(student_data$After), 2), 
+    ", SD =", round(sd(student_data$After), 2), "\n")
+cat("Mean Difference:", round(mean(student_data$Difference), 2), "points\n\n")
+
+cat("=== INTERPRETATION ===\n")
+cat("t-statistic:", round(result_paired$statistic, 3), "\n")
+cat("p-value (one-tailed):", format.pval(result_paired$p.value, digits = 4), "\n\n")
+
+if(result_paired$p.value < 0.05) {
+  cat("Decision: REJECT H₀ (p < 0.05)\n")
+  cat("Conclusion: The teaching method significantly improved test scores.\n")
+} else {
+  cat("Decision: FAIL TO REJECT H₀ (p ≥ 0.05)\n")
+  cat("Conclusion: No significant evidence of improvement.\n")
+}
+
+# Visualize
+par(mfrow = c(1, 2))
+
+# Box plot comparison
+boxplot(student_data$Before, student_data$After,
+        names = c("Before", "After"),
+        main = "Score Comparison",
+        ylab = "Test Score",
+        col = c("lightcoral", "lightgreen"))
+
+# Difference histogram
+hist(student_data$Difference,
+     main = "Score Changes",
+     xlab = "Difference (After - Before)",
+     col = "lightblue",
+     border = "white")
+abline(v = 0, col = "red", lwd = 3, lty = 2)
+abline(v = mean(student_data$Difference), col = "blue", lwd = 3)
+legend("topright", 
+       legend = c("No Change", "Mean Change"),
+       col = c("red", "blue"), 
+       lty = c(2, 1), 
+       lwd = 3)
+
+par(mfrow = c(1, 1))
+```
+
+## Other Common Tests
+
+### Chi-Square Test (Categorical Data)
+
+**Research Question:** Is there a relationship between transmission type and number of cylinders?
+
+```{r chi-square-test}
+# Chi-square test for independence
+cat("=== CHI-SQUARE TEST OF INDEPENDENCE ===\n\n")
+cat("Research Question: Are transmission type and cylinder count independent?\n\n")
+cat("H₀: Transmission and cylinders are independent (no relationship)\n")
+cat("H₁: Transmission and cylinders are related\n\n")
+
+# Create contingency table
+contingency_table <- table(mtcars$am, mtcars$cyl)
+rownames(contingency_table) <- c("Automatic", "Manual")
+colnames(contingency_table) <- paste(c(4, 6, 8), "cyl")
+
+cat("Contingency Table:\n")
+print(contingency_table)
+
+# Perform chi-square test
+result_chisq <- chisq.test(contingency_table)
+cat("\n")
+print(result_chisq)
+
+cat("\n=== INTERPRETATION ===\n")
+cat("Chi-square statistic:", round(result_chisq$statistic, 3), "\n")
+cat("p-value:", format.pval(result_chisq$p.value, digits = 4), "\n\n")
+
+if(result_chisq$p.value < 0.05) {
+  cat("Decision: REJECT H₀ (p < 0.05)\n")
+  cat("Conclusion: There is a significant relationship between transmission and cylinders.\n")
+} else {
+  cat("Decision: FAIL TO REJECT H₀ (p ≥ 0.05)\n")
+  cat("Conclusion: No significant relationship detected.\n")
+}
+
+# Visualize
+barplot(contingency_table, 
+        beside = TRUE,
+        legend = TRUE,
+        main = "Transmission Type by Cylinder Count",
+        xlab = "Number of Cylinders",
+        ylab = "Frequency",
+        col = c("lightcoral", "lightgreen"))
+```
+
+### Correlation Test
+
+**Research Question:** Is there a linear relationship between car weight and fuel efficiency?
+
+```{r correlation-test}
+# Correlation test
+cat("=== CORRELATION TEST ===\n\n")
+cat("Research Question: Is there a correlation between weight and MPG?\n\n")
+cat("H₀: ρ = 0 (no correlation)\n")
+cat("H₁: ρ ≠ 0 (correlation exists)\n\n")
+
+# Perform correlation test
+result_cor <- cor.test(mtcars$wt, mtcars$mpg)
+
+print(result_cor)
+
+cat("\n=== INTERPRETATION ===\n")
+cat("Correlation coefficient (r):", round(result_cor$estimate, 3), "\n")
+cat("t-statistic:", round(result_cor$statistic, 3), "\n")
+cat("p-value:", format.pval(result_cor$p.value, digits = 4), "\n\n")
+
+if(result_cor$p.value < 0.05) {
+  cat("Decision: REJECT H₀ (p < 0.05)\n")
+  cat("Conclusion: There is a significant", 
+      ifelse(result_cor$estimate < 0, "NEGATIVE", "POSITIVE"),
+      "correlation.\n")
+  cat("Interpretation:", abs(round(result_cor$estimate, 3)), 
+      "indicates a",
+      ifelse(abs(result_cor$estimate) > 0.7, "strong",
+             ifelse(abs(result_cor$estimate) > 0.4, "moderate", "weak")),
+      "relationship.\n")
+} else {
+  cat("Decision: FAIL TO REJECT H₀ (p ≥ 0.05)\n")
+  cat("Conclusion: No significant correlation detected.\n")
+}
+
+# Visualize
+plot(mtcars$wt, mtcars$mpg,
+     main = paste("Weight vs MPG (r =", round(result_cor$estimate, 3), ")"),
+     xlab = "Weight (1000 lbs)",
+     ylab = "Miles per Gallon",
+     pch = 19,
+     col = "steelblue")
+abline(lm(mpg ~ wt, data = mtcars), col = "red", lwd = 2)
+```
+
+## Effect Size and Power
+
+### Understanding Effect Size
+
+**Effect size** measures the magnitude of a difference or relationship, independent of sample size.
+
+**Common Effect Size Measures:**
+- **Cohen's d**: For t-tests (small: 0.2, medium: 0.5, large: 0.8)
+- **r**: For correlations (small: 0.1, medium: 0.3, large: 0.5)
+- **η² (eta-squared)**: For ANOVA
+
+```{r effect-size}
+# Calculate Cohen's d for transmission comparison
+library(effsize)
+
+cat("=== EFFECT SIZE ANALYSIS ===\n\n")
+
+# Cohen's d for transmission effect on MPG
+cohens_d <- cohen.d(mtcars$mpg ~ factor(mtcars$am))
+print(cohens_d)
+
+cat("\n=== INTERPRETATION ===\n")
+cat("Cohen's d:", round(cohens_d$estimate, 3), "\n")
+cat("Magnitude:", cohens_d$magnitude, "\n\n")
+
+cat("Effect Size Guidelines (Cohen, 1988):\n")
+cat("  Small:  d = 0.2\n")
+cat("  Medium: d = 0.5\n")
+cat("  Large:  d = 0.8\n\n")
+
+cat("Practical Significance:\n")
+if(abs(cohens_d$estimate) < 0.2) {
+  cat("The effect is negligible - may not be practically important.\n")
+} else if(abs(cohens_d$estimate) < 0.5) {
+  cat("The effect is small - some practical importance.\n")
+} else if(abs(cohens_d$estimate) < 0.8) {
+  cat("The effect is medium - likely practically important.\n")
+} else {
+  cat("The effect is large - very practically important.\n")
+}
+```
+
+## Summary of Hypothesis Testing
+
+```{r hypothesis-summary, echo=FALSE}
+test_summary <- data.frame(
+  Test = c("One-Sample t-test", "Independent t-test", "Paired t-test", 
+           "Chi-Square Test", "Correlation Test", "ANOVA"),
+  Purpose = c(
+    "Compare sample mean to known value",
+    "Compare means of two independent groups",
+    "Compare means of paired/related observations",
+    "Test relationship between categorical variables",
+    "Test linear relationship between continuous variables",
+    "Compare means of 3+ groups"
+  ),
+  Data_Type = c(
+    "Continuous", "Continuous", "Continuous",
+    "Categorical", "Continuous", "Continuous"
+  ),
+  R_Function = c(
+    "t.test(x, mu=value)",
+    "t.test(x, y)",
+    "t.test(x, y, paired=TRUE)",
+    "chisq.test(table)",
+    "cor.test(x, y)",
+    "aov() or anova()"
+  )
+)
+
+test_summary %>%
+  kable(caption = "Common Hypothesis Tests in R") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  column_spec(1, bold = TRUE) %>%
+  column_spec(4, monospace = TRUE)
+```
+
+### Key Reminders
+
+1. **Always state your hypotheses** before looking at the data
+2. **Check assumptions** before running tests (normality, equal variances, etc.)
+3. **Report effect sizes** alongside p-values
+4. **Consider practical significance** not just statistical significance
+5. **Be cautious with multiple testing** - adjust α if doing many tests
+6. **Never say "prove"** - we reject or fail to reject H₀
+
+---
+
+# Part 6: Practical Applications {.tabset}
 
 ## Case Study 1: Air Quality Analysis
 
@@ -954,7 +1442,7 @@ par(mfrow = c(1, 1))
 
 ---
 
-# Part 6: Summary and Best Practices {.tabset}
+# Part 7: Summary and Best Practices {.tabset}
 
 ## Key Takeaways
 
