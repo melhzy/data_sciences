@@ -904,7 +904,7 @@ flow_annotations <- list(
     showarrow = FALSE, font = list(size = 15)),
   list(x = 7.5, y = 7, text = "Support H<sub>1</sub>",
     showarrow = FALSE, font = list(size = 15)),
-  list(x = 7.5, y = 5.1, text = "<b>p &ge; 0.05</b>",
+  list(x = 7.5, y = 5.1, text = "<b>p ≥ 0.05</b>",
     showarrow = FALSE, font = list(size = 16)),
   list(x = 7.5, y = 4.4, text = "Fail to Reject H<sub>0</sub>",
     showarrow = FALSE, font = list(size = 15)),
