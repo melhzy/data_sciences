@@ -1,8 +1,10 @@
 ---
-title: "Introduction to Data Analytics 1"
-author: "Enter Your Name"
+title: "Introduction to Data Analytics 1 - HW2"
+author: "Ziyuan Huang"
 date: "`r Sys.Date()`"
-output: 
+output:
+  html_document:
+    df_print: paged
   word_document:
     reference_docx: default
 ---
@@ -27,7 +29,11 @@ Answer the following questions about the abstract above:
 
 1)	What is a potential hypothesis of the researchers?
 
+    Here is my answer for question (1). Here is my answer for question (1). Here is my answer for question (1). Here is my answer for question (1). Here is my answer for question (1).
+    
 2)	What is one of the independent variables?
+
+    Here is my answer for question (1). Here is my answer for question (1). Here is my answer for question (1). Here is my answer for question (1). Here is my answer for question (1).
 
     a.	What type of variable is the independent variable?
 
