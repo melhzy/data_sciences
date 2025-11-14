@@ -879,13 +879,13 @@ if (!requireNamespace("plotly", quietly = TRUE)) {
 library(plotly)
 
 flow_shapes <- list(
-  list(type = "rect", x0 = 0.5, x1 = 4.5, y0 = 7, y1 = 9,
+  list(type = "rect", x0 = 0.5, x1 = 4.5, y0 = 7.5, y1 = 9.5,
     fillcolor = "lightblue", line = list(color = "darkblue", width = 4)),
   list(type = "rect", x0 = 0.5, x1 = 4.5, y0 = 4.5, y1 = 6.5,
     fillcolor = "#fff5cc", line = list(color = "#b8860b", width = 4)),
-  list(type = "rect", x0 = 5.5, x1 = 9.5, y0 = 6.5, y1 = 9,
+  list(type = "rect", x0 = 6, x1 = 10, y0 = 7.2, y1 = 9.4,
     fillcolor = "#98fb98", line = list(color = "#006400", width = 4)),
-  list(type = "rect", x0 = 5.5, x1 = 9.5, y0 = 3, y1 = 5.5,
+  list(type = "rect", x0 = 6, x1 = 10, y0 = 4.1, y1 = 6.3,
     fillcolor = "#f4a6a6", line = list(color = "#8b0000", width = 4))
 )
 
@@ -898,24 +898,30 @@ flow_annotations <- list(
     showarrow = FALSE, font = list(size = 14)),
   list(x = 2.5, y = 5, text = "IF H<sub>0</sub> is true",
     showarrow = FALSE, font = list(size = 14)),
-  list(x = 7.5, y = 8.4, text = "<b>p &lt; 0.05</b>",
+    list(x = 8, y = 8.6, text = "<b>p &lt; 0.05</b>",
     showarrow = FALSE, font = list(size = 16)),
-  list(x = 7.5, y = 7.7, text = "Reject H<sub>0</sub>",
+    list(x = 8, y = 8.0, text = "Reject H<sub>0</sub>",
     showarrow = FALSE, font = list(size = 15)),
-  list(x = 7.5, y = 7, text = "Support H<sub>1</sub>",
+    list(x = 8, y = 7.4, text = "Support H<sub>1</sub>",
     showarrow = FALSE, font = list(size = 15)),
-  list(x = 7.5, y = 5.1, text = "<b>p ≥ 0.05</b>",
+    list(x = 8, y = 5.3, text = "<b>p ≥ 0.05</b>",
     showarrow = FALSE, font = list(size = 16)),
-  list(x = 7.5, y = 4.4, text = "Fail to Reject H<sub>0</sub>",
+    list(x = 8, y = 4.7, text = "Fail to Reject H<sub>0</sub>",
     showarrow = FALSE, font = list(size = 15)),
-  list(x = 7.5, y = 3.7, text = "No Support for H<sub>1</sub>",
+    list(x = 8, y = 4.1, text = "No Support for H<sub>1</sub>",
     showarrow = FALSE, font = list(size = 15)),
-  list(x = 2.5, y = 7, ax = 2.5, ay = 6.6, arrowhead = 3, arrowsize = 1,
-    arrowwidth = 2, arrowcolor = "black", showarrow = TRUE, text = ""),
-  list(x = 4.5, y = 5.5, ax = 5.6, ay = 7.8, arrowhead = 3, arrowsize = 1,
-    arrowwidth = 2, arrowcolor = "black", showarrow = TRUE, text = ""),
-  list(x = 4.5, y = 5.5, ax = 5.6, ay = 4.2, arrowhead = 3, arrowsize = 1,
-    arrowwidth = 2, arrowcolor = "black", showarrow = TRUE, text = "")
+    list(x = 2.5, y = 6.6, xref = "x", yref = "y",
+      ax = 2.5, ay = 7.4, axref = "x", ayref = "y",
+      arrowhead = 3, arrowsize = 1, arrowwidth = 2,
+      arrowcolor = "black", showarrow = TRUE, text = ""),
+    list(x = 6.0, y = 8.1, xref = "x", yref = "y",
+      ax = 4.6, ay = 6.0, axref = "x", ayref = "y",
+      arrowhead = 3, arrowsize = 1, arrowwidth = 2,
+      arrowcolor = "black", showarrow = TRUE, text = ""),
+    list(x = 6.0, y = 5.2, xref = "x", yref = "y",
+      ax = 4.6, ay = 5.0, axref = "x", ayref = "y",
+      arrowhead = 3, arrowsize = 1, arrowwidth = 2,
+      arrowcolor = "black", showarrow = TRUE, text = "")
 )
 
 flow_fig <- plot_ly(
