@@ -878,68 +878,246 @@ if (!requireNamespace("plotly", quietly = TRUE)) {
 }
 library(plotly)
 
-flow_shapes <- list(
-  list(type = "rect", x0 = 1.5, x1 = 6.5, y0 = 7.4, y1 = 9.4,
-    fillcolor = "lightblue", line = list(color = "darkblue", width = 4)),
-  list(type = "rect", x0 = 1.5, x1 = 6.5, y0 = 4.3, y1 = 6.3,
-    fillcolor = "#fff5cc", line = list(color = "#b8860b", width = 4)),
-  list(type = "rect", x0 = 7.5, x1 = 12.5, y0 = 7.4, y1 = 9.4,
-    fillcolor = "#98fb98", line = list(color = "#006400", width = 4)),
-  list(type = "rect", x0 = 7.5, x1 = 12.5, y0 = 4.3, y1 = 6.3,
-    fillcolor = "#f4a6a6", line = list(color = "#8b0000", width = 4))
+# ============================================================================
+# CONFIGURATION - Optimized for R Markdown HTML output
+# ============================================================================
+config <- list(
+  # Canvas dimensions (optimized for wide display)
+  canvas_width = 150,
+  canvas_height = 85,
+  
+  # Box dimensions
+  box_width = 24,
+  box_height = 14,
+  
+  # Box center positions (manually optimized for best display)
+  box_positions = data.frame(
+    id = c("collect", "calculate", "significant", "not_significant"),
+    x = c(32, 32, 118, 118),      # x coordinates
+    y = c(60, 25, 60, 25),         # y coordinates
+    stringsAsFactors = FALSE
+  ),
+  
+  # Box styling
+  box_styles = data.frame(
+    id = c("collect", "calculate", "significant", "not_significant"),
+    fillcolor = c("#D6EAF8", "#FFF9E6", "#D5F4E6", "#FADBD8"),
+    linecolor = c("#2874A6", "#D68910", "#229954", "#A93226"),
+    linewidth = c(3.5, 3.5, 3.5, 3.5),
+    stringsAsFactors = FALSE
+  ),
+  
+  # Text content for each box
+  text_content = list(
+    collect = data.frame(
+      text = "<b>Collect Data</b>",
+      size = 18,
+      y_offset = 0,
+      stringsAsFactors = FALSE
+    ),
+    calculate = data.frame(
+      text = c(
+        "<b>Calculate p-value:</b>",
+        "Probability of data",
+        "IF H<sub>0</sub> is true"
+      ),
+      size = c(17, 15, 15),
+      y_offset = c(4, 0, -4),
+      stringsAsFactors = FALSE
+    ),
+    significant = data.frame(
+      text = c(
+        "<b>p &lt; 0.05</b>",
+        "Reject H<sub>0</sub>",
+        "Support H<sub>1</sub>"
+      ),
+      size = c(17, 15, 15),
+      y_offset = c(4, 0, -4),
+      stringsAsFactors = FALSE
+    ),
+    not_significant = data.frame(
+      text = c(
+        "<b>p ≥ 0.05</b>",
+        "Fail to Reject H<sub>0</sub>",
+        "No Support for H<sub>1</sub>"
+      ),
+      size = c(17, 15, 15),
+      y_offset = c(4, 0, -4),
+      stringsAsFactors = FALSE
+    )
+  ),
+  
+  # Arrow connections
+  arrows = data.frame(
+    from = c("collect", "calculate", "calculate"),
+    to = c("calculate", "significant", "not_significant"),
+    stringsAsFactors = FALSE
+  )
 )
 
-flow_annotations <- list(
-  list(x = 4, y = 8.4, text = "<b>Collect Data</b>",
-    showarrow = FALSE, font = list(size = 18)),
-  list(x = 4, y = 5.8, text = "<b>Calculate p-value:</b>",
-    showarrow = FALSE, font = list(size = 16)),
-  list(x = 4, y = 5.2, text = "Probability of data",
-    showarrow = FALSE, font = list(size = 14)),
-  list(x = 4, y = 4.7, text = "IF H<sub>0</sub> is true",
-    showarrow = FALSE, font = list(size = 14)),
-    list(x = 10, y = 8.9, text = "<b>p &lt; 0.05</b>",
-    showarrow = FALSE, font = list(size = 16)),
-    list(x = 10, y = 8.3, text = "Reject H<sub>0</sub>",
-    showarrow = FALSE, font = list(size = 15)),
-    list(x = 10, y = 7.7, text = "Support H<sub>1</sub>",
-    showarrow = FALSE, font = list(size = 15)),
-    list(x = 10, y = 5.9, text = "<b>p ≥ 0.05</b>",
-    showarrow = FALSE, font = list(size = 16)),
-    list(x = 10, y = 5.3, text = "Fail to Reject H<sub>0</sub>",
-    showarrow = FALSE, font = list(size = 15)),
-    list(x = 10, y = 4.7, text = "No Support for H<sub>1</sub>",
-    showarrow = FALSE, font = list(size = 15)),
-    list(x = 4, y = 6.35, xref = "x", yref = "y",
-      ax = 4, ay = 7.45, axref = "x", ayref = "y",
-    arrowhead = 3, arrowsize = 1, arrowwidth = 2,
-    arrowcolor = "black", showarrow = TRUE, text = ""),
-    list(x = 7.45, y = 8.4, xref = "x", yref = "y",
-      ax = 6.1, ay = 5.9, axref = "x", ayref = "y",
-    arrowhead = 3, arrowsize = 1, arrowwidth = 2,
-    arrowcolor = "black", showarrow = TRUE, text = ""),
-    list(x = 7.45, y = 5.4, xref = "x", yref = "y",
-      ax = 6.1, ay = 5.0, axref = "x", ayref = "y",
-    arrowhead = 3, arrowsize = 1, arrowwidth = 2,
-    arrowcolor = "black", showarrow = TRUE, text = "")
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+get_box_coords <- function(box_id, config) {
+  pos <- config$box_positions[config$box_positions$id == box_id, ]
+  hw <- config$box_width / 2
+  hh <- config$box_height / 2
+  
+  list(
+    cx = pos$x, cy = pos$y,
+    x0 = pos$x - hw, x1 = pos$x + hw,
+    y0 = pos$y - hh, y1 = pos$y + hh,
+    left = pos$x - hw, right = pos$x + hw,
+    bottom = pos$y - hh, top = pos$y + hh
+  )
+}
+
+create_box_shape <- function(box_id, config) {
+  coords <- get_box_coords(box_id, config)
+  style <- config$box_styles[config$box_styles$id == box_id, ]
+  
+  list(
+    type = "rect",
+    x0 = coords$x0, x1 = coords$x1,
+    y0 = coords$y0, y1 = coords$y1,
+    fillcolor = style$fillcolor,
+    line = list(color = style$linecolor, width = style$linewidth),
+    layer = "below"
+  )
+}
+
+create_box_text <- function(box_id, config) {
+  coords <- get_box_coords(box_id, config)
+  text_data <- config$text_content[[box_id]]
+  
+  lapply(seq_len(nrow(text_data)), function(i) {
+    list(
+      x = coords$cx,
+      y = coords$cy + text_data$y_offset[i],
+      text = text_data$text[i],
+      font = list(size = text_data$size[i], color = "#1C2833", family = "Arial, sans-serif"),
+      showarrow = FALSE,
+      xanchor = "center",
+      yanchor = "middle"
+    )
+  })
+}
+
+create_arrow <- function(from_id, to_id, config) {
+  from <- get_box_coords(from_id, config)
+  to <- get_box_coords(to_id, config)
+  
+  # Determine arrow endpoints
+  if (from$cx == to$cx) {
+    # Vertical arrow
+    start_x <- from$cx
+    end_x <- to$cx
+    if (from$cy > to$cy) {
+      start_y <- from$bottom - 1
+      end_y <- to$top + 1
+    } else {
+      start_y <- from$top + 1
+      end_y <- to$bottom - 1
+    }
+  } else {
+    # Diagonal arrow
+    if (from$cx < to$cx) {
+      start_x <- from$right + 1
+      end_x <- to$left - 1
+    } else {
+      start_x <- from$left - 1
+      end_x <- to$right + 1
+    }
+    
+    # Vertical positioning for diagonal
+    if (from$cy > to$cy) {
+      start_y <- from$bottom
+      end_y <- to$cy
+    } else {
+      start_y <- from$top
+      end_y <- to$cy
+    }
+  }
+  
+  list(
+    x = end_x, y = end_y,
+    ax = start_x, ay = start_y,
+    xref = "x", yref = "y",
+    axref = "x", ayref = "y",
+    arrowhead = 2,
+    arrowsize = 1.5,
+    arrowwidth = 3,
+    arrowcolor = "#17202A",
+    showarrow = TRUE
+  )
+}
+
+# ============================================================================
+# BUILD PLOT COMPONENTS
+# ============================================================================
+
+shapes <- lapply(config$box_positions$id, create_box_shape, config = config)
+
+text_annotations <- unlist(
+  lapply(config$box_positions$id, create_box_text, config = config),
+  recursive = FALSE
 )
 
-flow_fig <- plot_ly(
-  x = c(0), y = c(0), type = "scatter", mode = "markers",
-  marker = list(opacity = 0)
-) %>%
+arrow_annotations <- lapply(seq_len(nrow(config$arrows)), function(i) {
+  create_arrow(config$arrows$from[i], config$arrows$to[i], config)
+})
+
+all_annotations <- c(text_annotations, arrow_annotations)
+
+# ============================================================================
+# CREATE PLOT
+# ============================================================================
+
+flow_fig <- plot_ly() %>%
+  add_trace(
+    type = "scatter",
+    mode = "markers",
+    x = c(config$canvas_width / 2),
+    y = c(config$canvas_height / 2),
+    marker = list(size = 0.01, opacity = 0),
+    hoverinfo = "none",
+    showlegend = FALSE
+  ) %>%
   layout(
-    title = list(text = "Hypothesis Testing Logic Flow", x = 0.5, font = list(size = 24)),
-    xaxis = list(range = c(0, 14), showgrid = FALSE, zeroline = FALSE,
-        showticklabels = FALSE, title = NULL, fixedrange = TRUE),
-    yaxis = list(range = c(3.5, 10), showgrid = FALSE, zeroline = FALSE,
-        showticklabels = FALSE, title = NULL, fixedrange = TRUE),
-    shapes = flow_shapes,
-    annotations = flow_annotations,
-    plot_bgcolor = "white",
-    paper_bgcolor = "white",
-    showlegend = FALSE,
-    margin = list(t = 70, r = 20, b = 20, l = 20)
+    title = list(
+      text = "<b>Hypothesis Testing Logic Flow</b>",
+      x = 0.5,
+      xanchor = "center",
+      font = list(size = 26, color = "#1C2833", family = "Arial, sans-serif")
+    ),
+    xaxis = list(
+      range = c(0, config$canvas_width),
+      showgrid = FALSE,
+      zeroline = FALSE,
+      showticklabels = FALSE,
+      showline = FALSE,
+      fixedrange = TRUE
+    ),
+    yaxis = list(
+      range = c(0, config$canvas_height),
+      showgrid = FALSE,
+      zeroline = FALSE,
+      showticklabels = FALSE,
+      showline = FALSE,
+      fixedrange = TRUE
+    ),
+    shapes = shapes,
+    annotations = all_annotations,
+    plot_bgcolor = "#FFFFFF",
+    paper_bgcolor = "#FFFFFF",
+    margin = list(t = 80, r = 60, b = 40, l = 60),
+    autosize = TRUE,
+    height = 500
+  ) %>%
+  config(
+    displayModeBar = FALSE,
+    responsive = TRUE
   )
 
 flow_fig
