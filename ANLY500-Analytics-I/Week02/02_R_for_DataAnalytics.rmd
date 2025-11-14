@@ -873,66 +873,70 @@ hypothesis_types %>%
 > — Field, Miles, & Field (2012)
 
 ```{r hypothesis-logic-flow, echo=FALSE, fig.height=5, fig.width=11, fig.align='center', warning=FALSE, message=FALSE}
-library(ggplot2)
+if (!requireNamespace("plotly", quietly = TRUE)) {
+  install.packages("plotly", repos = "https://cran.r-project.org")
+}
+library(plotly)
 
-# Create the flowchart using ggplot2
-ggplot() +
-  # Collect Data box
-  annotate("rect", xmin=0.5, xmax=4.5, ymin=7, ymax=9, 
-           fill="lightblue", color="darkblue", linewidth=1.5) +
-  annotate("text", x=2.5, y=8, label="Collect Data", 
-           size=6, fontface="bold") +
-  
-  # Calculate p-value box
-  annotate("rect", xmin=0.5, xmax=4.5, ymin=4.5, ymax=6.5, 
-           fill="lightyellow", color="darkgoldenrod", linewidth=1.5) +
-  annotate("text", x=2.5, y=5.9, label="Calculate p-value:", 
-           size=5, fontface="bold") +
-  annotate("text", x=2.5, y=5.4, label="Probability of data", size=4.5) +
-  annotate("text", x=2.5, y=4.9, label="IF H\u2080 is true", 
-           size=4.5) +
-  
-  # Reject box
-  annotate("rect", xmin=5.5, xmax=9.5, ymin=6.5, ymax=9, 
-           fill="lightgreen", color="darkgreen", linewidth=1.5) +
-  annotate("text", x=7.5, y=8.3, label="p < 0.05", 
-           size=5.5, fontface="bold") +
-  annotate("text", x=7.5, y=7.6, label="Reject H\u2080", 
-           size=5) +
-  annotate("text", x=7.5, y=6.9, label="Support H\u2081", 
-           size=5) +
-  
-  # Fail to reject box
-  annotate("rect", xmin=5.5, xmax=9.5, ymin=3, ymax=5.5, 
-           fill="lightcoral", color="darkred", linewidth=1.5) +
-  annotate("text", x=7.5, y=4.9, label="p \u2265 0.05", 
-           size=5.5, fontface="bold") +
-  annotate("text", x=7.5, y=4.2, label="Fail to Reject H\u2080", 
-           size=5) +
-  annotate("text", x=7.5, y=3.5, label="No Support for H\u2081", 
-           size=5) +
-  
-  # Arrows
-  annotate("segment", x=2.5, xend=2.5, y=7, yend=6.5,
-           arrow=arrow(length=unit(0.3,"cm"), type="closed"), 
-           linewidth=1.2) +
-  annotate("segment", x=4.5, xend=5.5, y=5.5, yend=7.75,
-           arrow=arrow(length=unit(0.3,"cm"), type="closed"), 
-           linewidth=1.2) +
-  annotate("segment", x=4.5, xend=5.5, y=5.5, yend=4.25,
-           arrow=arrow(length=unit(0.3,"cm"), type="closed"), 
-           linewidth=1.2) +
-  
-  # Title
-  labs(title="Hypothesis Testing Logic Flow") +
-  
-  # Theme settings
-  xlim(0, 10) + ylim(2, 10) +
-  theme_void() +
-  theme(
-    plot.title = element_text(hjust=0.5, size=18, face="bold", margin=margin(b=10)),
-    plot.margin = margin(10, 10, 10, 10)
+flow_shapes <- list(
+  list(type = "rect", x0 = 0.5, x1 = 4.5, y0 = 7, y1 = 9,
+    fillcolor = "lightblue", line = list(color = "darkblue", width = 4)),
+  list(type = "rect", x0 = 0.5, x1 = 4.5, y0 = 4.5, y1 = 6.5,
+    fillcolor = "#fff5cc", line = list(color = "#b8860b", width = 4)),
+  list(type = "rect", x0 = 5.5, x1 = 9.5, y0 = 6.5, y1 = 9,
+    fillcolor = "#98fb98", line = list(color = "#006400", width = 4)),
+  list(type = "rect", x0 = 5.5, x1 = 9.5, y0 = 3, y1 = 5.5,
+    fillcolor = "#f4a6a6", line = list(color = "#8b0000", width = 4))
+)
+
+flow_annotations <- list(
+  list(x = 2.5, y = 8, text = "<b>Collect Data</b>",
+    showarrow = FALSE, font = list(size = 18)),
+  list(x = 2.5, y = 6.1, text = "<b>Calculate p-value:</b>",
+    showarrow = FALSE, font = list(size = 16)),
+  list(x = 2.5, y = 5.5, text = "Probability of data",
+    showarrow = FALSE, font = list(size = 14)),
+  list(x = 2.5, y = 5, text = "IF H<sub>0</sub> is true",
+    showarrow = FALSE, font = list(size = 14)),
+  list(x = 7.5, y = 8.4, text = "<b>p &lt; 0.05</b>",
+    showarrow = FALSE, font = list(size = 16)),
+  list(x = 7.5, y = 7.7, text = "Reject H<sub>0</sub>",
+    showarrow = FALSE, font = list(size = 15)),
+  list(x = 7.5, y = 7, text = "Support H<sub>1</sub>",
+    showarrow = FALSE, font = list(size = 15)),
+  list(x = 7.5, y = 5.1, text = "<b>p &ge; 0.05</b>",
+    showarrow = FALSE, font = list(size = 16)),
+  list(x = 7.5, y = 4.4, text = "Fail to Reject H<sub>0</sub>",
+    showarrow = FALSE, font = list(size = 15)),
+  list(x = 7.5, y = 3.7, text = "No Support for H<sub>1</sub>",
+    showarrow = FALSE, font = list(size = 15)),
+  list(x = 2.5, y = 7, ax = 2.5, ay = 6.6, arrowhead = 3, arrowsize = 1,
+    arrowwidth = 2, arrowcolor = "black", showarrow = TRUE, text = ""),
+  list(x = 4.5, y = 5.5, ax = 5.6, ay = 7.8, arrowhead = 3, arrowsize = 1,
+    arrowwidth = 2, arrowcolor = "black", showarrow = TRUE, text = ""),
+  list(x = 4.5, y = 5.5, ax = 5.6, ay = 4.2, arrowhead = 3, arrowsize = 1,
+    arrowwidth = 2, arrowcolor = "black", showarrow = TRUE, text = "")
+)
+
+flow_fig <- plot_ly(
+  x = c(0), y = c(0), type = "scatter", mode = "markers",
+  marker = list(opacity = 0)
+) %>%
+  layout(
+    title = list(text = "Hypothesis Testing Logic Flow", x = 0.5, font = list(size = 24)),
+    xaxis = list(range = c(0, 10), showgrid = FALSE, zeroline = FALSE,
+        showticklabels = FALSE, title = NULL, fixedrange = TRUE),
+    yaxis = list(range = c(2, 10), showgrid = FALSE, zeroline = FALSE,
+        showticklabels = FALSE, title = NULL, fixedrange = TRUE),
+    shapes = flow_shapes,
+    annotations = flow_annotations,
+    plot_bgcolor = "white",
+    paper_bgcolor = "white",
+    showlegend = FALSE,
+    margin = list(t = 70, r = 20, b = 20, l = 20)
   )
+
+flow_fig
 ```
 
 **Figure: Hypothesis Testing Logic Flow**
