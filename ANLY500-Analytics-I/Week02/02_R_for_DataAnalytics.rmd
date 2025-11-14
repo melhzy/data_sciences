@@ -872,32 +872,70 @@ hypothesis_types %>%
 > 
 > — Field, Miles, & Field (2012)
 
-```{r hypothesis-logic, echo=FALSE, fig.height=4, fig.width=8}
-# Visualize hypothesis testing logic
-par(mar = c(2, 2, 3, 2))
-plot.new()
-plot.window(xlim = c(0, 10), ylim = c(0, 10))
+```{r hypothesis-logic-flow, echo=FALSE, fig.height=5, fig.width=11, fig.align='center', warning=FALSE, message=FALSE}
+library(ggplot2)
 
-# Boxes
-rect(0.5, 7, 4.5, 9, col = "lightblue", border = "darkblue", lwd = 2)
-text(2.5, 8, "Collect Data", cex = 1.2, font = 2)
-
-rect(0.5, 4.5, 4.5, 6.5, col = "lightyellow", border = "darkgoldenrod", lwd = 2)
-text(2.5, 5.5, "Calculate p-value:\nProbability of data\nIF H₀ is true", cex = 1, font = 2)
-
-rect(5.5, 6.5, 9.5, 9, col = "lightgreen", border = "darkgreen", lwd = 2)
-text(7.5, 7.75, "p < 0.05\nReject H₀\nSupport H₁", cex = 1.1, font = 2)
-
-rect(5.5, 3, 9.5, 5.5, col = "lightcoral", border = "darkred", lwd = 2)
-text(7.5, 4.25, "p ≥ 0.05\nFail to Reject H₀\nNo Support for H₁", cex = 1.1, font = 2)
-
-# Arrows
-arrows(2.5, 7, 2.5, 6.5, lwd = 2, length = 0.15)
-arrows(4.5, 5.5, 5.5, 7.75, lwd = 2, length = 0.15)
-arrows(4.5, 5.5, 5.5, 4.25, lwd = 2, length = 0.15)
-
-title("Hypothesis Testing Logic Flow", cex.main = 1.5, font.main = 2)
+# Create the flowchart using ggplot2
+ggplot() +
+  # Collect Data box
+  annotate("rect", xmin=0.5, xmax=4.5, ymin=7, ymax=9, 
+           fill="lightblue", color="darkblue", linewidth=1.5) +
+  annotate("text", x=2.5, y=8, label="Collect Data", 
+           size=6, fontface="bold") +
+  
+  # Calculate p-value box
+  annotate("rect", xmin=0.5, xmax=4.5, ymin=4.5, ymax=6.5, 
+           fill="lightyellow", color="darkgoldenrod", linewidth=1.5) +
+  annotate("text", x=2.5, y=5.9, label="Calculate p-value:", 
+           size=5, fontface="bold") +
+  annotate("text", x=2.5, y=5.4, label="Probability of data", size=4.5) +
+  annotate("text", x=2.5, y=4.9, label="IF H\u2080 is true", 
+           size=4.5) +
+  
+  # Reject box
+  annotate("rect", xmin=5.5, xmax=9.5, ymin=6.5, ymax=9, 
+           fill="lightgreen", color="darkgreen", linewidth=1.5) +
+  annotate("text", x=7.5, y=8.3, label="p < 0.05", 
+           size=5.5, fontface="bold") +
+  annotate("text", x=7.5, y=7.6, label="Reject H\u2080", 
+           size=5) +
+  annotate("text", x=7.5, y=6.9, label="Support H\u2081", 
+           size=5) +
+  
+  # Fail to reject box
+  annotate("rect", xmin=5.5, xmax=9.5, ymin=3, ymax=5.5, 
+           fill="lightcoral", color="darkred", linewidth=1.5) +
+  annotate("text", x=7.5, y=4.9, label="p \u2265 0.05", 
+           size=5.5, fontface="bold") +
+  annotate("text", x=7.5, y=4.2, label="Fail to Reject H\u2080", 
+           size=5) +
+  annotate("text", x=7.5, y=3.5, label="No Support for H\u2081", 
+           size=5) +
+  
+  # Arrows
+  annotate("segment", x=2.5, xend=2.5, y=7, yend=6.5,
+           arrow=arrow(length=unit(0.3,"cm"), type="closed"), 
+           linewidth=1.2) +
+  annotate("segment", x=4.5, xend=5.5, y=5.5, yend=7.75,
+           arrow=arrow(length=unit(0.3,"cm"), type="closed"), 
+           linewidth=1.2) +
+  annotate("segment", x=4.5, xend=5.5, y=5.5, yend=4.25,
+           arrow=arrow(length=unit(0.3,"cm"), type="closed"), 
+           linewidth=1.2) +
+  
+  # Title
+  labs(title="Hypothesis Testing Logic Flow") +
+  
+  # Theme settings
+  xlim(0, 10) + ylim(2, 10) +
+  theme_void() +
+  theme(
+    plot.title = element_text(hjust=0.5, size=18, face="bold", margin=margin(b=10)),
+    plot.margin = margin(10, 10, 10, 10)
+  )
 ```
+
+**Figure: Hypothesis Testing Logic Flow**
 
 ## 5.2 Hypothesis Testing in R
 
