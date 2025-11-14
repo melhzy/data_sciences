@@ -77,7 +77,7 @@ library(seedhash)     # Reproducible seed generation
 
 # Display seed information
 cat("\n=== REPRODUCIBLE SEED INFORMATION ===")
-cat("\nGenerator Name: Ziyuan Huang")
+cat("\nGenerator Name: A dog is a man's best friend")
 cat("\nMD5 Hash:", gen$get_hash())
 cat("\nAvailable Seeds:", paste(seeds[1:5], collapse = ", "), "...\n\n")
 ```
