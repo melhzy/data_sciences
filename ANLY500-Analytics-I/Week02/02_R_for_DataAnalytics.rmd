@@ -90,6 +90,8 @@ cat("\nAvailable Seeds:", paste(seeds[1:5], collapse = ", "), "...\n\n")
 
 R handles different types of variables. Let's explore them:
 
+> **Key term – measurement level:** Field, Miles, and Field (2012, ch. 2) emphasize that correctly classifying each variable's measurement level determines which descriptive summaries and hypothesis tests are valid. Treating an ordinal scale (for example, satisfaction ratings) as if it were interval can distort estimates because the distance between categories is not guaranteed to be equal (Field et al., 2012).
+
 ```{r variable-types}
 # Numeric (continuous) variables
 age <- 25
@@ -121,7 +123,11 @@ cat("Type of education_level:", class(education_level), "\n")
 
 ## 1.2 Categorical Variables
 
+Categorical variables capture group membership. Field et al. (2012, ch. 2) note that we summarize them with counts or proportions and we model them with tests designed for frequencies (such as the chi-square test introduced later in Part 5).
+
 ### 1.2.1 Binary Variables
+
+Binary (or dichotomous) variables only have two possible outcomes (Field et al., 2012). Because every case must fall into exactly one category, proportions are a natural summary and form the foundation for later logistic models.
 
 ```{r binary-variables}
 # Binary variable example: Pass/Fail
@@ -133,6 +139,8 @@ table(pass_fail_factor)
 ```
 
 ### 1.2.2 Nominal Variables
+
+Nominal scales label unordered categories such as department names. Field et al. (2012) highlight that although the numbers we assign to these categories are arbitrary, the counts still convey how often each outcome appears.
 
 ```{r nominal-variables}
 # Nominal: Categories without order
@@ -150,6 +158,8 @@ barplot(table(departments),
 ```
 
 ### 1.2.3 Ordinal Variables
+
+Ordinal variables preserve order but not equal spacing between categories (Field et al., 2012). Treat medians or percentiles as your primary summaries because means can hide the unequal steps.
 
 ```{r ordinal-variables}
 # Ordinal: Categories with logical order
@@ -173,6 +183,8 @@ barplot(table(satisfaction),
 ```
 
 ## 1.3 Continuous Variables
+
+Continuous variables have meaningful numeric scales, allowing arithmetic operations. Field et al. (2012) distinguish between interval scales (equal steps without a true zero) and ratio scales (equal steps with a meaningful zero), which guides whether ratios like "twice as much" are interpretable.
 
 ### 1.3.1 Interval Variables
 
@@ -237,6 +249,8 @@ head(iris) %>% kable() %>% kable_styling(bootstrap_options = c("striped", "hover
 
 ### 2.2.1 The Mean
 
+Field et al. (2012, ch. 4) describe the mean as the balance point of a distribution: the point at which the total distance of scores above equals the total distance below. Because it uses every score, the mean is efficient but sensitive to outliers, so always pair it with a visualization to check for extreme values.
+
 ```{r mean-calculation}
 # Calculate mean
 sepal_lengths <- iris$Sepal.Length
@@ -272,6 +286,8 @@ cat("R's mean() function:", round(mean(sepal_lengths), 2), "\n")
 ```
 
 ### 2.2.2 The Median
+
+The median splits the ordered data in half. Field et al. (2012) note that because it is based on rank rather than magnitude, the median resists the influence of extreme scores and is a better summary than the mean for skewed or ordinal data.
 
 ```{r median-calculation}
 # Calculate median
@@ -320,6 +336,8 @@ cat("Change:", median(facebook_friends) - median(friends_no_extreme), "\n")
 
 ### 2.2.3 The Mode
 
+The mode identifies the most frequently occurring category or value. Field et al. (2012) recommend reporting it alongside the median for ordinal data because it highlights the most common response option.
+
 ```{r mode-calculation}
 # R doesn't have a built-in mode function, so we create one
 get_mode <- function(x) {
@@ -367,6 +385,8 @@ iris_summary %>%
 
 ### 2.3.1 Range
 
+The range communicates the full spread of the data (max − min). Field et al. (2012) point out that it is easy to compute yet heavily influenced by a single extreme value, so treat it as a quick diagnostic rather than a robust statistic.
+
 ```{r range-calculation}
 # Calculate range
 range_vals <- range(sepal_lengths)
@@ -384,6 +404,8 @@ cat("Reduction:", diff(range(facebook_friends)) - diff(range(friends_no_extreme)
 ```
 
 ### 2.3.2 Interquartile Range (IQR)
+
+Field et al. (2012) advocate using the interquartile range when you want the spread of the middle 50% of scores. Because it ignores the most extreme quartiles, the IQR pairs naturally with the median for skewed distributions.
 
 ```{r iqr-calculation}
 # Calculate quartiles
@@ -409,6 +431,8 @@ text(x = q3, y = 1.3, labels = "Q3", col = "red", cex = 1.2)
 ```
 
 ### 2.3.3 Variance and Standard Deviation
+
+Variance averages the squared deviations from the mean, while the standard deviation returns to the original units by taking the square root (Field et al., 2012). These statistics assume an interval or ratio scale and provide the backbone for inferential models, including the t tests in Part 5.
 
 ```{r variance-std}
 # Calculate variance and standard deviation
@@ -1131,6 +1155,8 @@ flow_fig
 
 The **p-value** is the probability of obtaining your observed data (or more extreme) **assuming the null hypothesis is true**.
 
+Field et al. (2012, ch. 9) stress that this probability is conditional: it tells us how compatible the sample is with H₀ rather than the probability that H₀ itself is true. Always interpret the p-value alongside effect sizes and research context instead of a mechanical "significant/not significant" decision (Field et al., 2012).
+
 **Interpretation:**
 - **Small p-value** (typically < 0.05): Data is unlikely under H₀ → Reject H₀
 - **Large p-value** (≥ 0.05): Data is plausible under H₀ → Fail to reject H₀
@@ -1450,6 +1476,8 @@ abline(lm(mpg ~ wt, data = mtcars), col = "red", lwd = 2)
 ### 5.4.1 Understanding Effect Size
 
 **Effect size** measures the magnitude of a difference or relationship, independent of sample size.
+
+Field et al. (2012, ch. 11) argue that reporting effect sizes alongside p-values answers "How big is the effect?" and prevents us from celebrating trivial differences that become significant only because of large samples.
 
 **Common Effect Size Measures:**
 - **Cohen's d**: For t-tests (small: 0.2, medium: 0.5, large: 0.8)
@@ -1852,6 +1880,12 @@ example(plot)
 # Check package vignettes
 browseVignettes("dplyr")
 ```
+
+---
+
+# References
+
+- Field, A., Miles, J., & Field, Z. (2012). *Discovering Statistics Using R*. Sage.
 
 ---
 
