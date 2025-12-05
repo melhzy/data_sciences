@@ -2,6 +2,10 @@
 
 Provide a written project proposal that meets the requirements in the final project guidelines and uses the formatting described below.
 
+### Data Source
+
+- https://archive.ics.uci.edu/datasets
+
 ### Course context
 
 - The final project counts for 30% of your course grade.
