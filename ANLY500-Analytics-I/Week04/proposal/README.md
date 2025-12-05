@@ -34,7 +34,7 @@ Your proposal should address the following questions:
 
 ### Formatting and submission requirements
 
-- Length: 2 pages (1 page of cover page, **2 pages of your writing**, and 1 page is your reference)
+- Length: 2 pages (1 page of cover page, **2 pages of your writing**, "abstract" is not required in your proposal, and 1 page is your reference)
 - Font: 12 pt Times New Roman
 - File type: Word (.docx) or PDF
 - Line spacing: double-spaced
