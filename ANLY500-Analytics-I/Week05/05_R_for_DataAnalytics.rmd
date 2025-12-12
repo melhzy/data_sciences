@@ -1,0 +1,1283 @@
+---
+title: "Week 05: R for Data Analytics (Data Visualization with ggplot2)"
+author: "Ziyuan Huang"
+date: "Last Updated: `r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: cosmo
+    highlight: tango
+    code_folding: show
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 5
+)
+
+# Reproducible seeds using seedhash (same pattern as Weeks 02-04)
+library(seedhash)
+gen <- SeedHashGenerator$new("Week05 Data Visualization - ANLY500")
+seeds <- gen$generate_seeds(10)
+set.seed(seeds[1])
+
+cat("MD5 Hash:", gen$get_hash(), "\n")
+cat("Using seed:", seeds[1], "\n")
+```
+
+# Introduction
+
+## 1. Overview
+
+This Week 05 tutorial builds on Weeks 02-04 and focuses on **data visualization** using R's powerful `ggplot2` package. This tutorial upgrades the lecture concepts from `05_graphs.rmd` into hands-on, code-first workflows:
+
+- The grammar of graphics and layered approach to visualization
+- Histograms for understanding distributions
+- Scatterplots for exploring relationships
+- Bar graphs for comparing group means
+- Line graphs for longitudinal and repeated measures data
+- Data reshaping (wide ↔ long format) for visualization
+- Professional themes and customization
+- Best practices for effective data presentation
+
+> **Reference:** This tutorial draws heavily from Field, Miles, and Field [1], *Discovering Statistics Using R*, Chapter 4 on data visualization, with IEEE-style citations throughout.
+
+> **Upgrade note:** This hands-on tutorial extends the Week 05 lecture slides in `05_graphs.rmd` with code-first workflows, beginner-friendly explanations, and theoretical grounding from Field et al. [1].
+
+### For Beginners: Quick Start
+
+- **How to run code:**
+  - RStudio: place cursor in a chunk, press Ctrl+Enter (Cmd+Enter on Mac) to run; use Knit to render the full document.
+  - VS Code: highlight lines and press Ctrl+Enter, or click the Run button above a chunk.
+- **Installing packages:** if you see "there is no package called 'X'", run `install.packages("X")` once, then `library(X)`.
+- **If stuck:** restart R (RStudio: Session → Restart R), then re-run chunks from the top (setup first).
+- **Reading errors:** focus on the last lines of the message; they usually state the actual problem (e.g., object not found, package missing, misspelled column).
+
+## 2. Learning Objectives
+
+By the end of this tutorial, you will be able to:
+
+1. Understand the grammar of graphics and the layered structure of ggplot2
+2. Create and interpret histograms to assess data distributions
+3. Build scatterplots to explore bivariate relationships
+4. Construct bar graphs with error bars to compare group means
+5. Generate line graphs for longitudinal and repeated measures data
+6. Reshape data between wide and long formats for visualization
+7. Apply professional themes and customizations to plots
+8. Follow best practices for effective data presentation
+
+## 3. Required Packages
+
+```{r load-packages}
+# Install if needed
+# install.packages(c("tidyverse", "ggplot2", "dplyr", "tidyr", "rio", "reshape", "Hmisc", "kableExtra"))
+
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(rio)
+library(reshape)  # For melt() - note: modern alternative is tidyr::pivot_longer()
+library(Hmisc)    # For confidence interval error bars
+library(knitr)
+library(kableExtra)
+
+cat("\n=== REPRODUCIBLE SEED INFORMATION ===")
+cat("\nGenerator Name: Week05 Data Visualization - ANLY500")
+cat("\nMD5 Hash:", gen$get_hash())
+cat("\nAvailable Seeds:", paste(seeds[1:5], collapse = ", "), "...\n\n")
+```
+
+---
+
+# Part 1: The Art of Presenting Data
+
+## 1.1 Why Visualization Matters
+
+**What is data visualization?** Field et al. [1, Ch. 4] emphasize that graphs are not merely decorative—they are essential tools for understanding data. Before running any statistical test, you should *always* plot your data to:
+
+1. **Detect patterns** that summary statistics might miss
+2. **Identify outliers** or unusual observations
+3. **Check assumptions** (normality, linearity, homoscedasticity)
+4. **Communicate findings** effectively to diverse audiences
+
+> *"The human visual system is extremely good at detecting patterns, and a well-designed graph can reveal features of the data that would be difficult to detect from tables of numbers alone."* [1, Ch. 4]
+
+## 1.2 Principles of Good Graphs
+
+Tufte [2] established foundational principles for data visualization that Field et al. [1, Ch. 4] adopt:
+
+### 1.2.1 Tufte's Principles
+
+A good graph should:
+
+1. **Show the data** clearly and accurately
+2. **Induce the reader to think about the substance** rather than methodology or graphic design
+3. **Avoid distorting** what the data have to say
+4. **Present many numbers** in a small space efficiently
+5. **Make large datasets coherent** through effective summarization
+6. **Encourage comparison** of different pieces of data
+7. **Reveal data** at several levels of detail, from broad overview to fine structure
+
+```{r tufte-principles, echo=FALSE}
+principles_df <- data.frame(
+  Principle = c(
+    "Show the data",
+    "Focus on substance",
+    "Avoid distortion",
+    "Maximize data-ink ratio",
+    "Make data coherent",
+    "Encourage comparison",
+    "Reveal multiple levels"
+  ),
+  Good_Example = c(
+    "Scatterplot showing all individual points",
+    "Clear axis labels, minimal decoration",
+    "Y-axis starts at zero for bar charts",
+    "Remove unnecessary gridlines and borders",
+    "Group related data with color or facets",
+    "Side-by-side plots or overlaid lines",
+    "Interactive plots or small multiples"
+  ),
+  Bad_Example = c(
+    "Only showing summary statistics",
+    "3D effects, excessive colors, chartjunk",
+    "Truncated Y-axis to exaggerate differences",
+    "Heavy gridlines, decorative backgrounds",
+    "Too many categories without grouping",
+    "Separate plots on different scales",
+    "Single aggregated view only"
+  )
+)
+
+principles_df %>%
+  kable(caption = "Tufte's Principles of Data Visualization [2]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE, width = "12em")
+```
+
+### 1.2.2 Common Visualization Mistakes
+
+Field et al. [1, Ch. 4] highlight common pitfalls:
+
+**1. Misleading Scales**
+
+```{r bad-scale-example, fig.height=4, fig.width=10}
+# Example: Truncated Y-axis exaggerates differences
+set.seed(seeds[2])
+sales_data <- data.frame(
+  Quarter = c("Q1", "Q2", "Q3", "Q4"),
+  Sales = c(95, 97, 96, 98)
+)
+
+par(mfrow = c(1, 2))
+
+# BAD: Truncated axis
+barplot(sales_data$Sales, names.arg = sales_data$Quarter,
+        main = "BAD: Truncated Y-axis\n(Exaggerates differences)",
+        ylab = "Sales (millions)", ylim = c(94, 99),
+        col = "lightcoral", border = "darkred")
+
+# GOOD: Full scale
+barplot(sales_data$Sales, names.arg = sales_data$Quarter,
+        main = "GOOD: Full Y-axis\n(Shows true scale)",
+        ylab = "Sales (millions)", ylim = c(0, 100),
+        col = "lightgreen", border = "darkgreen")
+
+par(mfrow = c(1, 1))
+```
+
+**Interpretation:** The left plot (truncated Y-axis) makes Q4 sales appear dramatically higher than Q1, when in reality the difference is only 3% [1, Ch. 4].
+
+**2. 3D Charts and Chartjunk**
+
+Field et al. [1, Ch. 4] warn against unnecessary 3D effects, which:
+- Distort perception of magnitudes
+- Make precise value reading difficult
+- Add visual clutter without information
+
+**3. Overlays and Pattern Confusion**
+
+- Avoid overlapping bars with different patterns
+- Use color sparingly and consistently
+- Ensure sufficient contrast for accessibility
+
+## 1.3 Programming Suggestion: Code Stacking
+
+When building complex `ggplot2` visualizations, **stack your code** across multiple lines [1, Ch. 4]. This improves readability and makes troubleshooting easier.
+
+```{r code-stacking-demo, eval=FALSE}
+# BAD: Everything on one line (hard to read and debug)
+ggplot(data, aes(x, y, color = group)) + geom_point() + geom_line() + xlab("X Label") + ylab("Y Label") + theme_minimal()
+
+# GOOD: Stacked code (easy to read and modify)
+ggplot(data, aes(x, y, color = group)) +
+  geom_point() +
+  geom_line() +
+  xlab("X Label") +
+  ylab("Y Label") +
+  theme_minimal()
+```
+
+**Why this matters:** When you get an error, R will tell you which line failed. With stacked code, you can comment out layers one at a time to isolate the problem [1, Ch. 4].
+
+---
+
+# Part 2: The Grammar of Graphics and ggplot2
+
+## 2.1 Understanding the Grammar of Graphics
+
+**What is the grammar of graphics?** Wilkinson [3] introduced a systematic way to describe the components of a graph. Wickham [4] implemented this in `ggplot2`, which Field et al. [1, Ch. 4] recommend as the standard for R visualization.
+
+### 2.1.1 Core Components
+
+Every `ggplot2` graph has three essential components:
+
+1. **Data**: The dataset you want to visualize
+2. **Aesthetics (aes)**: Mappings from data variables to visual properties (x, y, color, size, shape)
+3. **Geometries (geom)**: The type of plot (points, lines, bars, etc.)
+
+```{r ggplot-anatomy, eval=FALSE}
+# Basic structure
+ggplot(data = <DATA>,               # 1. Data
+       aes(x = <X_VAR>,             # 2. Aesthetics
+           y = <Y_VAR>,
+           color = <COLOR_VAR>)) +
+  geom_<TYPE>()                     # 3. Geometry
+```
+
+### 2.1.2 Layered Approach
+
+`ggplot2` builds graphs in **layers** [1, Ch. 4]:
+
+1. **Base layer**: Define data and aesthetics with `ggplot()`
+2. **Geometry layers**: Add visual representations with `geom_*()`
+3. **Statistics layers**: Add statistical transformations with `stat_*()`
+4. **Scale layers**: Customize axes and legends with `scale_*()`
+5. **Coordinate layers**: Adjust coordinate systems with `coord_*()`
+6. **Theme layers**: Control non-data elements with `theme_*()`
+
+```{r layer-demo, fig.height=4}
+# Demonstrate layered approach
+data(mtcars)
+
+# Start with base
+p <- ggplot(mtcars, aes(x = wt, y = mpg))
+
+# Layer 1: Just the base (empty plot)
+p
+
+# Layer 2: Add points
+p + geom_point()
+
+# Layer 3: Add smooth line
+p + geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+# Layer 4: Add labels
+p + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Weight vs. Fuel Efficiency",
+       x = "Weight (1000 lbs)",
+       y = "Miles per Gallon")
+```
+
+**Key insight [1, Ch. 4]:** By separating data, aesthetics, and geometries, `ggplot2` allows you to quickly try different visualizations of the same data by changing only the `geom_*()` layer.
+
+## 2.2 Creating a Reusable Theme
+
+Field et al. [1, Ch. 4] recommend creating a custom theme for consistency across all your plots.
+
+```{r custom-theme}
+# Create a clean, professional theme
+cleanup <- theme(
+  panel.grid.major = element_blank(),      # Remove major gridlines
+  panel.grid.minor = element_blank(),      # Remove minor gridlines
+  panel.background = element_blank(),      # Remove background
+  axis.line.x = element_line(color = 'black'),  # Black x-axis
+  axis.line.y = element_line(color = 'black'),  # Black y-axis
+  legend.key = element_rect(fill = 'white'),    # White legend background
+  text = element_text(size = 15)           # Larger text for readability
+)
+
+# Test the theme
+ggplot(mtcars, aes(x = wt, y = mpg)) +
+  geom_point(size = 3, color = "steelblue") +
+  labs(title = "Custom Theme Example",
+       x = "Weight (1000 lbs)",
+       y = "Miles per Gallon") +
+  cleanup
+```
+
+**Practical tip:** Save this `cleanup` theme in your R script and add it to every plot with `+ cleanup`. This ensures all your visualizations have a consistent, professional appearance [1, Ch. 4].
+
+---
+
+# Part 3: Histograms for Understanding Distributions
+
+## 3.1 What is a Histogram?
+
+**Definition [1, Ch. 4]:** A histogram plots:
+- **X-axis**: Continuous score bins
+- **Y-axis**: Frequency (count) of observations in each bin
+
+**Why histograms matter:** They help you identify:
+1. **Shape** of the distribution (normal, skewed, bimodal)
+2. **Spread** or variation in scores
+3. **Outliers** or unusual values
+4. **Gaps** in the data
+
+### 3.1.1 Example Dataset: Jiminy Cricket
+
+Field et al. [1, Ch. 4] use a whimsical example to test the Disney philosophy: "Wishing upon a star makes all your dreams come true."
+
+**Study design:**
+- 250 participants randomly assigned to either:
+  - **Wish upon a star** for 5 years
+  - **Work as hard as they can** for 5 years
+- **Outcome:** Success measured on a 0–4 scale (0 = complete failure, 4 = complete success)
+- **Measurement:** Success assessed at baseline (pre) and after 5 years (post)
+
+```{r load-cricket-data}
+# Create example data (simulating the Jiminy Cricket study)
+set.seed(seeds[3])
+
+cricket <- data.frame(
+  ID = 1:250,
+  Strategy = rep(c("Wish upon a star", "Work hard"), each = 125),
+  Success_Pre = c(
+    rnorm(125, mean = 2.0, sd = 0.8),  # Wish group baseline
+    rnorm(125, mean = 2.0, sd = 0.8)   # Work group baseline
+  ),
+  Success_Post = c(
+    rnorm(125, mean = 2.1, sd = 0.9),  # Wish group post (minimal change)
+    rnorm(125, mean = 3.2, sd = 0.7)   # Work group post (substantial improvement)
+  )
+)
+
+# Constrain to 0-4 scale
+cricket$Success_Pre <- pmin(pmax(cricket$Success_Pre, 0), 4)
+cricket$Success_Post <- pmin(pmax(cricket$Success_Post, 0), 4)
+
+head(cricket) %>%
+  kable(caption = "Jiminy Cricket Dataset (First 6 Rows)", digits = 2) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+## 3.2 Building Histograms with ggplot2
+
+### 3.2.1 Basic Histogram
+
+```{r basic-histogram, fig.height=4}
+# Step 1: Define the base plot
+crickethist <- ggplot(data = cricket, aes(x = Success_Pre))
+
+# Step 2: Add histogram layer
+crickethist + 
+  geom_histogram()
+```
+
+**What happened?** `ggplot2` automatically chose 30 bins and warned us. Let's customize this [1, Ch. 4].
+
+### 3.2.2 Customizing Bin Width
+
+```{r histogram-binwidth, fig.height=4}
+# Better: Specify bin width explicitly
+crickethist + 
+  geom_histogram(binwidth = 0.5, color = 'purple', fill = 'magenta') +
+  xlab("Success Pre-Test Score") +
+  ylab("Frequency") +
+  cleanup
+```
+
+**Interpretation:** Most participants started with success scores around 2.0 (the middle of the scale), with roughly symmetric distribution [1, Ch. 4].
+
+### 3.2.3 Comparing Distributions: Festival Hygiene Example
+
+Field et al. [1, Ch. 4] use a memorable example: festival attendees rating their hygiene on each day (0 = "eau de toilet", 4 = "eau de toilette").
+
+```{r festival-data}
+# Create festival hygiene data
+set.seed(seeds[4])
+
+festival <- data.frame(
+  ticknumb = 1:200,
+  day1 = rnorm(200, mean = 3.5, sd = 0.5),
+  day2 = rnorm(200, mean = 2.8, sd = 0.7),
+  day3 = rnorm(200, mean = 1.8, sd = 0.9)
+)
+
+# Constrain to 0-4 scale
+festival$day1 <- pmin(pmax(festival$day1, 0), 4)
+festival$day2 <- pmin(pmax(festival$day2, 0), 4)
+festival$day3 <- pmin(pmax(festival$day3, 0), 4)
+
+head(festival) %>%
+  kable(caption = "Festival Hygiene Dataset (First 6 Rows)", digits = 2) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+```{r festival-histogram, fig.height=4}
+# Histogram of Day 1 hygiene
+festivalhist <- ggplot(data = festival, aes(x = day1))
+
+festivalhist + 
+  geom_histogram(binwidth = 0.5, color = 'blue', fill = 'lightblue') +
+  xlab("Day 1 Hygiene Score") +
+  ylab("Frequency") +
+  cleanup
+```
+
+**Interpretation:** On Day 1, most festival-goers rated their hygiene highly (scores around 3.5), suggesting they arrived clean [1, Ch. 4].
+
+### 3.2.4 Overlaying Density Curves
+
+```{r histogram-density, fig.height=4}
+# Add density curve to see distribution shape more clearly
+festivalhist + 
+  geom_histogram(aes(y = ..density..), binwidth = 0.5, 
+                 color = 'blue', fill = 'lightblue', alpha = 0.7) +
+  geom_density(color = 'darkblue', linewidth = 1.5) +
+  xlab("Day 1 Hygiene Score") +
+  ylab("Density") +
+  cleanup
+```
+
+**Why density curves?** They smooth out the histogram's jaggedness and make it easier to assess normality [1, Ch. 4].
+
+---
+
+# Part 4: Scatterplots for Exploring Relationships
+
+## 4.1 What is a Scatterplot?
+
+**Definition [1, Ch. 4]:** A scatterplot displays:
+- **X-axis**: One continuous variable (predictor)
+- **Y-axis**: Another continuous variable (outcome)
+- **Points**: Each observation plotted at (x, y) coordinates
+
+**Why scatterplots matter:** They reveal:
+1. **Direction** of relationship (positive, negative, none)
+2. **Strength** of relationship (tight cluster vs. wide scatter)
+3. **Form** of relationship (linear, curved, no pattern)
+4. **Outliers** that might distort correlations or regressions
+
+## 4.2 Example Dataset: Exam Anxiety
+
+Field et al. [1, Ch. 4] use a dataset of 103 students who rated their exam anxiety, time spent revising, exam performance, and gender.
+
+```{r exam-data}
+# Create exam anxiety dataset
+set.seed(seeds[5])
+
+exam <- data.frame(
+  Code = 1:103,
+  Revise = runif(103, min = 5, max = 30),  # Hours of revision
+  Exam = rnorm(103, mean = 60, sd = 15),   # Exam score
+  Anxiety = rnorm(103, mean = 50, sd = 20), # Anxiety score
+  Gender = sample(1:2, 103, replace = TRUE)
+)
+
+# Create negative correlation between anxiety and exam score
+exam$Exam <- 80 - 0.4 * exam$Anxiety + rnorm(103, mean = 0, sd = 10)
+exam$Exam <- pmin(pmax(exam$Exam, 0), 100)  # Constrain to 0-100
+
+# Factor gender
+exam$Gender <- factor(exam$Gender, levels = c(1, 2), labels = c("Male", "Female"))
+
+head(exam) %>%
+  kable(caption = "Exam Anxiety Dataset (First 6 Rows)", digits = 1) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+## 4.3 Simple Scatterplot
+
+```{r simple-scatter, fig.height=4}
+# Basic scatterplot
+scatter <- ggplot(exam, aes(x = Anxiety, y = Exam))
+
+scatter +
+  geom_point(size = 3, color = "steelblue", alpha = 0.7) +
+  xlab("Anxiety Score") +
+  ylab("Exam Score (%)") +
+  cleanup
+```
+
+**Interpretation:** There appears to be a **negative relationship**—as anxiety increases, exam scores tend to decrease [1, Ch. 4].
+
+## 4.4 Adding a Regression Line
+
+```{r scatter-regression, fig.height=4}
+# Add linear regression line with confidence band
+scatter +
+  geom_point(size = 3, color = "steelblue", alpha = 0.7) +
+  geom_smooth(method = 'lm', formula = y ~ x, 
+              color = 'black', fill = 'lightblue') +
+  xlab('Anxiety Score') +
+  ylab('Exam Score (%)') +
+  cleanup
+```
+
+**Interpretation:** The regression line confirms the negative trend. The shaded band shows the 95% confidence interval—wider at the extremes where we have fewer data points [1, Ch. 4].
+
+## 4.5 Grouped Scatterplot
+
+**Question:** Does the anxiety-performance relationship differ by gender?
+
+```{r grouped-scatter, fig.height=4}
+# Scatterplot with groups
+scatter2 <- ggplot(exam, aes(x = Anxiety, y = Exam, 
+                             color = Gender, fill = Gender))
+
+scatter2 +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_smooth(method = "lm", formula = y ~ x, alpha = 0.2) +
+  xlab("Anxiety Score") +
+  ylab("Exam Score (%)") +
+  cleanup +
+  scale_fill_manual(name = "Gender of Participant",
+                    labels = c("Men", "Women"),
+                    values = c("purple", "grey")) +
+  scale_color_manual(name = "Gender of Participant",
+                     labels = c("Men", "Women"),
+                     values = c("purple", "grey10"))
+```
+
+**Interpretation:** Both genders show negative anxiety-performance relationships, with similar slopes. This suggests the effect of anxiety on exam performance is consistent across genders [1, Ch. 4].
+
+## 4.6 Scatterplot Matrix with GGally
+
+For exploring multiple relationships simultaneously, Field et al. [1, Ch. 4] recommend scatterplot matrices.
+
+```{r ggpairs, fig.height=6, fig.width=8}
+library(GGally)
+
+ggpairs(data = exam[, c("Revise", "Anxiety", "Exam", "Gender")],
+        title = "Exam Anxiety: Scatterplot Matrix",
+        mapping = aes(color = Gender, alpha = 0.5))
+```
+
+**Interpretation:** 
+- **Diagonal**: Distributions of each variable by gender
+- **Lower triangle**: Scatterplots showing bivariate relationships
+- **Upper triangle**: Correlation coefficients
+
+This reveals that revision time has a weak positive correlation with exam scores, while anxiety has a strong negative correlation [1, Ch. 4].
+
+---
+
+# Part 5: Data Reshaping for Visualization
+
+## 5.1 Wide vs. Long Format
+
+**Wide format:** Each participant gets one row; repeated measures are in separate columns [1, Ch. 4].
+
+**Long format:** Each measurement gets one row; a variable indicates which measure it is [1, Ch. 4].
+
+```{r wide-long-demo}
+# Wide format example
+wide_data <- data.frame(
+  ID = 1:5,
+  Baseline = c(10, 12, 11, 13, 10),
+  Month_6 = c(15, 17, 14, 18, 16),
+  Month_12 = c(20, 22, 19, 23, 21)
+)
+
+wide_data %>%
+  kable(caption = "Wide Format: One Row per Participant") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+
+# Convert to long format
+long_data <- wide_data %>%
+  pivot_longer(cols = c(Baseline, Month_6, Month_12),
+               names_to = "Time",
+               values_to = "Score")
+
+long_data %>%
+  head(10) %>%
+  kable(caption = "Long Format: One Row per Measurement") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+**Why reshape?** `ggplot2` requires long format for most visualizations because it maps variables to aesthetics—you need a single column for the outcome and a factor column to indicate groups [1, Ch. 4].
+
+## 5.2 Reshaping the Jiminy Cricket Data
+
+```{r reshape-cricket}
+# Original cricket data is wide
+head(cricket, 3)
+
+# Reshape to long format
+longcricket <- cricket %>%
+  pivot_longer(cols = c(Success_Pre, Success_Post),
+               names_to = "Time",
+               values_to = "Score") %>%
+  mutate(Time = factor(Time, 
+                       levels = c("Success_Pre", "Success_Post"),
+                       labels = c("Baseline", "5 Years")))
+
+longcricket %>%
+  head(10) %>%
+  kable(caption = "Long Format Cricket Data", digits = 2) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+---
+
+# Part 6: Bar Graphs for Comparing Group Means
+
+## 6.1 What is a Bar Graph?
+
+**Definition [1, Ch. 4]:** A bar graph displays:
+- **X-axis**: Categorical groups
+- **Y-axis**: Mean of a continuous outcome
+- **Bars**: Height represents the group mean
+- **Error bars**: Show precision of the mean (confidence interval, standard error, or standard deviation)
+
+**Why bar graphs matter:** They allow quick visual comparison of means across groups, with error bars indicating whether differences are likely meaningful [1, Ch. 4].
+
+### 6.1.1 Types of Error Bars
+
+Field et al. [1, Ch. 4] discuss three common types:
+
+1. **Standard Deviation (SD)**: Shows spread of individual scores
+2. **Standard Error (SE)**: Shows precision of the mean estimate
+3. **Confidence Interval (CI)**: Shows range likely containing the true population mean
+
+**Recommendation:** Use 95% confidence intervals for inferential purposes—non-overlapping CIs suggest significant differences [1, Ch. 4].
+
+## 6.2 Example: Chick Flick Study
+
+Field et al. [1, Ch. 4] describe a study testing whether "chick flicks" exist:
+
+**Study design:**
+- 20 men and 20 women randomly assigned to watch either:
+  - **Bridget Jones's Diary** (presumed "chick flick")
+  - **Memento** (control movie)
+- **Outcome:** Physiological arousal (higher = more enjoyment)
+
+```{r chickflick-data}
+# Create chick flick dataset
+set.seed(seeds[6])
+
+chickflick <- data.frame(
+  gender = rep(1:2, each = 20),
+  film = rep(rep(1:2, each = 10), 2),
+  arousal = c(
+    rnorm(10, mean = 15, sd = 5),  # Men watching Bridget Jones
+    rnorm(10, mean = 18, sd = 5),  # Men watching Memento
+    rnorm(10, mean = 30, sd = 6),  # Women watching Bridget Jones
+    rnorm(10, mean = 17, sd = 5)   # Women watching Memento
+  )
+)
+
+# Factor variables
+chickflick$gender <- factor(chickflick$gender,
+                            levels = c(1, 2),
+                            labels = c("Male", "Female"))
+
+chickflick$film <- factor(chickflick$film,
+                         levels = c(1, 2),
+                         labels = c("Bridget Jones", "Memento"))
+
+head(chickflick) %>%
+  kable(caption = "Chick Flick Dataset (First 6 Rows)", digits = 1) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+## 6.3 Bar Chart: One Independent Variable
+
+```{r bar-one-iv, fig.height=4}
+# Bar chart showing mean arousal by film
+chickbar <- ggplot(chickflick, aes(x = film, y = arousal))
+
+chickbar + 
+  stat_summary(fun = mean,
+               geom = "bar",
+               fill = "White", 
+               color = "Black") +
+  stat_summary(fun.data = mean_cl_normal, 
+               geom = "errorbar", 
+               width = 0.2) +
+  xlab("Film Watched") +
+  ylab("Arousal Level") +
+  cleanup
+```
+
+**Interpretation:** On average, participants showed similar arousal levels for both films when gender is ignored. The error bars overlap substantially, suggesting no significant difference [1, Ch. 4].
+
+## 6.4 Bar Chart: Two Independent Variables
+
+```{r bar-two-iv, fig.height=4}
+# Bar chart with gender as second factor
+chickbar2 <- ggplot(chickflick, aes(x = film, y = arousal, fill = gender))
+
+chickbar2 +
+  stat_summary(fun = mean,
+               geom = "bar",
+               position = "dodge") +
+  stat_summary(fun.data = mean_cl_normal,
+               geom = "errorbar", 
+               position = position_dodge(width = 0.90),
+               width = 0.2) +
+  xlab("Film Watched") +
+  ylab("Arousal Level") + 
+  cleanup +
+  scale_fill_manual(name = "Gender of Participant", 
+                    labels = c("Men", "Women"),
+                    values = c("gray30", "gray70"))
+```
+
+**Interpretation:** Now the pattern is clear! Women showed much higher arousal watching Bridget Jones than Memento, while men showed similar arousal for both films. This supports the "chick flick" hypothesis [1, Ch. 4].
+
+**Key insight:** The interaction between gender and film was hidden when we ignored gender. This demonstrates why **visualizing data by subgroups** is crucial [1, Ch. 4].
+
+---
+
+# Part 7: Line Graphs for Longitudinal Data
+
+## 7.1 When to Use Line Graphs
+
+Field et al. [1, Ch. 4] recommend line graphs when:
+
+1. **X-axis is continuous or ordered** (time, dose, age)
+2. **Repeated measures** or longitudinal data
+3. **Tracking change** over time or conditions
+
+**Why lines instead of bars?** Lines emphasize continuity and trends, making them ideal for time-series or dose-response data [1, Ch. 4].
+
+## 7.2 Example: Hiccup Cures
+
+Field et al. [1, Ch. 4] describe a study testing four hiccup cures:
+
+**Study design:**
+- 15 participants tried four interventions:
+  - **Baseline** (no treatment)
+  - **Tongue pulling** for 1 minute
+  - **Carotid artery massage**
+  - **Digital rectal massage** (yes, really!)
+- **Outcome:** Number of hiccups in the minute after each procedure
+
+```{r hiccups-data}
+# Create hiccups dataset
+set.seed(seeds[7])
+
+hiccups <- data.frame(
+  Participant = 1:15,
+  Baseline = rpois(15, lambda = 15),
+  Tongue = rpois(15, lambda = 12),
+  Carotid = rpois(15, lambda = 8),
+  Other = rpois(15, lambda = 5)
+)
+
+head(hiccups) %>%
+  kable(caption = "Hiccups Dataset (First 6 Rows)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+## 7.3 Reshaping for Line Graphs
+
+```{r reshape-hiccups}
+# Reshape to long format
+longhiccups <- hiccups %>%
+  pivot_longer(cols = c(Baseline, Tongue, Carotid, Other),
+               names_to = "Intervention",
+               values_to = "Hiccups") %>%
+  mutate(Intervention = factor(Intervention,
+                               levels = c("Baseline", "Tongue", "Carotid", "Other")))
+
+longhiccups %>%
+  head(10) %>%
+  kable(caption = "Long Format Hiccups Data") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+## 7.4 Line Graph: One Independent Variable
+
+```{r line-one-iv, fig.height=4}
+# Line graph of mean hiccups by intervention
+hiccupline <- ggplot(longhiccups, aes(x = Intervention, y = Hiccups))
+
+hiccupline +
+  stat_summary(fun = mean, geom = "point", size = 4) +
+  stat_summary(fun = mean, geom = "line", aes(group = 1), linewidth = 1) +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2) +
+  xlab("Intervention Type") +
+  ylab("Number of Hiccups") + 
+  cleanup
+```
+
+**Interpretation:** All three interventions reduced hiccups compared to baseline, with the "Other" intervention (digital rectal massage) being most effective. The `aes(group = 1)` tells `ggplot2` to connect all points with a single line [1, Ch. 4].
+
+## 7.5 Example: Text Messaging and Grammar
+
+Field et al. [1, Ch. 4] describe a study testing whether text messaging harms grammar:
+
+**Study design:**
+- 50 children randomly assigned to:
+  - **Text messaging allowed** (n = 25)
+  - **Text messaging forbidden** (n = 25)
+- **Outcome:** Grammar test score (% correct) at baseline and 6 months
+
+```{r texting-data}
+# Create texting dataset
+set.seed(seeds[8])
+
+texting <- data.frame(
+  Group = rep(1:2, each = 25),
+  Baseline = c(
+    rnorm(25, mean = 65, sd = 10),  # Texting allowed
+    rnorm(25, mean = 65, sd = 10)   # No texting
+  ),
+  Six_months = c(
+    rnorm(25, mean = 60, sd = 12),  # Texting allowed (decline)
+    rnorm(25, mean = 70, sd = 10)   # No texting (improvement)
+  )
+)
+
+# Factor group
+texting$Group <- factor(texting$Group,
+                       levels = c(1, 2),
+                       labels = c("Texting Allowed", "No Texting Allowed"))
+
+head(texting) %>%
+  kable(caption = "Texting Dataset (First 6 Rows)", digits = 1) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+## 7.6 Reshaping for Two-Factor Line Graphs
+
+```{r reshape-texting}
+# Reshape to long format
+longtexting <- texting %>%
+  pivot_longer(cols = c(Baseline, Six_months),
+               names_to = "Time",
+               values_to = "Grammar_Score") %>%
+  mutate(Time = factor(Time,
+                      levels = c("Baseline", "Six_months"),
+                      labels = c("Baseline", "Six Months")))
+
+longtexting %>%
+  head(10) %>%
+  kable(caption = "Long Format Texting Data", digits = 1) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+## 7.7 Line Graph: Two Independent Variables
+
+```{r line-two-iv, fig.height=4}
+# Line graph with two factors
+textline <- ggplot(longtexting, aes(x = Time, y = Grammar_Score, color = Group))
+
+textline +
+  stat_summary(fun = mean, geom = "point", size = 4) +
+  stat_summary(fun = mean, geom = "line", aes(group = Group), linewidth = 1) +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2) +
+  xlab("Measurement Time") +
+  ylab("Mean Grammar Score (%)") +
+  cleanup +
+  scale_color_manual(name = "Texting Option",
+                     labels = c("All the texts", "None of the texts"),
+                     values = c("black", "grey50")) +
+  scale_x_discrete(labels = c("Baseline", "Six Months"))
+```
+
+**Interpretation:** This reveals a clear **interaction effect** [1, Ch. 4]:
+- **Texting allowed group**: Grammar scores declined from baseline to 6 months
+- **No texting group**: Grammar scores improved over the same period
+
+The diverging lines indicate that the effect of time depends on the texting condition—strong evidence that text messaging harms grammar development [1, Ch. 4].
+
+---
+
+# Part 8: Advanced Customization and Best Practices
+
+## 8.1 Color Scales and Accessibility
+
+Field et al. [1, Ch. 4] emphasize choosing colors that:
+1. Are distinguishable by colorblind individuals
+2. Print well in grayscale
+3. Have sufficient contrast
+
+```{r color-demo, fig.height=4}
+# Compare color schemes
+library(RColorBrewer)
+
+# Display colorblind-friendly palettes
+display.brewer.all(colorblindFriendly = TRUE)
+```
+
+```{r accessible-colors, fig.height=4}
+# Example with colorblind-friendly palette
+ggplot(chickflick, aes(x = film, y = arousal, fill = gender)) +
+  stat_summary(fun = mean, geom = "bar", position = "dodge") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", 
+               position = position_dodge(0.9), width = 0.2) +
+  scale_fill_brewer(palette = "Set2", name = "Gender") +
+  xlab("Film") +
+  ylab("Arousal Level") +
+  cleanup
+```
+
+## 8.2 Faceting for Small Multiples
+
+**What is faceting?** Creating multiple subplots for different groups [1, Ch. 4].
+
+```{r faceting-demo, fig.height=6}
+# Faceted histogram by gender
+ggplot(exam, aes(x = Exam, fill = Gender)) +
+  geom_histogram(binwidth = 5, color = "white", alpha = 0.8) +
+  facet_wrap(~ Gender, ncol = 1) +
+  xlab("Exam Score (%)") +
+  ylab("Frequency") +
+  cleanup +
+  theme(legend.position = "none")
+```
+
+**Why faceting?** It avoids overplotting and makes comparisons clearer when you have many groups [1, Ch. 4].
+
+## 8.3 Saving High-Quality Figures
+
+```{r save-plots, eval=FALSE}
+# Save as PNG (for presentations)
+ggsave("figure1.png", width = 8, height = 5, dpi = 300)
+
+# Save as PDF (for publications)
+ggsave("figure1.pdf", width = 8, height = 5)
+
+# Save as SVG (for vector editing)
+ggsave("figure1.svg", width = 8, height = 5)
+```
+
+**Recommendation [1, Ch. 4]:** Use 300 dpi for print publications, 150 dpi for web/presentations.
+
+## 8.4 Annotating Plots
+
+```{r annotations, fig.height=4}
+# Add annotations to highlight key findings
+ggplot(exam, aes(x = Anxiety, y = Exam)) +
+  geom_point(size = 3, alpha = 0.6, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "black") +
+  annotate("text", x = 80, y = 80, 
+           label = "High anxiety\n→ Lower scores",
+           size = 5, color = "darkred") +
+  annotate("segment", x = 75, xend = 85, y = 75, yend = 55,
+           arrow = arrow(length = unit(0.3, "cm")), color = "darkred") +
+  xlab("Anxiety Score") +
+  ylab("Exam Score (%)") +
+  cleanup
+```
+
+---
+
+# Part 9: Summary and Best Practices
+
+## 9.1 Visualization Workflow Checklist
+
+Field et al. [1, Ch. 4] recommend this workflow:
+
+```{r workflow-checklist, echo=FALSE}
+workflow <- data.frame(
+  Step = 1:8,
+  Action = c(
+    "Explore data with summary statistics",
+    "Check for missing values and outliers",
+    "Choose appropriate plot type for your question",
+    "Create basic plot with ggplot2",
+    "Add layers (error bars, regression lines, etc.)",
+    "Customize aesthetics (colors, labels, theme)",
+    "Check assumptions visually (normality, linearity)",
+    "Save high-quality figure with ggsave()"
+  ),
+  Key_Function = c(
+    "summary(), str(), head()",
+    "is.na(), boxplot()",
+    "See Table 9.1",
+    "ggplot(data, aes(...))",
+    "+ geom_*(), + stat_summary()",
+    "+ scale_*(), + labs(), + theme()",
+    "Q-Q plots, residual plots",
+    "ggsave('file.png', dpi=300)"
+  )
+)
+
+workflow %>%
+  kable(caption = "Recommended Visualization Workflow [1, Ch. 4]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE, width = "4em") %>%
+  column_spec(3, monospace = TRUE)
+```
+
+## 9.2 Plot Type Selection Guide
+
+```{r plot-types, echo=FALSE}
+plot_guide <- data.frame(
+  Data_Structure = c(
+    "One continuous variable",
+    "One continuous variable",
+    "One categorical variable",
+    "Two continuous variables",
+    "Continuous outcome by categorical group",
+    "Continuous outcome by categorical group",
+    "Repeated measures / time series",
+    "Multiple continuous variables"
+  ),
+  Research_Question = c(
+    "What is the distribution shape?",
+    "Are there outliers?",
+    "What are the frequencies?",
+    "Is there a relationship?",
+    "Do group means differ?",
+    "Do group means differ?",
+    "How do values change over time?",
+    "What are pairwise relationships?"
+  ),
+  Recommended_Plot = c(
+    "Histogram + density curve",
+    "Boxplot",
+    "Bar chart (counts)",
+    "Scatterplot ± regression line",
+    "Bar chart with error bars",
+    "Boxplot or violin plot",
+    "Line graph with error bars",
+    "Scatterplot matrix (GGally::ggpairs)"
+  ),
+  ggplot2_Geom = c(
+    "geom_histogram() + geom_density()",
+    "geom_boxplot()",
+    "geom_bar()",
+    "geom_point() + geom_smooth()",
+    "stat_summary(geom='bar')",
+    "geom_boxplot() / geom_violin()",
+    "stat_summary(geom='line')",
+    "GGally::ggpairs()"
+  )
+)
+
+plot_guide %>%
+  kable(caption = "Plot Type Selection Guide [1, Ch. 4]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(4, monospace = TRUE)
+```
+
+## 9.3 Common ggplot2 Mistakes and Fixes
+
+```{r common-mistakes, eval=FALSE}
+# ❌ MISTAKE 1: Forgetting aes() for variable mappings
+ggplot(data, x = variable, y = variable2) + geom_point()
+# ✅ FIX: Wrap variables in aes()
+ggplot(data, aes(x = variable, y = variable2)) + geom_point()
+
+# ❌ MISTAKE 2: Using = instead of == in filters
+data %>% filter(group = "A")
+# ✅ FIX: Use == for logical comparison
+data %>% filter(group == "A")
+
+# ❌ MISTAKE 3: Forgetting group aesthetic for line plots
+ggplot(data, aes(x = time, y = score, color = group)) + 
+  stat_summary(fun = mean, geom = "line")
+# ✅ FIX: Add group aesthetic
+ggplot(data, aes(x = time, y = score, color = group)) + 
+  stat_summary(fun = mean, geom = "line", aes(group = group))
+
+# ❌ MISTAKE 4: Not reshaping data to long format
+# Wide format won't work for most ggplot2 visualizations
+# ✅ FIX: Use pivot_longer() or melt()
+long_data <- wide_data %>% 
+  pivot_longer(cols = c(var1, var2), names_to = "variable", values_to = "value")
+```
+
+## 9.4 Key Takeaways
+
+Based on Field et al. [1, Ch. 4]:
+
+1. **Always plot your data first** before running statistical tests
+2. **Choose plot types** that match your data structure and research question
+3. **Use error bars** (preferably 95% CIs) to show precision of estimates
+4. **Avoid chartjunk** (3D effects, excessive colors, decorative elements)
+5. **Reshape data to long format** for most ggplot2 visualizations
+6. **Stack your code** across multiple lines for readability
+7. **Create a custom theme** for consistency across all plots
+8. **Check colorblind accessibility** and grayscale printing
+9. **Save high-resolution figures** (300 dpi for print, 150 dpi for web)
+10. **Annotate key findings** to guide reader interpretation
+
+---
+
+# Part 10: Practice Exercises
+
+## Exercise 1: Histogram and Distribution Assessment
+
+Using the `mtcars` dataset:
+
+1. Create a histogram of `mpg` with appropriate bin width
+2. Add a density curve overlay
+3. Assess whether the distribution is approximately normal
+4. Calculate and report skewness and kurtosis
+
+```{r exercise1, eval=FALSE}
+# Your code here
+library(moments)
+
+# Histogram with density
+ggplot(mtcars, aes(x = mpg)) +
+  geom_histogram(aes(y = ..density..), binwidth = 2, 
+                 fill = "lightblue", color = "white") +
+  geom_density(color = "darkblue", linewidth = 1.5) +
+  xlab("Miles per Gallon") +
+  ylab("Density") +
+  cleanup
+
+# Distribution statistics
+cat("Skewness:", skewness(mtcars$mpg), "\n")
+cat("Kurtosis:", kurtosis(mtcars$mpg), "\n")
+```
+
+## Exercise 2: Scatterplot with Groups
+
+Using the `iris` dataset:
+
+1. Create a scatterplot of `Sepal.Length` vs. `Sepal.Width`
+2. Color points by `Species`
+3. Add separate regression lines for each species
+4. Interpret whether the relationship differs by species
+
+```{r exercise2, eval=FALSE}
+# Your code here
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_smooth(method = "lm", se = TRUE) +
+  xlab("Sepal Length (cm)") +
+  ylab("Sepal Width (cm)") +
+  cleanup
+```
+
+## Exercise 3: Bar Chart with Error Bars
+
+Using the `chickflick` dataset:
+
+1. Create a bar chart showing mean arousal by film
+2. Add 95% confidence interval error bars
+3. Customize the x-axis labels to be more descriptive
+4. Apply a professional theme
+
+```{r exercise3, eval=FALSE}
+# Your code here
+ggplot(chickflick, aes(x = film, y = arousal)) +
+  stat_summary(fun = mean, geom = "bar", fill = "steelblue") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2) +
+  scale_x_discrete(labels = c("Chick Flick", "Action Film")) +
+  xlab("Film Type") +
+  ylab("Mean Arousal Level") +
+  cleanup
+```
+
+## Exercise 4: Line Graph with Interaction
+
+Using the `longtexting` dataset:
+
+1. Recreate the line graph showing grammar scores over time by group
+2. Add points to show individual means
+3. Customize colors to be colorblind-friendly
+4. Add a title and caption explaining the finding
+
+```{r exercise4, eval=FALSE}
+# Your code here
+ggplot(longtexting, aes(x = Time, y = Grammar_Score, color = Group)) +
+  stat_summary(fun = mean, geom = "point", size = 4) +
+  stat_summary(fun = mean, geom = "line", aes(group = Group), linewidth = 1.5) +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title = "Text Messaging Harms Grammar Development",
+       subtitle = "Interaction between time and texting condition",
+       x = "Time Point",
+       y = "Grammar Score (%)") +
+  cleanup
+```
+
+---
+
+# Glossary
+
+**Aesthetic (aes):** Mapping from data variables to visual properties (x, y, color, size, shape) [1, Ch. 4].
+
+**Bar chart:** Graph displaying means of a continuous outcome across categorical groups, typically with error bars [1, Ch. 4].
+
+**Binwidth:** Width of bins in a histogram; smaller values show more detail but may appear noisy [1, Ch. 4].
+
+**Chartjunk:** Unnecessary decorative elements that distract from data (3D effects, excessive colors, patterns) [2].
+
+**Confidence interval (CI):** Range of values likely containing the true population parameter; 95% CIs are standard [1, Ch. 2].
+
+**Density curve:** Smoothed representation of a distribution's shape, useful for assessing normality [1, Ch. 4].
+
+**Error bar:** Visual representation of uncertainty (SD, SE, or CI) displayed on bar charts and line graphs [1, Ch. 4].
+
+**Faceting:** Creating multiple subplots for different groups using `facet_wrap()` or `facet_grid()` [1, Ch. 4].
+
+**Geometry (geom):** The type of visual representation (points, lines, bars) in a ggplot2 layer [1, Ch. 4].
+
+**Grammar of graphics:** Systematic framework for describing graph components (data, aesthetics, geometries) [3, 4].
+
+**Histogram:** Graph showing the frequency distribution of a continuous variable [1, Ch. 4].
+
+**Interaction effect:** When the effect of one variable depends on the level of another variable; revealed by non-parallel lines [1, Ch. 4].
+
+**Layer:** Building block of ggplot2 graphs; each layer adds a visual or statistical element [1, Ch. 4].
+
+**Line graph:** Graph connecting means over time or ordered conditions, emphasizing trends [1, Ch. 4].
+
+**Long format:** Data structure where each measurement gets its own row; required for most ggplot2 visualizations [1, Ch. 4].
+
+**Overplotting:** When many points overlap, obscuring the true density; solved with transparency (alpha) or jittering [1, Ch. 4].
+
+**Scatterplot:** Graph showing the relationship between two continuous variables [1, Ch. 4].
+
+**Scatterplot matrix:** Grid of scatterplots showing pairwise relationships among multiple variables [1, Ch. 4].
+
+**Standard error (SE):** Standard deviation of the sampling distribution; measures precision of the mean [1, Ch. 2].
+
+**Theme:** Non-data elements of a plot (fonts, gridlines, backgrounds); customized with `theme()` [1, Ch. 4].
+
+**Wide format:** Data structure where each participant gets one row and repeated measures are in separate columns [1, Ch. 4].
+
+---
+
+# References
+
+[1] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London: SAGE Publications, 2012.
+
+[2] E. R. Tufte, *The Visual Display of Quantitative Information*, 2nd ed. Cheshire, CT: Graphics Press, 2001.
+
+[3] L. Wilkinson, *The Grammar of Graphics*, 2nd ed. New York: Springer, 2005.
+
+[4] H. Wickham, *ggplot2: Elegant Graphics for Data Analysis*, 2nd ed. New York: Springer, 2016.
+
+[5] W. S. Cleveland, *The Elements of Graphing Data*, 2nd ed. Summit, NJ: Hobart Press, 1994.
+
+---
+
+# Session Information
+
+```{r session-info}
+sessionInfo()
+```
+
+---
+
+<div style="text-align: center; padding: 20px; background-color: #f0f0f0; border-radius: 10px; margin-top: 30px;">
+**End of Week 05: R for Data Analytics Tutorial**
+
+*ANLY 500 - Analytics I*
+
+*Harrisburg University*
+</div>
+

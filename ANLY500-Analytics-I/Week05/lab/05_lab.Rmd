@@ -1,0 +1,206 @@
+---
+title: "Statistical Modeling and Graphing"
+author: "Enter Your Name"
+date: "`r Sys.Date()`"
+output: 
+  word_document:
+    reference_docx: default
+---
+
+```{r machine-info, echo=FALSE, results='asis'}
+cat("**Machine:**", paste0(Sys.info()['nodename'], " - ", Sys.info()['sysname'], " ", Sys.info()['release']), "\n\n")
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Set machine info for document
+machine_info <- paste0(Sys.info()['nodename'], ' - ', Sys.info()['sysname'], ' ', Sys.info()['release'])
+```
+
+```{r load-and-explore-data, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8.4, fig.height=8.4, fig.align='center'}
+# Load required libraries
+library(rio)
+library(ggplot2)
+
+# Load the lab dataset
+labdata <- import("05_data.csv")
+
+# Quick summary
+# str(labdata)
+# summary(labdata)
+
+# Factor categorical variables
+labdata$biz_focus <- factor(labdata$biz_focus,
+                            levels = c("traditional", "forward"),
+                            labels = c("Traditional", "Forward Thinking"))
+labdata$internet <- factor(labdata$internet,
+                          levels = c("low", "medium", "high"),
+                          labels = c("Low", "Medium", "High"))
+
+# Quick visualizations to understand the data
+
+# Combine all plots in one layout (2x2 grid)
+par(mfrow = c(2, 2))
+
+# 1. Distribution of sales at Time 1
+hist(labdata$time.1, main = "Sales at Time 1", xlab = "Sales Score", 
+     col = "lightblue", border = "black")
+
+# 2. Distribution of sales at Time 2
+hist(labdata$time.2, main = "Sales at Time 2", xlab = "Sales Score", 
+     col = "lightcoral", border = "black")
+
+# 3. Boxplot comparing business focus
+boxplot(time.2 ~ biz_focus, data = labdata, 
+        main = "Sales at Time 2 by Business Focus",
+        xlab = "Business Focus", ylab = "Sales Score",
+        col = c("gray70", "gray30"))
+
+# 4. Boxplot comparing internet use levels
+boxplot(time.2 ~ internet, data = labdata,
+        main = "Sales at Time 2 by Internet Use",
+        xlab = "Internet Use Level", ylab = "Sales Score",
+        col = c("lightgray", "gray", "darkgray"))
+
+# Reset to single plot
+par(mfrow = c(1, 1))
+
+# Create cleanup theme for professional graphs
+cleanup <- theme(panel.grid.major = element_blank(),
+                panel.grid.minor = element_blank(),
+                panel.background = element_blank(),
+                axis.line.x = element_line(color = 'black'),
+                axis.line.y = element_line(color = 'black'),
+                legend.key = element_rect(fill = 'white'),
+                text = element_text(size = 15))
+```
+
+
+
+*Citation*: Trends in Internet-based business-to-business marketing
+
+*Abstract*: The Internet is changing the transactional paradigms under which businesses-to-business marketers operate. Business-to-business marketers that take advantage of the operational efficiencies and effectiveness that emerge from utilizing the Internet in transactions are out performing firms that utilize traditional transactional processes. As an example, Dell computers, by utilizing business-to-business processes that take advantage of the Internet, has gained the largest market share in the PC business when compared to traditional manufacturers such as Compaq. This paper first examines the genesis of the Internet movement in business-to-business markets. The long-term impact of the increase of business-to-business utilization of the Internet on the marketing theory and marketing process is then discussed. Finally, managerial implications and directions for future research are highlighted.
+
+Dataset includes:
+
+    1)  Business marketing focus - traditional or forward thinking.
+    
+    2)	Internet use - low, medium, or high levels of business marketing use on the internet.
+    
+    3)	Time _ 1 - sales scores at the first measurement time.
+    
+    4)	Time _ 2 - sales scores at the second measurement time
+
+On all of these questions, be sure to include a coherent label for the X and Y axes.  You should change them to be "professional looking" (i.e. Proper Case, explain the variable listed, and could be printed in a journal).  The following will be assessed:
+
+    1)	Is it readable?
+    
+    2)	Is X-axis labeled appropriately?
+    
+    3)	Is Y-axis labeled appropriately?
+    
+    4)	Is it the right graph?
+    
+    5) 	Do the labels in the legend look appropriate?
+    
+    6)	Are there error bars when appropriate?
+
+We won't grade for color of bars or background color, but you should consider that these things are usually printed in black/white - so be sure you know how to change those values as well as get rid of that grey background.
+
+Please note that each subpoint (i.e. a, b) indicates a different chart.
+
+```{r starting}
+# Load required libraries
+library(rio)
+library(ggplot2)
+
+# Load the lab dataset
+labdata <- import("05_data.csv")
+
+# Display structure of the data
+str(labdata)
+
+# Summary statistics
+summary(labdata)
+
+# Check first few rows
+head(labdata)
+
+# Factor the categorical variables
+labdata$biz_focus <- factor(labdata$biz_focus,
+                            levels = c("traditional", "forward"),
+                            labels = c("Traditional", "Forward Thinking"))
+
+labdata$internet <- factor(labdata$internet,
+                          levels = c("low", "medium", "high"),
+                          labels = c("Low", "Medium", "High"))
+
+# Verify factoring
+table(labdata$biz_focus)
+table(labdata$internet)
+
+# Create cleanup theme for professional graphs
+cleanup <- theme(panel.grid.major = element_blank(),
+                panel.grid.minor = element_blank(),
+                panel.background = element_blank(),
+                axis.line.x = element_line(color = 'black'),
+                axis.line.y = element_line(color = 'black'),
+                legend.key = element_rect(fill = 'white'),
+                text = element_text(size = 15))
+```
+
+
+1)	Make a simple histogram using ggplot:
+
+    a.	Sales at time 1
+
+```{r hist1}
+
+```
+
+    b.	Sales at time 2
+
+```{r hist2}
+
+```
+
+2)	Make a bar chart with two independent variables:
+
+    a.	Business focus, internet, DV: sales at time 2
+
+```{r bar1}
+
+```
+
+3)	Make a bar chart with two independent variables: 
+
+    a.	Time (time 1, time 2), Business focus, DV: is sales from time 1 and 2
+
+```{r bar2}
+
+```
+
+4)	Make a simple line graph:
+
+    a.	Time (time 1, time 2), DV: is sales from time 1 and 2 
+
+```{r line}
+
+```
+
+5)	Make a simple scatterplot:
+    
+    a.	Sales at Time 1, Time 2
+
+```{r scatter1}
+
+```
+
+6)	Make a grouped scatterplot:
+
+    a.	Sales at time 1 and 2, Business focus
+
+```{r scatter2}
+
+```
+

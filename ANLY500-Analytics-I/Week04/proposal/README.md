@@ -11,8 +11,8 @@ Provide a written project proposal that meets the requirements in the final proj
 - The final project counts for 30% of your course grade.
 - The final project for this course is an individual project (no team work).
 - The final project has two graded components:
-	- Final Project Proposal (this assignment): 20 points (≈ 5% of final course grade)
-	- HU14 ANLY 500 Final Project KA1 75%3 (final project deliverable): 100 points (≈ 25% of final course grade)
+  - Final Project Proposal (this assignment): 20 points (≈ 5% of final course grade)
+  - HU14 ANLY 500 Final Project KA1 75%3 (final project deliverable): 100 points (≈ 25% of final course grade)
 - This Week 4 proposal is your initial planning milestone; final project requirements are revisited in Week 8, and the final project is submitted in Week 14.
 
 ### Guidance documents in this folder
