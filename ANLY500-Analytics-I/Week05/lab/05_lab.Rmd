@@ -109,46 +109,6 @@ We won't grade for color of bars or background color, but you should consider th
 
 Please note that each subpoint (i.e. a, b) indicates a different chart.
 
-```{r starting}
-# Load required libraries
-library(rio)
-library(ggplot2)
-
-# Load the lab dataset
-labdata <- import("05_data.csv")
-
-# Display structure of the data
-str(labdata)
-
-# Summary statistics
-summary(labdata)
-
-# Check first few rows
-head(labdata)
-
-# Factor the categorical variables
-labdata$biz_focus <- factor(labdata$biz_focus,
-                            levels = c("traditional", "forward"),
-                            labels = c("Traditional", "Forward Thinking"))
-
-labdata$internet <- factor(labdata$internet,
-                          levels = c("low", "medium", "high"),
-                          labels = c("Low", "Medium", "High"))
-
-# Verify factoring
-table(labdata$biz_focus)
-table(labdata$internet)
-
-# Create cleanup theme for professional graphs
-cleanup <- theme(panel.grid.major = element_blank(),
-                panel.grid.minor = element_blank(),
-                panel.background = element_blank(),
-                axis.line.x = element_line(color = 'black'),
-                axis.line.y = element_line(color = 'black'),
-                legend.key = element_rect(fill = 'white'),
-                text = element_text(size = 15))
-```
-
 
 1)	Make a simple histogram using ggplot:
 
