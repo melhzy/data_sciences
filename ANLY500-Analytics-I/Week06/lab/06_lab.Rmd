@@ -1,0 +1,108 @@
+---
+title: "Data Screening"
+author: "Enter Your Name"
+date: "`r Sys.Date()`"
+output: 
+  word_document:
+    reference_docx: default
+---
+
+```{r machine-info, echo=FALSE, results='asis'}
+cat("**Machine:**", paste0(Sys.info()['nodename'], " - ", Sys.info()['sysname'], " ", Sys.info()['release']), "\n\n")
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Set machine info for document
+machine_info <- paste0(Sys.info()['nodename'], ' - ', Sys.info()['sysname'], ' ', Sys.info()['release'])
+```
+
+# Dataset:
+
+600 employees participated in a company-wide experiment to test if an educational program would be effective at increasing employee satisfaction. Half of the employees were assigned to be in the control group, while the other half were assigned to be in the experimental group. The experimental group was the only group that received the educational intervention. All groups were given an employee satisfaction scale at time one to measure their initial levels of satisfaction. The same scale was then used half way through the program and at the end of the program. The goal of the experiment was to assess satisfaction to see if it increased across the measurements during the program as compared to a control group. 
+
+## Variables: 
+
+    a) Gender (1 = male, 2 = female)
+    b) Group (1 = control group, 2 = experimental group)
+    c) 3 satisfaction scores, ranging from 2-100 points. Decimals are possible! The control group was measured at the same three time points, but did not take part in the educational program. 
+        i) Before the program
+        ii)	Half way through the program 
+        iii) After the program 
+
+```{r starting}
+
+```
+
+# Data screening:
+
+## Accuracy:
+
+    a)	Include output and indicate how the data are not accurate.
+    b)	Include output to show how you fixed the accuracy errors, and describe what you did.
+    
+```{r accuracy}
+
+```
+
+## Missing data:
+
+    a)	Include output that shows you have missing data.
+    b)	Include output and a description that shows what you did with the missing data.
+        i)	Replace all participant data if they have less than or equal to 20% of missing data by row. 
+        ii)	You can leave out the other participants (i.e. you do not have to create allrows). 
+        
+```{r missing}
+
+```
+
+## Outliers:
+
+    a)	Include a summary of your mahal scores that are greater than the cutoff.
+    b)	What are the df for your Mahalanobis cutoff?
+    c)	What is the cut off score for your Mahalanobis measure?
+    d)	How many outliers did you have?
+    e)	Delete all outliers. 
+    
+```{r outliers}
+
+```
+
+# Assumptions:
+
+## Additivity: 
+
+    a)  Include the symnum bivariate correlation table of your continuous measures.
+    b)  Do you meet the assumption for additivity?
+    
+```{r additivity}
+
+```
+
+## Linearity: 
+
+    a)  Include a picture that shows how you might assess multivariate linearity.
+    b)  Do you think you've met the assumption for linearity?
+    
+```{r linearity}
+
+```
+
+## Normality: 
+
+    a)  Include a picture that shows how you might assess multivariate normality.
+    b)  Do you think you've met the assumption for normality? 
+
+```{r normality}
+
+```
+
+## Homogeneity/Homoscedasticity: 
+
+    a)  Include a picture that shows how you might assess multivariate homogeneity.
+    b)  Do you think you've met the assumption for homogeneity?
+    c)  Do you think you've met the assumption for homoscedasticity?
+
+```{r homog-s}
+
+```

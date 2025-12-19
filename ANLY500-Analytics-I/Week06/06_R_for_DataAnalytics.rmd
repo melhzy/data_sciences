@@ -1,0 +1,522 @@
+---
+title: "Week 06: R for Data Analytics (Data Screening Part 1)"
+author: "Ziyuan Huang"
+date: "Last Updated: `r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: cosmo
+    highlight: tango
+    code_folding: show
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 5
+)
+
+# Reproducible seeds using seedhash (same pattern as Weeks 02-05)
+# install.packages("seedhash") # Uncomment if not installed
+library(seedhash)
+gen <- SeedHashGenerator$new("Week06 Data Screening - ANLY500")
+seeds <- gen$generate_seeds(10)
+print(seeds)
+set.seed(seeds[1])
+
+cat("MD5 Hash:", gen$get_hash(), "\n")
+cat("Using seed:", seeds[1], "\n")
+```
+
+# Introduction
+
+## 1. Overview
+
+This Week 06 tutorial builds on our previous data analytics foundations and focuses on the critical first step of any analysis: **Data Screening**. Before running statistical models, we must ensure our data is clean, accurate, and meets necessary assumptions. This tutorial upgrades the lecture concepts from `06_datascreen_1.rmd` into hands-on, code-first workflows:
+
+-   **Accuracy Checks**: Identifying and fixing typos, out-of-range values, and coding errors.
+-   **Missing Data**: Understanding types of missingness (MCAR, MNAR) and handling them appropriately (deletion vs. imputation).
+-   **Outlier Detection**: Using univariate (Z-scores) and multivariate (Mahalanobis distance) methods.
+-   **Assumptions**: A brief introduction to what we prepare for (Normality, Linearity, etc.).
+
+> **Reference:** This tutorial draws heavily from Field, Miles, and Field [1], *Discovering Statistics Using R*, particularly the chapters on data screening and cleaning, with IEEE-style citations throughout.
+
+> **Upgrade note:** This hands-on tutorial extends the Week 06 lecture slides in `06_datascreen_1.rmd` with code-first workflows, beginner-friendly explanations, and theoretical grounding from Field et al. [1].
+
+### For Beginners: Quick Start
+
+-   **How to run code:**
+    -   RStudio: place cursor in a chunk, press Ctrl+Enter (Cmd+Enter on Mac) to run; use Knit to render the full document.
+    -   VS Code: highlight lines and press Ctrl+Enter, or click the Run button above a chunk.
+-   **Installing packages:** if you see "there is no package called 'X'", run `install.packages("X")` once, then `library(X)`.
+-   **If stuck:** restart R (RStudio: Session → Restart R), then re-run chunks from the top (setup first).
+-   **Reading errors:** focus on the last lines of the message; they usually state the actual problem (e.g., object not found, package missing, misspelled column).
+
+## 2. Learning Objectives
+
+By the end of this tutorial, you will be able to:
+
+1.  Perform **accuracy checks** on categorical and continuous variables.
+2.  Diagnose types of **missing data** (MCAR vs. MNAR).
+3.  Implement strategies for **handling missing data**, including listwise deletion and multiple imputation with `mice`.
+4.  Detect and handle **univariate outliers** using Z-scores (cutoff $\pm 3.29$).
+5.  Detect and handle **multivariate outliers** using Mahalanobis distance.
+
+## 3. Required Packages
+
+```{r load-packages}
+# Install if needed
+# install.packages(c("tidyverse", "rio", "mice", "VIM", "knitr", "kableExtra", "ggplot2", "gridExtra"))
+
+library(tidyverse)
+library(ggplot2)  # For data visualization
+library(gridExtra) # For arranging multiple plots
+library(rio)      # For data import
+library(mice)     # For multiple imputation
+library(VIM)      # For visualizing missing data
+library(knitr)
+library(kableExtra)
+
+cat("\n=== REPRODUCIBLE SEED INFORMATION ===")
+cat("\nGenerator Name: Week06 Data Screening - ANLY500")
+cat("\nMD5 Hash:", gen$get_hash())
+cat("\nAvailable Seeds:", paste(seeds[1:5], collapse = ", "), "...\n\n")
+```
+
+---
+
+# Part 1: Data Screening Principles
+
+## 1.1 What is Data Screening?
+
+Data screening is the process of inspecting a dataset for errors, missing values, and outliers before analysis. As Field et al. note, screening is crucial because issues like outliers can "bias the mean and inflate the standard deviation" [1], and missing data can arise from various sources (e.g., participants accidentally missing questions) [1]. Field explicitly refers to Tabachnick and Fidell as the "definitive guide to screening data" [1].
+
+## 1.2 The "Garbage In, Garbage Out" Rule
+
+Data screening is a key facet of any analysis. If the data is incorrect, the output will be useless. Screening ensures results are interpretable and valid. Our checks should always include:
+
+1.  **Accuracy**: Is the data correct? (e.g., "Age" shouldn't be 200).
+2.  **Missing Data**: Is the data complete? (e.g., Did someone skip questions?).
+3.  **Outliers**: Are there extreme values? (e.g., A millionaire in a study of student income).
+4.  **Assumptions**: Does the data fit the rules of our statistical test? (e.g., Is it a bell curve?).
+
+### An Important Note on Significance
+
+Normally, our $\alpha$ value is set to 0.05 (Type 1 Error), meaning we use $p < .05$ as a criterion for statistical significance. However, **in data screening, we want to use a stricter criterion** to avoid over-cleaning or incorrectly flagging data. Therefore, we use **$p < .001$** to denote problematic issues [1].
+
+## 1.3 The Order of Operations
+
+We follow this specific order because each step can affect the next:
+
+1.  **Accuracy Check**: If you correct errors, they may become missing data points.
+2.  **Missing Data Check**: If you replace missing data, they may become outliers.
+3.  **Outliers Check**: If you exclude outliers, this may change assumption interpretations (e.g., normality).
+4.  **Assumptions**: Finally, check assumptions for the specific analysis to be performed.
+
+---
+
+# Part 2: Accuracy Checks
+
+We will use a dataset that examines the resiliency (RS columns) of teenagers after a natural disaster. While we haven't covered specific analyses yet, we can screen this data overall.
+
+```{r import-data}
+# Import the dataset
+# Note: Ensure "data/data_screening.csv" exists in your working directory or adjust the path
+# If the file is not available, we will simulate a similar structure for this tutorial
+if(file.exists("data/data_screening.csv")) {
+  master <- import("data/data_screening.csv")
+} else {
+  # Simulation for tutorial purposes if file is missing
+  set.seed(seeds[2])
+  n <- 100
+  master <- data.frame(
+    Sex = sample(c(1, 2, 3), n, replace = TRUE, prob = c(0.45, 0.45, 0.1)), # 3 is typo
+    SES = sample(c(1, 2, 3), n, replace = TRUE),
+    Grade = sample(8:14, n, replace = TRUE), # >12 is typo
+    Absences = sample(0:20, n, replace = TRUE), # >15 is typo
+    RS1 = sample(1:7, n, replace = TRUE),
+    RS2 = sample(1:7, n, replace = TRUE),
+    RS3 = sample(c(1:7, 99), n, replace = TRUE, prob = c(rep(0.14, 7), 0.02)) # 99 is outlier/typo
+  )
+  # Introduce some missingness
+  master[sample(1:n, 10), "RS1"] <- NA
+  master[sample(1:n, 5), "SES"] <- NA
+}
+
+str(master)
+```
+
+## 2.1 Categorical Variables
+
+We need to check for factor variables incorrectly imported as numbers and out-of-range values. Let's check `Sex` and `SES`.
+
+### Visualizing the Problem
+
+Before fixing, let's visualize the `Sex` variable to see the error. We expect only two categories (e.g., 1 and 2), but a third bar might appear.
+
+```{r plot-accuracy-cat}
+p1 <- ggplot(master, aes(x = factor(Sex))) +
+  geom_bar(fill = "steelblue", color = "black") +
+  labs(title = "Before Cleaning: Sex",
+       subtitle = "Note the invalid category '3'",
+       x = "Sex Code",
+       y = "Count") +
+  theme_minimal()
+
+p1
+```
+
+**Interpretation:** You can clearly see a bar for "3". If our codebook says 1=Women and 2=Men, then "3" is a typo! This visual confirmation is faster than reading raw tables.
+
+### Checking Tables
+
+```{r accuracy-cat}
+notypos <- master # Create a copy to update
+apply(notypos[ , c("Sex", "SES")], 2, table)
+```
+
+**Explanation:**
+-   `apply(X, 2, table)`: This function takes our data (`X`), looks at columns (`2`), and runs the `table()` function on each one.
+-   It's a quick way to get counts for multiple columns at once.
+
+### Fixing the Issue
+
+We can fix this by using `factor()` and excluding the bad label. Values not listed in `levels` will automatically become `NA`.
+
+```{r fix-cat}
+## Fix categorical labels and drop typos
+notypos$Sex <- factor(notypos$Sex, 
+                     levels = c(1,2), # We intentionally omit 3
+                     labels = c("Women", "Men"))
+
+notypos$SES <- factor(notypos$SES, 
+                     levels = c(1,2, 3),
+                     labels = c("Low", "Medium", "High"))
+
+# Let's verify with a plot
+p2 <- ggplot(notypos, aes(x = Sex)) +
+  geom_bar(fill = "forestgreen", color = "black") +
+  labs(title = "After Cleaning: Sex",
+       subtitle = "Invalid categories removed (became NA)",
+       x = "Sex",
+       y = "Count") +
+  theme_minimal()
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+**Visual Check:** The "Before" plot shows the error (3). The "After" plot shows only valid categories (Women, Men). The typos didn't disappear; they became `NA` (missing values), which we will deal with later.
+
+## 2.2 Continuous Variables
+
+Use `summary()` to check min/max values. For example, if the RS scale runs from 1 to 7, any value outside this range (like 99) is a typo.
+
+```{r accuracy-cont}
+summary(notypos)
+```
+
+### Visualizing Continuous Errors
+
+Let's look at `RS3`. We suspect a typo (99).
+
+```{r plot-accuracy-cont}
+# Histogram to see distribution shape
+p3 <- ggplot(notypos, aes(x = RS3)) +
+  geom_histogram(fill = "orange", color = "black", bins = 30) +
+  labs(title = "Histogram of RS3",
+       subtitle = "Note the gap and value near 100",
+       x = "RS3 Score", y = "Frequency") +
+  theme_minimal()
+
+# Boxplot to see outliers clearly
+p4 <- ggplot(notypos, aes(y = RS3)) +
+  geom_boxplot(fill = "orange", alpha = 0.5) +
+  labs(title = "Boxplot of RS3",
+       subtitle = "The dot at top is the extreme value",
+       y = "RS3 Score") +
+  theme_minimal()
+
+grid.arrange(p3, p4, ncol = 2)
+```
+
+**Interpretation:**
+-   **Histogram (Left):** Most data is clustered 0-10. There is a tiny bar near 100. This is suspicious.
+-   **Boxplot (Right):** The box is "squashed" at the bottom, and a single dot is way up at 100. This confirms we have an out-of-range value that needs fixing.
+
+### Fixing Issues
+
+How do we fix these?
+1.  Find the original data and figure out what the point should be.
+2.  **Delete that data point** (set to `NA`) but not the entire participant.
+
+**Example: Using Logical Subsetting**
+Suppose `Grade` cannot be > 12 and `Absences` cannot be > 15.
+
+```{r fix-cont-specific}
+# Check Grade
+summary(notypos$Grade)
+# Code Explanation: "In the Grade column, find values > 12, and set them to NA"
+notypos$Grade[ notypos$Grade > 12 ] <- NA 
+summary(notypos$Grade)
+
+# Check Absences
+summary(notypos$Absences)
+notypos$Absences[ notypos$Absences > 15 ] <- NA
+summary(notypos$Absences)
+```
+
+**Example: Multiple Columns**
+If multiple columns (e.g., RS items) have the same range (1-7), we can clean them all at once.
+
+```{r fix-cont-multi}
+# Assuming RS columns are from column 5 onwards (adjust indices as needed)
+# In our simulated data, RS columns are 5, 6, 7
+rs_cols <- grep("RS", names(notypos))
+
+# Check before
+summary(notypos[ , rs_cols])
+
+# Apply fix: any value > 7 in these columns becomes NA
+notypos[ , rs_cols][ notypos[ , rs_cols] > 7 ] <- NA
+
+# Check after
+summary(notypos[ , rs_cols])
+```
+
+---
+
+# Part 3: Missing Data
+
+Use `summary()` or `apply()` to count `NA` values.
+
+```{r missing-check}
+apply(notypos, 2, function(x) { sum(is.na(x)) })
+```
+
+## 3.1 Diagnosing Missingness
+
+Understanding *why* data is missing is crucial [1]:
+
+1.  **MCAR (Missing Completely at Random):**
+    -   **Analogy:** You are carrying a tray of blood samples and trip, breaking random vials. The missingness has nothing to do with the patient's health.
+    -   **Handling:** Safe to replace or ignore.
+2.  **MNAR (Missing Not at Random):**
+    -   **Analogy:** Patients with very high blood pressure refuse to have it measured because they are scared. The missingness *is* related to the health outcome.
+    -   **Handling:** **Dangerous** to replace. Excluding might be safer.
+
+> **Quick Fix:** For simple statistics, you can often use `na.rm = TRUE` (e.g., `mean(x, na.rm = TRUE)`) to ignore missing values without permanently deleting them [1].
+
+## 3.2 Visualizing Missing Data
+
+The `VIM` package helps visualize patterns.
+
+```{r vim-plot}
+aggr(notypos, numbers = TRUE, prop = FALSE)
+```
+
+**Interpretation:**
+-   **Left Bar Chart:** Shows the proportion of missing data in each variable.
+-   **Right Grid:** Shows the *combinations* of missingness. Blue is observed, Red is missing.
+    -   If you see red blocks lining up across multiple variables, it means people who missed Question A also tended to miss Question B.
+
+## 3.3 Handling Missing Data
+
+### By Rows (Participants)
+
+Check the percentage of missing data per participant.
+
+```{r missing-rows}
+# Create a custom function to calculate % missing
+percentmiss <- function(x){ sum(is.na(x))/length(x) * 100 }
+
+# Apply it to rows (margin = 1)
+missing <- apply(notypos, 1, percentmiss)
+table(missing)
+```
+
+We can create subsets:
+-   **Replaceable:** Participants with $\le 5\%$ missing data.
+-   **Not Replaceable:** Participants with $> 5\%$ missing data (often excluded or analyzed separately).
+
+```{r subset-rows}
+replace_rows <- subset(notypos, missing <= 5)
+noreplace_rows <- subset(notypos, missing > 5)
+
+cat("Original N:", nrow(notypos), "\n")
+cat("Rows to replace:", nrow(replace_rows), "\n")
+cat("Rows dropped/kept separate:", nrow(noreplace_rows), "\n")
+```
+
+### Multiple Imputation with `mice`
+
+We do not replace missing data for categorical/demographic variables (Sex, SES, Grade). We use them to help estimate missing values in other variables.
+
+**What is MICE?**
+*Multivariate Imputation by Chained Equations*. It creates multiple "complete" datasets by guessing missing values based on relationships with other variables. It's better than just plugging in the mean because it preserves the variance in the data.
+
+```{r mice-imputation}
+# Run mice on our replaceable rows
+# printFlag = FALSE keeps the output clean
+temp_no_miss <- mice(replace_rows, printFlag = FALSE, seed = 123)
+```
+
+Now, complete the dataset (pick one of the imputations, e.g., #1).
+
+```{r mice-complete}
+nomiss <- complete(temp_no_miss, 1)
+all_columns <- nomiss # This is our clean dataset
+```
+
+### Visual Verification: Did Imputation Change Data Shape?
+
+It is critical to verify that imputing data didn't distort our variables. The distribution should look roughly the same before and after.
+
+```{r plot-imputation-check}
+# Combine data for plotting
+before <- data.frame(Value = replace_rows$RS1, Type = "Original (with NA)")
+after <- data.frame(Value = all_columns$RS1, Type = "Imputed (Complete)")
+comparison <- rbind(before, after)
+
+ggplot(comparison, aes(x = Value, fill = Type)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Density Plot: RS1 Before vs. After Imputation",
+       subtitle = "Curves should be similar. Drastic changes indicate bad imputation.",
+       x = "RS1 Score",
+       y = "Density") +
+  theme_minimal() +
+  scale_fill_manual(values = c("blue", "red"))
+```
+
+**Interpretation:** If the Red and Blue curves overlap significantly, your imputation is good! It means you filled in the holes without changing the "story" of the data.
+
+---
+
+# Part 4: Outliers
+
+**Definition:** A case with an extreme value on one or multiple variables.
+**Why remove them?** The mean is sensitive to outliers. We use a strict criterion ($p < .001$) to remove only very extreme scores.
+
+## 4.1 Univariate Outliers (Z-scores)
+
+For a single variable, we can use **Z-scores**.
+-   **Concept:** A Z-score tells you how many standard deviations a score is from the mean.
+    -   $Z = 0$: Exactly average.
+    -   $Z = +1$: One standard deviation above average.
+    -   $Z = +3.29$: Extremely high (less than 0.1% chance).
+-   **Criterion:** $Z > 3.29$ or $Z < -3.29$ (corresponding to $p < .001$) [1].
+
+```{r z-scores}
+# Calculate Z-scores for RS1 (as an example)
+# scale() function calculates Z-scores
+all_columns$RS1_z <- scale(all_columns$RS1)
+
+# Check for outliers
+summary(all_columns$RS1_z)
+```
+
+### Visualizing Z-scores
+
+```{r plot-zscores}
+ggplot(all_columns, aes(x = RS1_z)) +
+  geom_histogram(bins = 20, fill = "purple", color = "black") +
+  geom_vline(xintercept = c(-3.29, 3.29), linetype = "dashed", color = "red", size = 1) +
+  labs(title = "Histogram of Z-scores (RS1)",
+       subtitle = "Red dashed lines indicate the +/- 3.29 cutoff",
+       x = "Z-score",
+       y = "Count") +
+  theme_minimal()
+```
+
+**Interpretation:** Any bars *outside* the red dashed lines represent outliers that should be removed or investigated.
+
+## 4.2 Multivariate Outliers: Mahalanobis Distance
+
+For multiple continuous variables, we measure the distance of a case from the centroid (mean of means).
+
+**Concept:** Imagine a cloud of points in 3D space. The "centroid" is the middle of the cloud. Mahalanobis distance measures how far a point is from this middle, accounting for the shape of the cloud.
+
+### Calculation
+
+```{r mahalanobis}
+# Select only continuous variables for outlier check
+# Let's use RS1, RS2, RS3, and Absences
+cont_vars <- all_columns %>% select(RS1, RS2, RS3, Absences)
+
+# Calculate distance
+mahal <- mahalanobis(cont_vars,
+                    colMeans(cont_vars, na.rm=TRUE),
+                    cov(cont_vars, use ="pairwise.complete.obs"))
+```
+
+### Cutoff and Elimination
+
+-   **Cutoff:** $\chi^2$ (Chi-square) distribution with $df =$ number of variables, at $\alpha < .001$.
+
+```{r outlier-cutoff}
+cutoff <- qchisq(1 - .001, ncol(cont_vars))
+
+cat("Degrees of Freedom:", ncol(cont_vars), "\n")
+cat("Cutoff Value:", cutoff, "\n")
+
+# Check how many outliers
+# FALSE means NOT an outlier (Good), TRUE means outlier (Bad)
+summary(mahal < cutoff)
+```
+
+## 4.3 Visualizing Outliers
+
+Let's plot the Mahalanobis distances to see who the "troublemakers" are.
+
+```{r plot-mahal}
+# Create a data frame for plotting
+outlier_plot <- data.frame(
+  ID = 1:length(mahal),
+  Distance = mahal,
+  Outlier = mahal > cutoff
+)
+
+ggplot(outlier_plot, aes(x = ID, y = Distance, color = Outlier)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_hline(yintercept = cutoff, linetype = "dashed", color = "red") +
+  geom_text(aes(label = ifelse(Outlier, ID, "")), vjust = -0.5, show.legend = FALSE) +
+  labs(title = "Mahalanobis Distances",
+       subtitle = paste("Points above the red line (Cutoff =", round(cutoff, 2), ") are multivariate outliers"),
+       y = "Distance (D^2)",
+       x = "Participant ID") +
+  theme_minimal() +
+  scale_color_manual(values = c("black", "red"))
+```
+
+**Interpretation:**
+-   Points **below the red line** are safe.
+-   Points **above the red line** are multivariate outliers. We've labeled their IDs so you can find them!
+
+### Final Removal
+
+```{r remove-outliers}
+# Eliminate outliers
+noout <- subset(all_columns, mahal < cutoff)
+
+cat("\nDimensions before outlier removal:", dim(all_columns)[1], "\n")
+cat("Dimensions after outlier removal:", dim(noout)[1], "\n")
+```
+
+# Summary
+
+In this tutorial, we have covered the essential first steps of data analysis:
+1.  **Accuracy:** Checked for and fixed typos and impossible values.
+2.  **Missing Data:** Identified missingness patterns and used multiple imputation.
+3.  **Outliers:** Applied a strict statistical criterion ($p < .001$) to identify univariate and multivariate outliers.
+
+Your dataset `noout` is now screened and ready for assumption checking and analysis!
+
+# References
+
+[1] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London: SAGE Publications, 2012.

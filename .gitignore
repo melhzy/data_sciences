@@ -1,0 +1,15 @@
+# Ignore .assignments folders anywhere in the project
+**/.assignments/
+
+# R specific
+.Rhistory
+.RData
+.Rproj.user
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
