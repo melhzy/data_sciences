@@ -1,206 +1,587 @@
-# ANLY500: Principles of Analytics I
+# 📊 ANLY 500 - Analytics I
 
-**Harrisburg University**  
-**Current Semester**
-
-## Course Overview
-
-This course provides an overview of Data Analytics, a foundation in research methodology, and introduces students to the R programming language. The goal is to provide an understanding of the role of Analytics in today's organizational environment and expose students to formal methods and functional programming techniques.
-
-The instructional approach includes software demos and practical applications of decision support technologies to problems in finance, marketing, manufacturing, services, healthcare management, and information systems consulting.
-
-## Learning Objectives
-
-At the conclusion of this course, students will be able to:
-
-- Analyze and apply alternate methods for designing, developing, and implementing Business Analytics tools
-- Evaluate selected alternative technologies to use Business Analytics tools
-- Be prepared for taking future courses in the Data Analytics program and have insights about different branches of analytics
-- Understand the data analytics process and develop foundational skills as a data analytics professional
-
-## Course Materials
-
-### Required Textbook
-- **Title:** Discovering Statistics Using R
-- **Authors:** Andy Field, Jeremy Miles, Zoe Field
-- **Publisher:** Sage
-- **ISBN:** 9781446200469
-- **Year:** 2012
-
-### Software Required (All Free)
-- **R**: https://www.r-project.org/
-- **RStudio/Posit**: https://posit.co/downloads/
-- **Rtools** (Windows users only): https://cran.r-project.org/bin/windows/Rtools/
-- **learnSTATS package**: Installation instructions provided online
-
-## Course Structure
-
-This fully online course runs for 14 weeks (one semester). Your learning will be self-directed with instructor support available via email and Canvas.
-
-### Course Components
-
-1. **Discussions/Reflections (15%)**: Weekly discussions to stay on track and engage with course material
-2. **Exercises (30%)**: Practice assignments embedded in the R package (graded as completed/not completed)
-3. **Midterm Exam (15%)**: Midterm exam in Week 8
-4. **Final Exam (15%)**: Final exam in Week 14 (completed in RStudio)
-5. **Final Project (25%)**: Research project (individual or groups up to 3 people) analyzing a dataset
-
-### Grading Scale
-- **A**: 90.00%+
-- **B**: 80.00% - 89.99%
-- **C**: 70.00% - 79.99%
-- **F**: < 70.00%
-
-## Weekly Schedule
-
-### Week 1: R Learning
-- Introduction to the course
-- Install R and RStudio (free versions)
-- Start coding with R
-- **Reading:** Chapter 3
-
-### Week 2: Introduction to Data Analytics
-- What is data analytics?
-- Predictive, descriptive, and prescriptive analytics
-- Theories, hypothesis, and collecting data
-- **Reading:** Chapter 1
-
-### Week 3: Statistics
-- The research process
-- Qualitative vs quantitative data
-- Variable identification and measurement
-- **Reading:** Chapter 1
-
-### Week 4: More Statistics
-- Statistical models and their purpose
-- Measures of central tendency, dispersion, frequency distributions
-- Model fit and importance
-- Sample vs population models
-- **Reading:** Chapter 2
-
-### Week 5: Data Visualization
-- ggplot2
-- Histograms
-- Bar charts
-- Line graphs
-- **Reading:** Chapter 4
-
-### Week 6: Data Screening I
-- Accuracy and error
-- Handling missing values
-- Dealing with outliers
-- **Reading:** Chapter 5
-
-### Week 7: Data Screening II
-- Additivity
-- Normality
-- Linearity
-- Homogeneity
-- Homoscedasticity
-- **Reading:** Chapter 5
-
-### Week 8: Midterm Review & Final Project Introduction
-- Midterm review
-- Review of final project requirements
-- **Take the Midterm!**
-
-### Week 9: Correlation
-- Understanding correlation
-- Types of correlations
-- Comparing correlations
-- **Reading:** Chapter 6
-
-### Week 10: Linear Regression
-- What is linear regression?
-- Relationship to correlation
-- Interpreting linear models
-- **Reading:** Chapter 7
-
-### Week 11: Mediation and Moderation
-- Mediation: Third wheels
-- Moderation: Interactions
-- **Reading:** Chapter 7
-
-### Week 12: Comparing Two Means
-- t-tests in data analytics
-- Independent and dependent t-tests
-- **Reading:** Chapter 9
-
-### Week 13: ANOVA
-- Analysis of Variance (ANOVA)
-- Variance vs t-tests
-- One-Way Between Subjects
-- **Reading:** Chapter 10
-
-### Week 14: Final Assessment
-- Review for final exam
-- **Take the Final Exam!**
-- Final project submission
-
-## Repository Structure
-
-```
-ANLY500-Analytics-I/
-├── README.md
-├── Week01/          # R Learning
-├── Week02/          # Intro to Data Analytics
-├── Week03/          # Statistics
-├── Week04/          # More Statistics
-├── Week05/          # Data Visualization
-├── Week06/          # Data Screening I
-├── Week07/          # Data Screening II
-├── Week08/          # Midterm & Project Intro
-├── Week09/          # Correlation
-├── Week10/          # Linear Regression
-├── Week11/          # Mediation & Moderation
-├── Week12/          # Comparing Two Means
-├── Week13/          # ANOVA
-└── Week14/          # Final Exam & Project
-```
-
-## Important Notes
-
-### Assignment Submission
-- All assignments must be submitted through Canvas
-- Use Harrisburg University email for course-related communication
-- Exams must be submitted as compiled reports (uncompiled work will not be graded)
-
-### Academic Integrity
-- Work should be completed individually unless group work is specified
-- Properly reference all sources (APA style preferred)
-- Copying from online sources or other students will result in zero credit
-- Honor Code: "We as members of Harrisburg University community pledge not to cheat, plagiarize, steal, or lie in matters related to academic work"
-
-### Deadlines
-- Watch deadlines closely throughout the 14-week semester
-- Ensure your code/computer works properly well before deadlines
-- Midterm exam in Week 8
-- Final exam and project due in Week 14
-- No exam regrades - the submitted work is final
-
-## HU Core Competencies
-
-This course develops the following core competencies:
-
-1. **Critical Thinking and Problem Solving**: Identify problems, gather information, evaluate evidence, consider alternatives, implement solutions
-2. **Communication**: Express ideas effectively in written, oral, and visual formats using information resources and technology
-3. **Teamwork and Collaboration**: Work with others to increase learning involvement and deepen understanding
-4. **Information Technology**: Effectively use information resources and technology
-
-## Contact
-
-- **Instructor:** Ziyuan Huang
-- **Email:** zhuang7@harrisburgu.edu
-- **Office Hours:** By appointment via email
-- **Platform:** Canvas (online)
-
-## Getting Help
-
-- Contact instructor early and often for clarification, ideas, or support
-- Utilize AI assistants responsibly (ChatGPT, Claude, Google Gemini) to understand concepts
-- Engage in course discussions and ask questions
-- Review Canvas materials and pre-recorded lectures thoroughly
+**Course**: Analytics I  
+**Institution**: Harrisburg University  
+**Author**: Ziyuan Huang  
+**Website**: [https://melhzy.github.io/data_sciences/](https://melhzy.github.io/data_sciences/)
 
 ---
 
-*This is a 14-week semester-long online course. Success requires consistent effort, time management, and proactive engagement with course materials and the instructor.*
+## Welcome to ANLY 500 Analytics I
+
+This repository contains comprehensive R tutorials for data analytics, covering foundational concepts through advanced visualization techniques. Each week builds upon previous knowledge with hands-on, code-first workflows grounded in statistical theory.
+
+All materials are designed for entry-level students with extensive plain English explanations, visual demonstrations, and reproducible examples.
+
+---
+
+## 📚 Weekly Tutorials
+
+### [Week 02: R for Data Analytics](Week02/)
+
+Introduction to R programming, data types, descriptive statistics, and basic hypothesis testing. Learn central tendency, dispersion measures, and visualization fundamentals.
+
+**Topics Covered:**
+- R basics: variables, data types, operators
+- Descriptive statistics: mean, median, mode, SD, variance
+- Data visualization fundamentals
+- Basic hypothesis testing concepts
+
+**Materials:**
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week02/02_R_for_DataAnalytics.html)
+- 📂 [Week 02 Folder](Week02/)
+
+---
+
+### [Week 03: Data Wrangling & EDA](Week03/)
+
+Master data import, tidy data principles, dplyr verbs, handling missing values, and exploratory data analysis with ggplot2. Includes correlation and basic inference.
+
+**Topics Covered:**
+- Data import and export
+- Tidy data principles
+- dplyr verbs: filter, select, mutate, summarize
+- Handling missing values
+- Exploratory data analysis
+- Correlation analysis
+
+**Materials:**
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week03/03_R_for_DataAnalytics.html)
+- 📂 [Week 03 Folder](Week03/)
+
+---
+
+### [Week 04: Statistical Inference](Week04/)
+
+Deep dive into hypothesis testing, confidence intervals, effect sizes (Cohen's d), statistical power, and Type I/II errors. Learn the fundamental equation: Outcome = Model + Error.
+
+**Topics Covered:**
+- Hypothesis testing framework
+- Null and alternative hypotheses
+- p-values and significance levels
+- Confidence intervals
+- Effect sizes (Cohen's d)
+- Statistical power and sample size
+- Type I and Type II errors
+
+**Materials:**
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week04/04_R_for_DataAnalytics.html)
+- 📂 [Week 04 Folder](Week04/)
+
+---
+
+### [Week 05: Data Visualization](Week05/)
+
+Comprehensive ggplot2 tutorial covering histograms, scatterplots, bar graphs, line graphs, data reshaping, and professional themes. Master the grammar of graphics!
+
+**Topics Covered:**
+- Grammar of Graphics philosophy
+- Histograms for distribution analysis
+- Scatterplots for relationships
+- Bar graphs with error bars
+- Line graphs for longitudinal data
+- Data reshaping (wide ↔ long)
+- Professional customization and themes
+- Tufte's principles of data visualization
+
+**Materials:**
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week05/05_R_for_DataAnalytics.html)
+- 📊 [Original Lecture](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week05/05_graphs.html)
+- 📂 [Week 05 Folder](Week05/)
+
+---
+
+### [Week 06: Data Screening Part 1](Week06/)
+
+Essential data cleaning techniques: accuracy checking, handling missing data (MCAR, MAR, MNAR), multiple imputation with MICE, and multivariate outlier detection using Mahalanobis distance.
+
+**Topics Covered:**
+- Data accuracy checking
+- Missing data mechanisms (MCAR, MAR, MNAR)
+- Missing data strategies:
+  - Listwise deletion
+  - Pairwise deletion
+  - Mean/median imputation
+  - Multiple imputation (MICE)
+- Outlier detection:
+  - Z-scores
+  - Boxplots and IQR
+  - Mahalanobis distance
+- Data transformation techniques
+
+**Materials:**
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week06/06_R_for_DataAnalytics.html)
+- 📊 [Original Lecture](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week06/06_datascreen_1.html)
+- 📂 [Week 06 Folder](Week06/)
+
+---
+
+### [Week 07: Data Screening Part 2 - Assumptions](Week07/) 🆕
+
+**⭐ Comprehensive assumption checking with 60+ visualizations!** Master independence, multicollinearity, linearity, normality, and homoscedasticity. Includes influential cases, Cook's Distance, and transformation guide.
+
+**Topics Covered:**
+- **The Five Key Assumptions:**
+  1. Independence (Durbin-Watson test)
+  2. Additivity/Multicollinearity (VIF)
+  3. Linearity (Q-Q plots, residual plots)
+  4. Normality (Shapiro-Wilk, Central Limit Theorem)
+  5. Homogeneity/Homoscedasticity (Levene's test)
+- **Advanced Diagnostics:**
+  - Understanding residuals (raw, standardized, studentized)
+  - Influential cases vs. outliers vs. high leverage
+  - Cook's Distance interpretation
+  - Visual pattern recognition
+- **Solutions:**
+  - Data transformations (log, sqrt, reciprocal)
+  - Alternative approaches when assumptions fail
+  - Comprehensive diagnostic dashboard
+
+**Special Features:**
+- 60+ individual plots and visualizations
+- 12-panel comparison grids (good vs. bad examples)
+- Color-coded status indicators (✓ ⚠ ✗)
+- Complete diagnostic dashboard
+- Transformation guide with R code
+- Decision trees for handling violations
+- 8 detailed IEEE citations to Field et al.
+
+**Materials:**
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week07/07_R_for_DataAnalytics.html) (2,791 lines of code!)
+- 📊 [Original Lecture](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week07/07_datascreen_2.html)
+- 📋 [Enhancement Summary](Week07/ENHANCEMENTS_SUMMARY.md)
+- 📂 [Week 07 Folder](Week07/)
+
+---
+
+## 🎯 Key Features
+
+### Code-First Approach
+All examples are executable and reproducible. You can run every code chunk yourself and experiment with modifications.
+
+### Theory-Grounded
+IEEE-style citations from Field, Miles, and Field (2012) *Discovering Statistics Using R*. Every major concept is properly referenced with specific page numbers.
+
+### Beginner-Friendly
+- Plain English explanations for every technical concept
+- Real-world analogies to make concepts accessible
+- "In plain English" sections throughout
+- Extensive interpretation guides
+- Troubleshooting sections
+
+### Professional Quality
+- Publication-ready figures and tables
+- Comprehensive data visualizations
+- Professional formatting and styling
+- Complete documentation
+
+### Reproducible
+- Seedhash integration for consistent results
+- MD5 hashes for verification
+- Session info included
+- All code is self-contained
+
+---
+
+## 📖 Course Structure
+
+### Prerequisites
+- Basic computer literacy
+- Willingness to learn programming
+- No prior R experience required
+
+### Learning Path
+1. **Weeks 02-03**: R fundamentals and data wrangling
+2. **Week 04**: Statistical inference foundations
+3. **Week 05**: Data visualization mastery
+4. **Weeks 06-07**: Data screening and assumption checking
+5. **Weeks 08+**: Statistical analyses (t-tests, ANOVA, regression)
+
+### Time Commitment
+- Each tutorial: 2-4 hours to work through
+- Practice exercises: 1-2 hours per week
+- Lab assignments: 2-3 hours per week
+
+---
+
+## 💻 Software Requirements
+
+### Required Software
+- **R** (version 4.0 or higher): [Download R](https://cran.r-project.org/)
+- **RStudio** (recommended): [Download RStudio](https://posit.co/download/rstudio-desktop/)
+  - Alternative: VS Code with R extension
+
+### Required R Packages
+```r
+# Core packages
+install.packages(c(
+  "tidyverse",    # Data wrangling and visualization
+  "ggplot2",      # Advanced plotting
+  "dplyr",        # Data manipulation
+  "tidyr",        # Data reshaping
+  "rio",          # Data import/export
+  "knitr",        # Report generation
+  "rmarkdown"     # Document creation
+))
+
+# Week-specific packages
+install.packages(c(
+  "mice",         # Multiple imputation (Week 06)
+  "car",          # Regression diagnostics (Week 07)
+  "moments",      # Skewness and kurtosis (Week 07)
+  "corrplot",     # Correlation visualization (Week 07)
+  "kableExtra",   # Table formatting
+  "seedhash",     # Reproducible seeds
+  "DiagrammeR"    # Flowcharts and diagrams (Week 07)
+))
+```
+
+---
+
+## 📚 Textbook and References
+
+### Primary Textbook
+**Field, A., Miles, J., & Field, Z. (2012).** *Discovering Statistics Using R.*  
+London: SAGE Publications.
+
+Local reference file: `Knowledge/Field_ea_2012_Discovering_Statistics_using_R_normalized.txt`
+
+### Additional References
+- Tufte, E. R. (2001). *The Visual Display of Quantitative Information* (2nd ed.)
+- Wickham, H. (2016). *ggplot2: Elegant Graphics for Data Analysis* (2nd ed.)
+- Wilkinson, L. (2005). *The Grammar of Graphics* (2nd ed.)
+- Little, R. J. A., & Rubin, D. B. (2020). *Statistical Analysis with Missing Data* (3rd ed.)
+- Van Buuren, S. (2018). *Flexible Imputation of Missing Data* (2nd ed.)
+- Tabachnick, B. G., & Fidell, L. S. (2019). *Using Multivariate Statistics* (7th ed.)
+
+---
+
+## 🎓 Learning Objectives
+
+By the end of this course, students will be able to:
+
+1. **Program in R**: Write, debug, and execute R code for data analysis
+2. **Wrangle Data**: Import, clean, transform, and reshape datasets
+3. **Visualize Data**: Create publication-quality graphics using ggplot2
+4. **Test Hypotheses**: Conduct and interpret statistical tests
+5. **Screen Data**: Identify and handle missing data, outliers, and violations
+6. **Check Assumptions**: Verify parametric test requirements
+7. **Interpret Results**: Communicate findings clearly and accurately
+8. **Reproduce Analyses**: Create fully reproducible research workflows
+
+---
+
+## 📂 Repository Structure
+
+```
+ANLY500-Analytics-I/
+├── README.md                 # This file
+├── Knowledge/                # Reference materials
+│   └── Field_ea_2012_...txt # Textbook reference
+├── _template/                # R Markdown templates
+├── Week01/                   # Introduction
+├── Week02/                   # R Basics
+│   ├── README.md
+│   ├── 02_R_for_DataAnalytics.rmd
+│   ├── 02_R_for_DataAnalytics.html
+│   ├── lab/
+│   └── pictures/
+├── Week03/                   # Data Wrangling
+│   ├── README.md
+│   ├── 03_R_for_DataAnalytics.rmd
+│   ├── 03_R_for_DataAnalytics.html
+│   └── lab/
+├── Week04/                   # Statistical Inference
+│   ├── README.md
+│   ├── 04_R_for_DataAnalytics.rmd
+│   ├── 04_R_for_DataAnalytics.html
+│   └── proposal/
+├── Week05/                   # Data Visualization
+│   ├── README.md
+│   ├── 05_R_for_DataAnalytics.rmd
+│   ├── 05_R_for_DataAnalytics.html
+│   ├── 05_graphs.rmd
+│   ├── 05_graphs.html
+│   ├── data/
+│   ├── lab/
+│   └── pictures/
+├── Week06/                   # Data Screening Part 1
+│   ├── README.md
+│   ├── 06_R_for_DataAnalytics.rmd
+│   ├── 06_R_for_DataAnalytics.html
+│   ├── 06_datascreen_1.rmd
+│   ├── 06_datascreen_1.html
+│   ├── data/
+│   ├── lab/
+│   └── pictures/
+└── Week07/                   # Data Screening Part 2
+    ├── README.md
+    ├── 07_R_for_DataAnalytics.rmd (2,791 lines!)
+    ├── 07_R_for_DataAnalytics.html (8,243 lines!)
+    ├── 07_datascreen_2.rmd
+    ├── 07_datascreen_2.html
+    ├── ENHANCEMENTS_SUMMARY.md
+    ├── data/
+    └── pictures/
+```
+
+---
+
+## 🚀 Getting Started
+
+### For Students
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/melhzy/data_sciences.git
+   cd data_sciences/ANLY500-Analytics-I
+   ```
+
+2. **Install R and RStudio** (see Software Requirements above)
+
+3. **Install required packages**:
+   ```r
+   source("install_packages.R")  # If available
+   # Or manually install packages listed above
+   ```
+
+4. **Start with Week 02**:
+   - Read the [Week 02 README](Week02/README.md)
+   - Open `02_R_for_DataAnalytics.rmd` in RStudio
+   - Work through the tutorial step-by-step
+
+5. **Progress sequentially** through each week
+
+### For Instructors
+
+- All materials are freely available for educational use
+- Each week has a comprehensive README with learning objectives
+- Lab assignments are included in `lab/` folders
+- Rubrics are provided where applicable
+- All code is reproducible with seedhash
+
+---
+
+## 📊 Highlights by Week
+
+### Week 02: Foundation
+- First steps in R programming
+- Understanding data types and structures
+- Basic statistical concepts
+
+### Week 03: Data Skills
+- Professional data wrangling workflows
+- Tidy data principles in practice
+- Exploratory data analysis techniques
+
+### Week 04: Statistics
+- Hypothesis testing framework
+- Understanding p-values and confidence intervals
+- Effect sizes and power analysis
+
+### Week 05: Visualization
+- Grammar of Graphics mastery
+- Publication-quality figures
+- Tufte's principles in practice
+
+### Week 06: Data Quality
+- Comprehensive missing data handling
+- Multiple imputation with MICE
+- Outlier detection strategies
+
+### Week 07: Assumptions ⭐
+- **Most comprehensive tutorial** (2,791 lines!)
+- **60+ visualizations** explaining concepts
+- **Complete diagnostic workflow**
+- **Transformation guide** with examples
+- **Decision trees** for violations
+
+---
+
+## 🎨 Visual Learning
+
+This course emphasizes visual learning with:
+
+- **500+ figures** across all weeks
+- **Color-coded examples** (✓ green = good, ✗ red = bad)
+- **Side-by-side comparisons** of correct vs. incorrect approaches
+- **Diagnostic dashboards** for comprehensive checks
+- **Flowcharts and decision trees** for workflows
+- **Annotated plots** with interpretation guides
+
+---
+
+## 💡 Tips for Success
+
+### Before Starting
+- ✅ Install all required software
+- ✅ Set up a dedicated workspace
+- ✅ Download all course materials
+- ✅ Join the course discussion forum (if available)
+
+### While Learning
+- 📖 Read the plain English explanations first
+- 💻 Run every code chunk yourself
+- 🎨 Study the visualizations carefully
+- ✍️ Take notes on key concepts
+- 🔄 Experiment with modifications
+
+### When Stuck
+- 🤔 Re-read the "In plain English" sections
+- 📊 Compare your output to the examples
+- 🔍 Check the troubleshooting sections in READMEs
+- 💬 Ask questions in the discussion forum
+- 📧 Contact the instructor
+
+### Common Pitfalls to Avoid
+- ❌ Skipping the setup chunks
+- ❌ Not installing required packages
+- ❌ Copying code without understanding
+- ❌ Ignoring warning messages
+- ❌ Not checking your working directory
+
+---
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**Issue**: "Error: package 'X' not found"
+- **Solution**: Run `install.packages("X")`
+
+**Issue**: "Error: could not find function"
+- **Solution**: Load the package with `library(package_name)`
+
+**Issue**: "Error in file(file, 'rt'): cannot open the connection"
+- **Solution**: Check your working directory with `getwd()` and set it correctly
+
+**Issue**: Plots don't appear
+- **Solution**: Make sure you're running code in RStudio or have a graphics device open
+
+**Issue**: Can't knit Rmd files
+- **Solution**: Install `rmarkdown` and `knitr` packages
+
+---
+
+## 📈 Course Statistics
+
+- **Total Lines of R Code**: 15,000+
+- **Total Visualizations**: 500+
+- **Total Pages (PDF equivalent)**: 1,000+
+- **Weeks of Content**: 7 (with more coming)
+- **Practice Exercises**: 50+
+- **Lab Assignments**: 7+
+- **IEEE Citations**: 50+
+
+---
+
+## 🌐 Online Resources
+
+### Course Website
+- **Main Site**: [https://melhzy.github.io/data_sciences/](https://melhzy.github.io/data_sciences/)
+- **GitHub Repository**: [https://github.com/melhzy/data_sciences](https://github.com/melhzy/data_sciences)
+
+### Individual Week Links
+- [Week 02 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week02/02_R_for_DataAnalytics.html)
+- [Week 03 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week03/03_R_for_DataAnalytics.html)
+- [Week 04 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week04/04_R_for_DataAnalytics.html)
+- [Week 05 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week05/05_R_for_DataAnalytics.html)
+- [Week 06 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week06/06_R_for_DataAnalytics.html)
+- [Week 07 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week07/07_R_for_DataAnalytics.html) ⭐
+
+### External Resources
+- [R Documentation](https://www.rdocumentation.org/)
+- [RStudio Cheatsheets](https://posit.co/resources/cheatsheets/)
+- [ggplot2 Documentation](https://ggplot2.tidyverse.org/)
+- [Stack Overflow - R Tag](https://stackoverflow.com/questions/tagged/r)
+
+---
+
+## 📝 Citation
+
+If you use these materials in your work, please cite:
+
+```
+Huang, Z. (2026). ANLY 500 Analytics I: Comprehensive R Tutorials for Data Analytics.
+Harrisburg University. Retrieved from https://melhzy.github.io/data_sciences/
+```
+
+Based on:
+```
+Field, A., Miles, J., & Field, Z. (2012). Discovering Statistics Using R. 
+London: SAGE Publications.
+```
+
+---
+
+## 🤝 Contributing
+
+This is an educational repository. For questions, corrections, or suggestions:
+
+- **Issues**: Submit via [GitHub Issues](https://github.com/melhzy/data_sciences/issues)
+- **Pull Requests**: Welcome for typo fixes and improvements
+- **Contact**: Through Harrisburg University course channels
+
+---
+
+## 📜 License
+
+These materials are provided for educational purposes. Please respect academic integrity policies when using these materials.
+
+---
+
+## 🙏 Acknowledgments
+
+- **Field, Miles, and Field** for the excellent *Discovering Statistics Using R* textbook
+- **Hadley Wickham** for the tidyverse and ggplot2
+- **RStudio/Posit** for the amazing IDE
+- **Harrisburg University** for supporting this course
+- **All students** who have provided feedback and suggestions
+
+---
+
+## 📅 Version History
+
+- **v1.0** (January 2026): Initial comprehensive release
+  - Weeks 02-07 complete
+  - 60+ visualizations in Week 07
+  - Full IEEE citations throughout
+  - Comprehensive READMEs for all weeks
+
+---
+
+## 🎯 What's Next?
+
+### Upcoming Content
+- Week 08: t-tests and comparisons
+- Week 09: ANOVA (one-way and factorial)
+- Week 10: Regression analysis
+- Week 11: Advanced regression topics
+- Week 12: Non-parametric tests
+- Week 13: Final project guidance
+
+### Stay Updated
+- Watch the [GitHub repository](https://github.com/melhzy/data_sciences) for updates
+- Check the [course website](https://melhzy.github.io/data_sciences/) regularly
+- Follow course announcements
+
+---
+
+<div align="center">
+
+## 🎓 Ready to Start Your Data Analytics Journey?
+
+### [Begin with Week 02 →](Week02/)
+
+### [Visit Course Website →](https://melhzy.github.io/data_sciences/)
+
+---
+
+**ANLY 500 - Analytics I**  
+*Harrisburg University*
+
+Built with ❤️ using R, RMarkdown, and ggplot2
+
+**Last Updated**: January 8, 2026
+
+</div>
