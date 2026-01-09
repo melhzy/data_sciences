@@ -2,7 +2,9 @@
 title: "Data Screening"
 author: "Enter Your Name"
 date: "`r Sys.Date()`"
-output: 
+output:
+  html_document:
+    df_print: paged
   word_document:
     reference_docx: default
 ---
