@@ -154,6 +154,59 @@ Essential data cleaning techniques: accuracy checking, handling missing data (MC
 
 ---
 
+### [Week 08: Correlation Analysis](Week08/) 🆕
+
+**⭐ Complete correlation guide with 50+ visualizations!** Master Pearson, Spearman, Kendall correlations, partial/semi-partial correlations, and APA reporting. Includes Anscombe's Quartet and advanced techniques.
+
+**Topics Covered:**
+- **Understanding Correlation:**
+  - Correlation coefficients and interpretation (-1 to +1)
+  - Covariance and shared variance (r²)
+  - Correlation vs. causation
+  - Restriction of range and outlier effects
+- **Parametric Methods:**
+  - Pearson's product-moment correlation (r)
+  - Assumptions: linearity, normality, homoscedasticity
+  - Confidence intervals and significance testing
+- **Non-Parametric Methods:**
+  - Spearman's rho (rank-based correlation)
+  - Kendall's tau (ordinal data, tied ranks)
+  - When to use non-parametric alternatives
+- **Specialized Correlations:**
+  - Point-biserial correlation (dichotomous variables)
+  - Partial correlations (controlling for third variables)
+  - Semi-partial correlations (unique variance)
+  - Comparing dependent/independent correlations
+- **R Implementation:**
+  - `cor()`, `cor.test()`, `rcorr()` function comparison
+  - `corrplot` package for heatmaps
+  - `GGally::ggpairs()` for scatterplot matrices
+  - `ppcor` for partial correlations
+  - `cocor` for comparing correlations
+- **Advanced Topics:**
+  - Anscombe's Quartet demonstration
+  - Outlier influence visualization
+  - Effect sizes (Cohen's guidelines)
+  - APA-style reporting with examples
+  - Common pitfalls and solutions
+
+**Special Features:**
+- 50+ visualizations and scatterplots
+- Three practice exercises with complete solutions
+- Comprehensive function reference table
+- Venn diagrams for shared variance
+- Assumption checking workflows
+- Professional correlation matrices
+- Complete glossary of terms
+- 9 detailed IEEE citations to Field et al. Chapter 6
+
+**Materials:**
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week08/08_R_for_DataAnalytics.html) (2,700+ lines of code!)
+- 📊 [Original Lecture](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week08/08_correlation.html)
+- 📂 [Week 08 Folder](Week08/)
+
+---
+
 ## 🎯 Key Features
 
 ### Code-First Approach
@@ -195,7 +248,8 @@ IEEE-style citations from Field, Miles, and Field (2012) *Discovering Statistics
 2. **Week 04**: Statistical inference foundations
 3. **Week 05**: Data visualization mastery
 4. **Weeks 06-07**: Data screening and assumption checking
-5. **Weeks 08+**: Statistical analyses (t-tests, ANOVA, regression)
+5. **Week 08**: Correlation analysis and relationships
+6. **Weeks 09+**: Advanced statistical analyses (regression, t-tests, ANOVA)
 
 ### Time Commitment
 - Each tutorial: 2-4 hours to work through
@@ -229,7 +283,12 @@ install.packages(c(
   "mice",         # Multiple imputation (Week 06)
   "car",          # Regression diagnostics (Week 07)
   "moments",      # Skewness and kurtosis (Week 07)
-  "corrplot",     # Correlation visualization (Week 07)
+  "corrplot",     # Correlation visualization (Weeks 07-08)
+  "GGally",       # Scatterplot matrices (Week 08)
+  "Hmisc",        # Advanced correlations (Week 08)
+  "ppcor",        # Partial correlations (Week 08)
+  "cocor",        # Comparing correlations (Week 08)
+  "psych",        # Correlation matrices with p-values (Week 08)
   "kableExtra",   # Table formatting
   "seedhash",     # Reproducible seeds
   "DiagrammeR"    # Flowcharts and diagrams (Week 07)
@@ -396,18 +455,27 @@ ANLY500-Analytics-I/
 - **Transformation guide** with examples
 - **Decision trees** for violations
 
+### Week 08: Correlation 🆕
+- **Complete correlation guide** (2,700+ lines!)
+- **50+ visualizations** and scatterplots
+- **Anscombe's Quartet** demonstration
+- **Partial/semi-partial** correlations
+- **APA reporting** with examples
+
 ---
 
 ## 🎨 Visual Learning
 
 This course emphasizes visual learning with:
 
-- **500+ figures** across all weeks
+- **550+ figures** across all weeks
 - **Color-coded examples** (✓ green = good, ✗ red = bad)
 - **Side-by-side comparisons** of correct vs. incorrect approaches
 - **Diagnostic dashboards** for comprehensive checks
 - **Flowcharts and decision trees** for workflows
 - **Annotated plots** with interpretation guides
+- **Correlation matrices** and scatterplot arrays
+- **Anscombe's Quartet** and classic statistical demonstrations
 
 ---
 
@@ -488,6 +556,7 @@ This course emphasizes visual learning with:
 - [Week 05 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week05/05_R_for_DataAnalytics.html)
 - [Week 06 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week06/06_R_for_DataAnalytics.html)
 - [Week 07 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week07/07_R_for_DataAnalytics.html) ⭐
+- [Week 08 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week08/08_R_for_DataAnalytics.html) 🆕
 
 ### External Resources
 - [R Documentation](https://www.rdocumentation.org/)
@@ -542,6 +611,13 @@ These materials are provided for educational purposes. Please respect academic i
 
 ## 📅 Version History
 
+- **v1.1** (January 22, 2026): Week 08 correlation analysis added 🆕
+  - Complete correlation tutorial with 50+ visualizations
+  - Pearson, Spearman, Kendall correlations
+  - Partial and semi-partial correlations
+  - Anscombe's Quartet and assumption violations
+  - Comprehensive APA reporting guide
+  - 9 IEEE citations to Field et al. Chapter 6
 - **v1.0** (January 2026): Initial comprehensive release
   - Weeks 02-07 complete
   - 60+ visualizations in Week 07
@@ -553,12 +629,12 @@ These materials are provided for educational purposes. Please respect academic i
 ## 🎯 What's Next?
 
 ### Upcoming Content
-- Week 08: t-tests and comparisons
-- Week 09: ANOVA (one-way and factorial)
-- Week 10: Regression analysis
-- Week 11: Advanced regression topics
-- Week 12: Non-parametric tests
-- Week 13: Final project guidance
+- Week 09: Simple and multiple regression
+- Week 10: t-tests and group comparisons
+- Week 11: ANOVA (one-way and factorial)
+- Week 12: Advanced ANOVA topics
+- Week 13: Non-parametric tests
+- Week 14: Final project guidance
 
 ### Stay Updated
 - Watch the [GitHub repository](https://github.com/melhzy/data_sciences) for updates
