@@ -1,7 +1,10 @@
 import re
 import json
+import os
 
-file_path = r"d:\Github\data_sciences\ANLY500-Analytics-I\Knowledge\Field_ea_2012_Discovering_Statistics_using_R_normalized.txt"
+# Use relative path from script location
+script_dir = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(script_dir, "ANLY500-Analytics-I", "Knowledge", "Field_ea_2012_Discovering_Statistics_using_R_normalized.txt")
 
 def index_file(path):
     index = {
