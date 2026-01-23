@@ -158,7 +158,13 @@ pip install -r requirements.txt
 python index_knowledge.py
 ```
 
-Outputs JSON summary of textbook headers and keyword locations.
+Outputs JSON summary of textbook headers and keyword locations to stdout.
+
+**What the indexer extracts:**
+- Section headers matching pattern `\d+(\.\d+)+\.?\s+Title` (e.g., "5.5.1. Outliers")
+- Keyword occurrences: Data Screening, Accuracy, Missing Data, Outlier, Mahalanobis, MICE, MCAR, MNAR
+- Line numbers and context snippets for each match
+- Output: JSON with `headers_count`, `headers_sample`, `keywords_hits`, `keywords_locations`
 
 ## Student Workflow & Constraints
 
@@ -215,6 +221,14 @@ Outputs JSON summary of textbook headers and keyword locations.
 - **No build automation**: HTML files are manually knitted in RStudio, then committed
 - **Fallback**: `docs/` directory contains alternate static content (mirrors some `ANLY500-Analytics-I/` structure)
 
+**Manual Publishing Steps:**
+1. Open `.rmd` file in RStudio
+2. Click "Knit" button (or run `rmarkdown::render("filename.rmd")`)
+3. Verify HTML output displays correctly in browser
+4. Git commit both `.rmd` and `.html` files together
+5. Push to GitHub - Pages auto-deploys from main branch
+6. Verify published content at `https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/WeekXX/filename.html`
+
 ### Textbook Integration
 - **Source**: *Discovering Statistics Using R* (Field, Miles, Field 2012)
 - **Location**: `ANLY500-Analytics-I/Knowledge/Field_ea_2012_Discovering_Statistics_using_R_normalized.txt`
@@ -228,9 +242,17 @@ Outputs JSON summary of textbook headers and keyword locations.
 
 ### Documentation Patterns
 - **Week-level READMEs**: Overview of topics, links to materials, learning objectives
-- **Enhancement docs**: Some weeks have `ENHANCEMENTS_SUMMARY.md` documenting major updates (see Week07)
+- **Enhancement docs**: Some weeks have `ENHANCEMENTS_SUMMARY.md` documenting major updates (see [Week07](ANLY500-Analytics-I/Week07/ENHANCEMENTS_SUMMARY.md))
 - **Rubrics**: Some labs have separate `Rubric_WeekXX.md` grading criteria files
 - **Analytics progression**: Course follows Descriptive → Predictive → Prescriptive sequence
+
+**Creating Enhancement Documentation:**
+When making substantial improvements to lectures, document:
+- Visual additions (diagrams, plots, comparisons)
+- New conceptual explanations
+- Textbook references (Field et al. chapter/page numbers)
+- Learning objective improvements
+- See [ENHANCEMENTS_SUMMARY.md](ANLY500-Analytics-I/Week07/ENHANCEMENTS_SUMMARY.md) template with sections for each major addition
 
 ## File Naming Conventions
 - **Lectures**: `##_topic.rmd` (lowercase extension, snake_case) - compiled to HTML for GitHub Pages
@@ -238,6 +260,12 @@ Outputs JSON summary of textbook headers and keyword locations.
 - **Data files**: `filename.csv` (lowercase, underscores) or `File Name.sav` (SPSS format)
 - **Compiled output**: Same base name with `.html` (lectures) or `.docx` (labs) extension
 - **Critical distinction**: `.rmd` = Slidy presentations, `.Rmd` = Word documents
+
+### Quick Reference: File Extensions
+| Extension | Purpose | Output Format | Location | YAML output |
+|-----------|---------|---------------|----------|-------------|
+| `.rmd` (lowercase) | Lecture slides | Slidy HTML | `WeekXX/*.rmd` | `slidy_presentation` |
+| `.Rmd` (uppercase) | Student labs | Word .docx | `WeekXX/lab/*.Rmd` | `word_document` |
 
 ## When Editing Course Materials
 
@@ -295,6 +323,78 @@ Outputs JSON summary of textbook headers and keyword locations.
 5. `cleanup` theme or `theme_bw()` applied
 6. Print-friendly colors (grayscale) used
 
+## Common Development Workflows
+
+### Adding New Week Content to ANLY500
+1. **Create week directory**: `mkdir ANLY500-Analytics-I/WeekXX`
+2. **Create subdirectories**: `mkdir data lab pictures`
+3. **Create lecture file**: `WeekXX/##_topic.rmd` (lowercase .rmd)
+4. **Create lab file**: `WeekXX/lab/##_lab.Rmd` (uppercase .Rmd)
+5. **Add datasets**: Place in `data/` with descriptive names
+6. **Add README.md**: Document learning objectives, topics, dataset sources
+7. **Test workflow**: Run chunks sequentially, knit both files, verify paths
+8. **Commit pattern**: `git add WeekXX/*.{rmd,html} WeekXX/lab/*.Rmd WeekXX/data/* WeekXX/pictures/*`
+
+### Updating Existing Lecture with Visualizations
+**Pattern from [Week07](ANLY500-Analytics-I/Week07/ENHANCEMENTS_SUMMARY.md):**
+1. **Identify enhancement areas**: Concepts needing visual explanation
+2. **Create R code for visuals**: Use `par(mfrow=c(2,3))` for multi-panel comparisons
+3. **Add textbook references**: Cite Field et al. chapter/page numbers in comments
+4. **Document changes**: Create/update `ENHANCEMENTS_SUMMARY.md` with:
+   - Overview of what was added
+   - Numbered list of major enhancements with ⭐ NEW markers
+   - Purpose and key features for each addition
+   - Textbook reference citations
+5. **Test render**: Knit to HTML, verify all plots display correctly
+6. **Commit together**: Source `.rmd`, compiled `.html`, and `ENHANCEMENTS_SUMMARY.md`
+
+### Running Textbook Indexing Script
+**When to use:** After updating textbook content or adding new keyword tracking.
+```powershell
+# Activate conda environment (Windows)
+conda activate data_sciences
+
+# Run indexer from repository root
+python index_knowledge.py
+
+# Output shows:
+# - headers_count: Total numbered sections found
+# - headers_sample: First 10 section headers
+# - keywords_hits: Count per keyword
+# - keywords_locations: Line numbers with context for first 5 hits per keyword
+```
+
+### Publishing Lecture Updates to GitHub Pages
+```powershell
+# 1. Open lecture in RStudio, make edits to .rmd
+# 2. Knit to HTML (Ctrl+Shift+K or click "Knit" button)
+# 3. Verify output in browser
+# 4. Stage both files
+git add ANLY500-Analytics-I/WeekXX/##_topic.rmd
+git add ANLY500-Analytics-I/WeekXX/##_topic.html
+
+# 5. Commit with descriptive message
+git commit -m "Week XX: Add visualization for [concept]"
+
+# 6. Push to trigger GitHub Pages deployment
+git push origin main
+
+# 7. Verify live at: https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/WeekXX/##_topic.html
+```
+
+### Creating Lab Assignment with Data
+**Standard pattern from Week05 lab:**
+1. **Prepare dataset**: `05_data.csv` in `lab/` directory with clear variable names
+2. **Create lab stub**: `05_lab.Rmd` with YAML `author: "Enter Your Name"`
+3. **Add machine-info chunk**: Required first chunk for reproducibility tracking
+4. **Create setup chunk**: Load libraries (`rio`, `ggplot2`), import data, factor variables
+5. **Add hidden data exploration**: `echo=FALSE` chunk with base R plots for instructor verification
+6. **Define cleanup theme**: Include standard theme code for students to use
+7. **Write questions**: Empty chunks `{r q1}`, `{r q2}`, etc. with instructions above each
+8. **Document assessment criteria**: List graph requirements (labels, error bars, legend, theme)
+9. **Test student workflow**: Fill one chunk, knit to Word, verify isolation
+10. **Create rubric** (optional): `Rubric_WeekXX.md` with point allocations
+
 ## Key Datasets by Week
 - **Week 1**: `lab_R_learning.csv`, built-in `airquality`
 - **Week 5**: `ChickFlick.sav` (gender × film interaction), `Exam Anxiety.csv` (scatterplots), `festival.csv` (histograms), `Jiminy Cricket.csv` (wide→long example)
@@ -332,3 +432,9 @@ Each `WeekXX-Topic/README.md` contains:
 - Checklists for section completion
 
 Central guide: [RESEARCH_WRITING_GUIDE.md](ANLY699-Applied-Project/RESEARCH_WRITING_GUIDE.md)
+
+**Tutorial Structure Pattern:**
+- **Phase 1 (Weeks 1-3)**: Foundation → Literature Review → Research Questions
+- **Phase 2 (Weeks 4-6)**: Methodology → Data Collection → Statistical Analysis
+- **Phase 3 (Weeks 7-8)**: Results Section → Discussion Section
+- **Phase 4 (Weeks 9-14)**: Abstract/Introduction → Citations → Figures/Tables → Revision → Final Draft → Presentation
