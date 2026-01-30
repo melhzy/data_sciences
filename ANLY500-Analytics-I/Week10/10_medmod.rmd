@@ -158,7 +158,8 @@ pnorm(abs(zscore), lower.tail = F)*2
 > **State of the Art (2026):** In professional data science settings, while `MeMoBootR` is excellent for learning and quick "all-in-one" analysis, you will often see the `lavaan` package (for Structural Equation Modeling) or the `mediation` package used for complex mediation models. These are the industry standards for publication-quality analysis.
 
 ```{r}
-#devtools::install_github("doomlab/MeMoBootR")
+if (!require("devtools")) install.packages("devtools", repos = "http://cran.us.r-project.org")
+if (!require("MeMoBootR")) devtools::install_github("doomlab/MeMoBootR")
 library(MeMoBootR)
 
 #no missing data allowed
