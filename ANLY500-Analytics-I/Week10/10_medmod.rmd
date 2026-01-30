@@ -158,15 +158,43 @@ pnorm(abs(zscore), lower.tail = F)*2
 > **State of the Art (2026):** In professional data science settings, while `MeMoBootR` is excellent for learning and quick "all-in-one" analysis, you will often see the `lavaan` package (for Structural Equation Modeling) or the `mediation` package used for complex mediation models. These are the industry standards for publication-quality analysis.
 
 ```{r}
-if (!require("devtools")) install.packages("devtools", repos = "http://cran.us.r-project.org")
-if (!require("MeMoBootR")) devtools::install_github("doomlab/MeMoBootR")
-library(MeMoBootR)
+# Ensure a CRAN mirror is set
+if(is.null(getOption("repos"))) {
+  options(repos = c(CRAN = "https://cloud.r-project.org"))
+}
 
-#no missing data allowed
-med_results <- mediation1(y = "exam",
-                          x = "previous", 
-                          m = "facebook", 
-                          df = master)
+# Install devtools if missing
+if (!requireNamespace("devtools", quietly = TRUE)) {
+  install.packages("devtools")
+}
+
+# Install MeMoBootR if missing
+if (!requireNamespace("MeMoBootR", quietly = TRUE)) {
+  message("Installing MeMoBootR from GitHub...")
+  tryCatch({
+    devtools::install_github("doomlab/MeMoBootR", force = TRUE, upgrade = "never", quiet = TRUE)
+  }, error = function(e) {
+    warning("Failed to install MeMoBootR: ", e$message)
+  })
+}
+
+# Load the package
+if (require("MeMoBootR")) {
+  #no missing data allowed
+  med_results <- mediation1(y = "exam",
+                            x = "previous", 
+                            m = "facebook", 
+                            df = master)
+} else {
+  message("MeMoBootR package is not available. Mediation results cannot be generated.")
+  # Create a dummy object to prevent future errors
+  med_results <- list(
+    datascreening = list(fulldata = NULL, correl = NULL, linearity = NULL, normality = NULL, homogen = NULL),
+    model1 = NULL, model2 = NULL, model3 = NULL,
+    indirect.effect = NULL, z.score = NULL, p.value = NULL,
+    boot.results = NULL, boot.ci = NULL, diagram = NULL
+  )
+}
 ```
 
 ## Mediation: MeMoBootR
@@ -460,10 +488,19 @@ modgraph +
 - You would enter the raw variables, as the centering is completed for you. 
 
 ```{r}
-mod_model <- moderation1(y = "Aggression",
-                         x = "Vid_Games",
-                         m = "CaUnTs",
-                         df = master)
+if (exists("moderation1")) {
+  mod_model <- moderation1(y = "Aggression",
+                           x = "Vid_Games",
+                           m = "CaUnTs",
+                           df = master)
+} else {
+  mod_model <- list(
+    datascreening = list(fulldata = NULL),
+    model1 = NULL,
+    interpretation = "MeMoBootR not available.",
+    graphslopes = NULL
+  )
+}
 ```
 
 ## Moderation: MeMoBootR
