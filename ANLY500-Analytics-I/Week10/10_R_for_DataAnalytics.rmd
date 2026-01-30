@@ -1,0 +1,289 @@
+---
+title: "Week 10: R for Data Analytics - Mediation and Moderation"
+author: "Ziyuan Huang"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: cosmo
+    code_folding: show
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.align = 'center')
+```
+
+```{r machine-info, echo=FALSE, results='asis'}
+cat("**Machine:**", paste0(Sys.info()['nodename'], " - ", Sys.info()['sysname'], " ", Sys.info()['release']), "\n\n")
+```
+
+```{r seedhash, echo=FALSE, results='asis'}
+cat("**Random Seed Set To:** 4591\n\n")
+set.seed(4591)
+```
+
+---
+
+## Introduction
+
+Welcome to Week 10! In previous weeks, we explored how to predict an outcome from one or more variables (Regression). This week, we dive deeper into the *nature* of those relationships. specifically, we will answer two advanced questions:
+
+1.  **"How" does it work?** (Mediation)
+2.  **"When" does it work?** (Moderation)
+
+These concepts allow us to build much more sophisticated models of the world, moving beyond simple "X affects Y" statements to understanding mechanisms and boundary conditions.
+
+### Learning Objectives
+
+1.  Understand the conceptual difference between Mediation and Moderation.
+2.  Conduct a Mediation analysis using the classic Baron & Kenny method (for understanding).
+3.  Perform a modern Mediation analysis using Bootstrapping (for results).
+4.  Understand the "It Depends" nature of Moderation (Interaction effects).
+5.  Learn why and how to Center variables.
+6.  Probe interaction effects using Simple Slopes analysis.
+7.  Visualize complex relationships using `ggplot2`.
+
+### Required Packages
+
+We will use a specialized package `MeMoBootR` created for educational purposes to streamline mediation and moderation. We also use standard packages like `rio` and `ggplot2`.
+
+```{r packages}
+# Ensure CRAN mirror is set
+if(is.null(getOption("repos"))) options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+# Install/Load Packages
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(tidyverse, rio, car, ggplot2, devtools)
+
+# Install MeMoBootR from GitHub if not present
+if (!requireNamespace("MeMoBootR", quietly = TRUE)) {
+  message("Installing MeMoBootR from GitHub...")
+  tryCatch({
+    devtools::install_github("doomlab/MeMoBootR", force = TRUE, upgrade = "never", quiet = TRUE)
+  }, error = function(e) {
+    warning("Failed to install MeMoBootR. Some advanced functions may not work.")
+  })
+}
+
+# Load MeMoBootR if available
+if (require("MeMoBootR", quietly = TRUE)) {
+  message("MeMoBootR loaded successfully.")
+} else {
+  message("Using fallback methods where possible.")
+}
+```
+
+---
+
+## Part 1: Mediation ("The Middle Man")
+
+### What is Mediation?
+
+Mediation refers to a situation where the relationship between a predictor variable ($X$) and an outcome variable ($Y$) can be explained by their relationship to a third variable, the **Mediator** ($M$).
+
+> **Plain English:** Mediation is like a "middle man" or a relay race. The predictor passes the baton to the mediator, who then runs to the finish line (the outcome). If the predictor (X) affects the outcome (Y), mediation explains *how* or *why* that happens.
+>
+> *Example:* Does stress cause illness? Maybe stress ($X$) lowers your immune system ($M$), which then leads to illness ($Y$). The immune system *mediates* the relationship.
+
+### The Classic Approach: Baron & Kenny (1986)
+
+Historically, mediation was tested using a 4-step process known as the Baron & Kenny method. While modern statistics have moved on to bootstrapping, understanding these steps is crucial for grasping the concept.
+
+1.  **Path c:** $X$ predicts $Y$ significantly.
+2.  **Path a:** $X$ predicts $M$ significantly.
+3.  **Path b:** $M$ predicts $Y$ significantly (controlling for $X$).
+4.  **Path c':** The relationship between $X$ and $Y$ drops (or becomes non-significant) when $M$ is in the model.
+
+> **State of the Art (2026):** While Baron & Kenny's steps are great for understanding the *concept*, they are no longer considered sufficient for *testing* mediation in modern analytics. They have low statistical power. Today, we focus on the **Indirect Effect** itself, usually tested via **Bootstrapping**.
+
+### Example: Facebook, Knowledge, and Exam Scores
+
+Let's test if **Facebook use** mediates the relationship between **Previous Knowledge** and **Exam Scores**. The theory: People with less previous knowledge might use Facebook more (distraction), which in turn lowers their exam scores.
+
+```{r load-mediation-data}
+# Import data
+med_data <- import("data/mediation.sav")
+
+# Clean missing data (Mediation requires complete data for comparison)
+med_data <- na.omit(med_data)
+head(med_data)
+```
+
+#### Step 1: Path c (Total Effect)
+Does Previous Knowledge ($X$) predict Exam Scores ($Y$)?
+
+```{r path-c}
+model1 <- lm(exam ~ previous, data = med_data)
+summary(model1)
+```
+*Result:* Yes, $b = 0.32, p < .001$.
+
+#### Step 2: Path a
+Does Previous Knowledge ($X$) predict Facebook Use ($M$)?
+
+```{r path-a}
+model2 <- lm(facebook ~ previous, data = med_data)
+summary(model2)
+```
+*Result:* Yes, $b = -0.09, p = .031$.
+
+#### Step 3 & 4: Path b and c' (Direct Effect)
+Does Facebook Use ($M$) predict Exam Scores ($Y$), controlling for Knowledge? And does Knowledge still predict Exam Scores?
+
+```{r path-b-c}
+model3 <- lm(exam ~ previous + facebook, data = med_data)
+summary(model3)
+```
+*Result:*
+- **Path b (Facebook):** Significant ($b = -0.61, p < .001$).
+- **Path c' (Knowledge):** Still significant, but the coefficient dropped from 0.32 to 0.26.
+
+### The Modern Approach: Bootstrapping
+
+Instead of guessing if the drop from 0.32 to 0.26 is "big enough", we test the **Indirect Effect** ($a \times b$) directly. We use **Bootstrapping**, which resamples our data thousands of times to build a confidence interval. This method does not assume normality, making it the gold standard (Field et al., 2012).
+
+```{r bootstrap-mediation}
+if (exists("mediation1")) {
+  med_results <- mediation1(y = "exam",
+                            x = "previous",
+                            m = "facebook",
+                            df = med_data)
+  
+  # Print Bootstrapped Results
+  print(med_results$boot.results)
+  print(med_results$boot.ci)
+} else {
+  message("MeMoBootR needed for automated bootstrapping.")
+}
+```
+
+**Interpretation:**
+If the 95% Confidence Interval (CI) for the indirect effect **does not include zero**, we have significant mediation.
+- Example Result: Effect = 0.06, 95% CI [0.01, 0.12].
+- Since 0 is not in the interval, mediation is significant.
+
+---
+
+## Part 2: Moderation ("It Depends")
+
+### What is Moderation?
+
+Moderation occurs when the relationship between two variables depends on a third variable. In statistics, this is called an **Interaction Effect**.
+
+> **Plain English:** Moderation is the "It Depends" variable. If I ask, "Does eating pizza make you happy?", you might say, "It depends on if I'm hungry." Hunger is the moderator.
+>
+> *   In statistics, we say the relationship between $X$ and $Y$ *changes* depending on the level of $Z$.
+> *   Graphically, this looks like **non-parallel lines**. If the lines cross or fan out, you have an interaction.
+
+### Example: Video Games, Callousness, and Aggression
+
+Do violent video games ($X$) make people aggressive ($Y$)? Maybe it depends on their level of Callous-Unemotional traits ($Z$).
+
+```{r load-moderation-data}
+mod_data <- import("data/moderation.sav")
+head(mod_data)
+```
+
+### Centering Variables
+
+Before running a moderation analysis, we must **Center** our continuous predictors.
+
+> **Plain English:** Why do we center?
+>
+> 1.  **Interpretation:** In regression, the Intercept is the value of $Y$ when $X$ is 0. If $X$ is "Heart Rate", 0 is dead. That's not useful. If we center $X$ (subtract the mean), then 0 becomes the "Average Heart Rate". Now the intercept is the score for the *average person*.
+> 2.  **Multicollinearity:** $X$ and the interaction term ($X \times Z$) are highly correlated because $X$ is inside the interaction. Centering breaks this correlation, making the math more stable.
+
+```{r centering}
+# Center predictors (Scale = FALSE keeps original units, just shifts mean to 0)
+mod_data$zvid <- scale(mod_data$Vid_Games, scale = FALSE)
+mod_data$zcal <- scale(mod_data$CaUnTs, scale = FALSE)
+```
+
+### Running the Interaction Model
+
+We test moderation by multiplying the predictors: `Y ~ X * Z`.
+
+```{r moderation-model}
+# R automatically creates the interaction term with the * operator
+mod_model <- lm(Aggression ~ zvid * zcal, data = mod_data)
+summary(mod_model)
+```
+
+**Interpretation:**
+- Look at the `zvid:zcal` interaction term.
+- If $p < .05$, the relationship between Video Games and Aggression **significantly changes** depending on Callousness.
+- In our example, if significant ($b = 0.03, p < .001$), we proceed to **Simple Slopes Analysis**.
+
+### Simple Slopes Analysis
+
+To understand *how* the relationship changes, we look at the slope of $X \rightarrow Y$ at three levels of the moderator:
+1.  **Low Callousness** (-1 SD)
+2.  **Average Callousness** (Mean)
+3.  **High Callousness** (+1 SD)
+
+```{r simple-slopes}
+# Create High and Low versions of the moderator
+# Note: To test "Low" (-1SD), we ADD 1SD to bring low people to 0 (the intercept).
+# To test "High" (+1SD), we SUBTRACT 1SD to bring high people to 0.
+sd_cal <- sd(mod_data$zcal)
+
+mod_data$zcal_low <- mod_data$zcal + sd_cal
+mod_data$zcal_high <- mod_data$zcal - sd_cal
+
+# Run models for simple slopes
+model_low <- lm(Aggression ~ zvid * zcal_low, data = mod_data)
+model_high <- lm(Aggression ~ zvid * zcal_high, data = mod_data)
+
+# Extract slopes (Coefficient for zvid)
+cat("Slope at Low Callousness:\n")
+print(coef(summary(model_low))["zvid", ])
+
+cat("\nSlope at Average Callousness:\n")
+print(coef(summary(mod_model))["zvid", ])
+
+cat("\nSlope at High Callousness:\n")
+print(coef(summary(model_high))["zvid", ])
+```
+
+### Visualizing the Interaction
+
+The best way to communicate moderation is a graph.
+
+```{r visualize-moderation}
+# Create a base plot
+ggplot(mod_data, aes(x = zvid, y = Aggression)) +
+  geom_point(color = "grey", alpha = 0.5) +
+  theme_minimal() +
+  labs(title = "Interaction of Video Games and Callousness on Aggression",
+       x = "Video Game Hours (Centered)", y = "Aggression Score") +
+  
+  # Add lines for each level
+  geom_abline(intercept = coef(model_low)[1], slope = coef(model_low)[2], 
+              color = "blue", linetype = "dashed", size = 1) +
+  geom_abline(intercept = coef(mod_model)[1], slope = coef(mod_model)[2], 
+              color = "black", size = 1) +
+  geom_abline(intercept = coef(model_high)[1], slope = coef(model_high)[2], 
+              color = "red", linetype = "dotted", size = 1) +
+  
+  # Add annotation
+  annotate("text", x = 10, y = 50, label = "High Callousness (Red)", color = "red") +
+  annotate("text", x = 10, y = 30, label = "Low Callousness (Blue)", color = "blue")
+```
+
+---
+
+## Summary
+
+In this tutorial, we moved beyond simple prediction to understanding mechanisms and contexts.
+
+1.  **Mediation (Mechanism):** Explains *why* a relationship exists.
+    *   *Key Tool:* Bootstrapping for the indirect effect.
+2.  **Moderation (Context):** Explains *when* a relationship is strong or weak.
+    *   *Key Tool:* Interaction terms and Simple Slopes.
+    *   *Crucial Step:* Centering variables to interpret the intercept and reduce multicollinearity.
+
+### References
+
+Field, A., Miles, J., & Field, Z. (2012). *Discovering Statistics Using R*. London: SAGE Publications.
