@@ -1,0 +1,728 @@
+---
+title: "Linear Regression"
+author: "Ziyuan Huang"
+date: "Last Updated: `r Sys.Date()`"
+output: 
+  slidy_presentation:
+    incremental: true 
+---
+
+## What is Regression?
+
+- A way of predicting the value of one variable from other variables.
+
+    - It is a hypothetical model of the relationship between two or more variables.
+    - The model used is a linear one in these notes, doesn't always have to be! 
+    - Therefore, we describe the relationship using the equation of a straight line.
+
+- **Field et al. (2012)** defines regression as: *fitting a model to data and using it to predict values of the dependent variable (DV) from one or more independent variables (IVs)*
+- We extend beyond the data we collected to answer predictive questions
+
+## Describing a Straight Line
+
+$$Y_i = b_0 + b_1X_i + \varepsilon_i$$
+
+**Key Components:**
+
+- $Y_i$ = outcome value for person i
+- $b_0$ = intercept (value of Y when X = 0); the point at which the regression line crosses the Y-axis
+- $b_1$ = regression coefficient (gradient/slope) of the regression line; the change in Y for each unit change in X
+- $X_i$ = predictor value for person i
+- $\varepsilon_i$ = residual (error term); the difference between predicted $\hat{Y_i}$ and observed $Y_i$
+
+**All regression coefficients ($b$) are sometimes called:**
+- Gradient (slope) of the regression line
+- Direction/Strength of Relationship
+- Unstandardized coefficients (original scale)
+
+## Intercepts and Gradients
+
+```{r, echo = FALSE, out.width="100%", fig.align='left'}
+knitr::include_graphics("pictures/5.png")
+```
+
+## Types of Regression
+
+- **Simple Linear Regression = SLR**
+
+    - One X variable (IV)
+
+- **Multiple Linear Regression = MLR**
+
+    - 2 or more X variables (IVs)
+    - MLR types include: 
+
+         - Simultaneous: Everything at once
+         - Hierarchical: IVs in steps
+         - Stepwise: Statistical regression 
+
+## Analyzing a Regression
+
+- Is my overall model *(i.e., the regression equation)* useful at predicting the outcome variable?
+
+    - Use the model summary, F-test, and $R^2$
+
+- How useful are each of the individual predictors for my model?
+
+    - Use the coefficients, t-test, and $pr^2$
+
+## Overall Model: Understand the NHST
+
+- Our overall model uses an *F*-test, which tests whether the regression model significantly improves prediction compared to the null model (using just the mean).
+- Hypotheses for the overall test:
+
+    - **H0**: We cannot predict the dependent variable (all regression coefficients = 0; model no better than mean)
+    - **H1**: We can predict the dependent variable (at least one regression coefficient ≠ 0; model better than mean)
+
+- The F-test is always two-tailed because the test statistic is based on squared terms: $$F = \frac{MSM}{MSR}$$ (systematic variance / unsystematic variance)
+- MSM = Mean Squares Model (improvement from regression line)
+- MSR = Mean Squares Residual (unexplained error) 
+
+## Overall Model: What Do We Mean by "Predict"?
+
+- The General Linear Model: $$\text{Outcome} = \text{(Model)} + \text{Error}$$
+
+- In regression, we predict each person's score $Y_i$ by:
+
+    1. **Base prediction** ($b_0$): Starting with the intercept (intercept = predicted Y when X = 0)
+    2. **Add predictor influence** ($b_1X_i$): Adding the contribution of each predictor variable
+    3. **Account for residual** ($\varepsilon_i$): Acknowledging the difference between predicted $\hat{Y_i}$ and observed $Y_i$ (irreducible error)
+
+- **H0 Model** (No Relationship): Prediction using only the mean, resulting in a flat line ($b_1 = 0$)
+- **H1 Model** (Relationship Exists): Prediction using the regression line, incorporating predictor slopes
+
+## Comparing H0 vs H1 Models
+
+- **H0 Model** (top left): You cannot predict $Y_i$ better than using the mean for each person
+    - Regression line is flat: $\hat{Y} = b_0$ (intercept only)
+    - Large residuals, poor fit
+
+- **H1 Model** (top right): You can predict $Y_i$ by including predictor variables
+    - Regression line has slope: $\hat{Y} = b_0 + b_1X_i$
+    - Smaller residuals, better fit
+    - By including predictors, you decrease the error between observed $Y_i$ and predicted $\hat{Y_i}$
+
+```{r, echo = FALSE, out.width="85%", fig.align='left'}
+knitr::include_graphics("pictures/7.png")
+```
+
+## Method of Least Squares
+
+- **Least Squares**: A mathematical technique that finds the regression line by minimizing the sum of squared differences between observed and predicted values
+    - Among all possible lines, we choose the one with **least squared error** (smallest SSR)
+    - This ensures the most accurate fit to the data
+
+- **Comparing Models**:
+    - We use error size (SSR) to determine if our H1 model (with predictors) is better than our H0 model (without)
+    - Equivalently, we can ask if our $R^2$ value (variance explained) is greater than zero
+    - **Less error = Higher fit = Higher $R^2$** 
+
+```{r, echo = FALSE, out.width="100%", fig.align='left'}
+knitr::include_graphics("pictures/6.png")
+```
+
+## Sums of Squares in Regression
+
+**Total Sum of Squares (SST):**
+- Sum of squared differences between observed values and the **mean** of Y
+- Represents total variability in the outcome with **no predictors** (H0 model)
+- Formula: $SST = \sum(Y_i - \bar{Y})^2$
+
+**Residual Sum of Squares (SSR):**
+- Sum of squared differences between observed values and **predicted values** from regression line
+- Represents variability **unexplained** by the model (error remaining)
+- Formula: $SSR = \sum(Y_i - \hat{Y_i})^2$
+
+**Model Sum of Squares (SSM):**
+- Sum of squared differences between predicted values and the **mean** of Y
+- Represents variability **explained** by the model (improvement from adding predictors)
+- Formula: $SSM = SST - SSR$ or $SSM = \sum(\hat{Y_i} - \bar{Y})^2$
+
+**Relationship**: $SST = SSM + SSR$ (total variation = explained + unexplained)
+
+## Individual Predictors: Understand the NHST
+
+- We test the individual predictors with a t-test:
+  
+    - $t = \frac{b}{SE}$
+    - Therefore, the model for each individual predictor is our coefficient b. 
+    - Single sample t-test to determine if the b value is different from zero
+
+## Individual Predictors: Understand the NHST
+
+- Therefore, we might use the following hypotheses:
+
+    - H0: X variable does not predict Y.
+    - H1: X variable does predict Y. 
+
+- Or, we could use a directional test, since the test statistic *t* can be negative:
+
+    - H0: X variable negatively or does not predict Y (b <= 0).
+    - H1: X variable positively predicts Y (b > 0).
+
+## Individual Predictors: Understand the NHST
+
+- Unlike correlation, these statistics are often reported with *t*(df). 
+- $df = N - k - 1$
+
+    - N = total sample size
+    - k = number of predictors
+    - Correlation is technically N - 1 - 1 = N - 2
+    - We can also find this value in our output by looking at the *F*-statistic.
+
+## Individual Predictors: Standardization 
+
+**Unstandardized Regression Coefficient ($b$):**
+- Regression coefficient in the **original scale** of the variables
+- **Interpretation**: For every one unit increase in X, Y increases by $b$ units
+- **Advantage**: More interpretable for your specific problem context
+- **Disadvantage**: Hard to compare across predictors with different scales
+- Formula: Predicted $Y = b_0 + b_1X$
+
+**Standardized Regression Coefficient ($\beta$ or "beta"):**
+- Regression coefficient after converting variables to standard deviation units
+- **Interpretation**: For every one **SD** increase in X, Y increases by $\beta$ **SDs**
+- **Advantage**: Comparable across predictors with different scales; indicates relative importance
+- **Disadvantage**: Less interpretable for real-world problem context
+
+**When to Use Each:**
+- Use $b$ for answering applied questions ("How many more sales per $1000 advertising?")
+- Use $\beta$ for comparing predictor importance across variables with different scales
+    
+## Data Screening
+
+- Now we want to look specifically at the residuals for Y, while screening the X variables.
+- We used a random variable before to check the continuous variable (the DV) to make sure they were randomly distributed.
+- Now we don't need the random variable because the residuals for Y should be randomly distributed (and evenly) with the X variable.
+
+## Data Screening
+
+- Accuracy
+- Missing
+- Outliers - (somewhat) new and exciting!
+- Additivity if you have more than one predictor
+- Linearity
+- Normality
+- Homogeneity 
+- Homoscedasticity 
+
+## Example: Mental Health
+
+- Mental Health and Drug Use:
+    
+    - CESD = depression measure
+    - PIL total = measure of meaning in life
+    - AUDIT total = measure of alcohol use 
+    - DAST total = measure of drug usage
+
+```{r}
+library(rio)
+master <- import("data/regression_data.sav")
+master <- master[ , c(8:11)]
+str(master)
+```
+
+## Example: Accuracy, Missing Data
+
+- All data is accurate with min and max values. 
+- We only have one missing data point, which we can exclude because with only four columns, we cannot estimate missing data. 
+
+```{r}
+summary(master)
+nomiss <- na.omit(master)
+nrow(master)
+nrow(nomiss)
+```
+
+## Example: Outliers 
+
+- In this section, we will add a few new outlier checks:
+
+    - Mahalanobis
+    - Leverage scores
+    - Cook's distance
+
+- Because we are using regression as our model, we may consider using multiple checks before excluding outliers. 
+
+## Example: Mahalanobis 
+
+- The `mahalanobis()` function we have used previously.
+- Since we are going to use multiple criteria, we are going to save if they are an outlier or not. 
+- The table tells us: 0 (not outliers) and 1 (considered an outlier) for just Mahalanobis values.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+mahal <- mahalanobis(nomiss, 
+                    colMeans(nomiss), 
+                    cov(nomiss))
+cutmahal <- qchisq(1-.001, ncol(nomiss))
+badmahal <- as.numeric(mahal > cutmahal) ##note the direction of the > 
+table(badmahal)
+```
+
+## Example: Other Outliers
+
+- To get the other outlier statistics, we have to use the regression model we wish to test. - We will use the `lm()` function with our regression formula.
+- `Y ~ X + X`: Y is approximated by X plus X.
+- So we will predict depression scores (CESD) with meaning, drugs, and alcohol.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+model1 <- lm(CESD_total ~ PIL_total + AUDIT_TOTAL_NEW + DAST_TOTAL_NEW, 
+             data = nomiss)
+```
+
+## Example: Leverage 
+
+- **Definition** - influence of that data point on the slope
+- Each score is the change in slope if you exclude that data point
+- How do we calculate how much change is bad?
+
+    - $\frac{2K+2}{N}$
+    - K is the number of predictors
+    - N is the sample size 
+
+## Example: Leverage 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+k <- 3 ##number of IVs
+leverage <- hatvalues(model1)
+cutleverage <- (2*k+2) / nrow(nomiss)
+badleverage <- as.numeric(leverage > cutleverage)
+table(badleverage)
+```
+
+## Example: Cook's Distance 
+
+- Influence **(Cook's Distance)** - a measure of how much of an effect that single case has on the whole model 
+- Often described as leverage + discrepancy 
+- How do we calculate how much change is bad?
+  
+    - $\frac{4}{N-K-1}$
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+cooks <- cooks.distance(model1)
+cutcooks <- 4 / (nrow(nomiss) - k - 1)
+badcooks <- as.numeric(cooks > cutcooks)
+table(badcooks)
+```
+
+## Example: Outliers Combined
+
+- What do I do with all these numbers? 
+- Create a total score for the number of indicators a data point has.
+- You can decide what rule to use, but a suggestion is 2 or more indicators is an outlier.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+##add them up!
+totalout <- badmahal + badleverage + badcooks
+table(totalout)
+
+noout <- subset(nomiss, totalout < 2)
+```
+
+## Example: Assumptions
+
+- Now that we got rid of outliers, we need to run that model again, without the outliers.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+model2 <- lm(CESD_total ~ PIL_total + AUDIT_TOTAL_NEW + DAST_TOTAL_NEW, 
+             data = noout)
+```
+
+## Example: Additivity
+
+- You want X and Y to be correlated
+- You do not want the Xs to be highly correlated, as it causes you to lose power
+    
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+summary(model2, correlation = TRUE)
+```
+
+## Example: Assumption Set Up
+
+- We use the same code as before, but without the fake regression.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+standardized <- rstudent(model2)
+fitted <- scale(model2$fitted.values)
+```
+
+## Example: Linearity
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+{qqnorm(standardized)
+abline(0,1)}
+```
+
+## Example: Normality
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+hist(standardized)
+```
+
+## Example: Homogeneity & Homoscedasticity
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+{plot(fitted, standardized)
+abline(0,0)
+abline(v = 0)}
+```
+
+## Example: Assumption Alternatives
+
+- If your assumptions go wrong:
+
+    - Linearity - try nonlinear regression or nonparametric regression
+    - Normality - more subjects, still fairly robust
+    - Homogeneity/Homoscedasticity - bootstrapping 
+
+## Example: Overall Model
+
+- Is the overall model significant? Yes!
+
+```{r}
+summary(model2)
+
+library(papaja)
+apa_style <- apa_print(model2)
+apa_style$full_result$modelfit
+```
+
+- `r apa_style$full_result$modelfit`
+
+## Example: Predictors
+
+```{r}
+summary(model2)
+```
+
+## Example: Predictors
+
+```{r}
+apa_style$full_result$PIL_total
+apa_style$full_result$AUDIT_TOTAL_NEW
+apa_style$full_result$DAST_TOTAL_NEW
+```
+
+- Meaning: `r apa_style$full_result$PIL_total`
+- Alcohol: `r apa_style$full_result$AUDIT_TOTAL_NEW`
+- Drugs: `r apa_style$full_result$DAST_TOTAL_NEW`
+
+## Example: Predictors
+
+- Two concerns:
+
+    - What if I wanted to use beta because these are very different scales?
+    - What about an effect size for each individual predictor?
+
+## Example: Beta
+
+- You can use the `QuantPsyc` package for $\beta$ values. 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(QuantPsyc)
+lm.beta(model2)
+```
+
+## Example: Effect Size 
+
+**Multiple Correlation (R):**
+- The correlation between observed Y and predicted Y values
+- Ranges from 0 to 1; indicates overall model strength
+- In simple regression: $R = |r_{XY}|$ (absolute correlation)
+
+**$R^2$ (Coefficient of Determination):**
+- Proportion of variance in Y **explained** by the model
+- Formula: $R^2 = \frac{SSM}{SST} = 1 - \frac{SSR}{SST}$
+- Interpretation: "The model explains $R^2 \times 100$ percent of the variance in Y"
+- All overlap in Y, used for overall model
+- $R^2 = \frac{A+B+C}{A+B+C+D}$ (explained / total)
+
+```{r, echo = FALSE, out.width="50%", fig.align='center'}
+knitr::include_graphics("pictures/19.png")
+```
+
+## Example: Effect Size - Semipartial Correlation
+
+**Semipartial Correlation Squared ($sr^2$):**
+- **Unique contribution** of this IV to $R^2$ (variance in Y explained only by this predictor, after accounting for other predictors)
+- The **increase** in $R^2$ when this X is added to the model
+- Formula: $sr^2 = \frac{A}{A+B+C+D}$ (unique variance / total variance)
+- **Interpretation**: "Adding this predictor increases $R^2$ by $sr^2 \times 100$ percentage points"
+- Used in hierarchical regression to show incremental value of each predictor
+
+```{r, echo = FALSE, out.width="50%", fig.align='center'}
+knitr::include_graphics("pictures/19.png")
+```
+
+## Example: Effect Size - Partial Correlation
+
+**Partial Correlation Squared ($pr^2$):**
+- Proportion of **remaining** variance in Y (after removing other predictors' influence) that is explained by this X
+- Formula: $pr^2 = \frac{A}{A+D}$ (unique variance / variance not explained by others)
+- **Interpretation**: "Among the variance in Y not explained by other predictors, this predictor explains $pr^2 \times 100$ percent"
+- **Always larger than $sr^2$** because denominator excludes shared variance: $pr^2 > sr^2$
+- Often reported alongside $sr^2$ for complete picture of predictor importance
+
+```{r, echo = FALSE, out.width="50%", fig.align='center'}
+knitr::include_graphics("pictures/19.png")
+```
+
+## Example: Partials
+
+- We would add these to our other reports:
+
+    - Meaning: `r apa_style$full_result$PIL_total`, $pr^2 = .30$
+    - Alcohol: `r apa_style$full_result$AUDIT_TOTAL_NEW`, $pr^2 < .01$
+    - Drugs: `r apa_style$full_result$DAST_TOTAL_NEW`, $pr^2 < .01$
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(ppcor)
+partials <- pcor(noout)
+partials$estimate^2
+```
+
+## Example: Hierarchical Regression 
+
+- Known predictors (based on past research) are entered into the regression model first.
+- New predictors are then entered in a separate step of the model.
+- You can see the unique predictive influence of a new variable on the outcome because known predictors are held constant in the model.
+- Should be based on previous research, ideas, or other *a priori* decisions. 
+- Statistical or stepwise regression also runs models as steps, but variables are included in the equation based on their mathematical properties. 
+
+## Hierarchical Regression: Understand the NHST
+
+**Method:**
+- Known predictors (based on past research) entered first
+- New predictors entered in separate steps
+- Tests significance of **each step addition** and individual predictors
+
+**Answers the Following Questions:**
+- Is my overall model significant? (F-test for final model)
+- Is the addition of each step significant? (Comparison of $R^2$ between models via $\Delta F$)
+- Are the individual predictors significant? (t-tests for each coefficient)
+
+**When to Use:**
+- Control for known/nuisance variables first before testing new predictors
+- See the **incremental value** of adding new variables to existing model
+- Discuss groups of variables together as a conceptual set
+- **Based on a priori theory** (NOT exploratory/stepwise selection)
+
+## Categorical Predictors
+
+- Dealing with categorical (nominal) predictors with more than two categories
+- **Note**: All types of regression can include categorical predictors, not only hierarchical regression
+
+**Dummy Coding (Contrast Coding):**
+- Converts categorical variable into multiple **binary indicators**
+- Each dummy variable compares one category against a reference category
+- **Advantage**: Allows interpretation as comparisons (e.g., "Treatment vs. Control")
+- Reference category gets value 0 on all dummies
+- Each non-reference category gets value 1 on its corresponding dummy
+- If k categories, create k-1 dummy variables
+- **Interpretation of $b$**: Difference in Y between this category and reference category
+
+**Other Coding Systems:**
+- Deviation (effect) coding, orthogonal coding, helmert coding: https://stats.idre.ucla.edu/spss/faq/coding-systems-for-categorical-variables-in-regression-analysis/
+
+## Dummy Coding in R
+
+**R handles dummy coding automatically:**
+- When you use `factor()` to convert a variable to a categorical type
+- R creates k-1 dummy variables and uses first level as reference category
+- Each dummy variable shows 1 if observation is in that category, 0 otherwise
+- Example coding table:
+
+```{r, echo = FALSE, out.width="75%", fig.align='left'}
+knitr::include_graphics("pictures/21.png")
+```
+
+**Change Reference Category in R:**
+```r
+data$variable <- factor(data$variable, 
+                       levels = c("ref_category", "cat2", "cat3"))
+```
+
+## Example: Hierarchical Regression + Dummy Coding
+
+**Research Question**: Do different depression treatments reduce depression ratings after controlling for family history?
+
+**Variables:**
+- **IVs**: 
+    - Family history of depression (continuous predictor)
+    - Treatment for depression (categorical: No Treatment, Placebo, Paxil, Effexor, Cheerup)
+- **DV**: Depression rating after treatment (continuous outcome)
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+hdata <- import("data/dummy_code.sav")
+str(hdata)
+```
+
+## Example: Hierarchical Regression + Dummy Coding
+
+- Be sure to factor our categorical variable, or we will be treating categories as a continuous 1, 2, 3!
+
+```{r}
+attributes(hdata$treat)
+hdata$treat <- factor(hdata$treat,
+                     levels = 0:4,
+                     labels = c("No Treatment", "Placebo", "Paxil",
+                                "Effexor", "Cheerup"))
+```
+    
+## Example: Hierarchical Regression + Dummy Coding
+
+## Example: Hierarchical Regression + Dummy Coding
+
+**Data Screening**: Should be done on the **LAST** model (skipped here for brevity)
+
+**Model 1: Base Model with Control Variable**
+- Enter family history alone to establish baseline
+- Tests if family history alone predicts depression rating
+    
+    - **Overall fit**: $F(1,48) = 8.50, p = .005, R^2 = .15$
+    - **Interpretation**: Family history accounts for 15% of variance in post-treatment depression
+    - **Family history predictor**: $b = 0.15, t(48) = 2.92, p = .005, pr^2 = .15$
+    - **Interpretation**: For each unit increase in family history, depression rating increases 0.15 units
+    
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+model1 <- lm(after ~ familyhistory, data = hdata)
+summary(model1)
+```
+
+## Example: Hierarchical Regression + Dummy Coding
+
+## Example: Hierarchical Regression + Dummy Coding
+
+**Model 2: Full Model with Treatment Added**
+- Add treatment category to Model 1 (keep family history to maintain control)
+- Tests if treatment **incrementally** predicts depression rating after controlling for family history
+- The overall model is significant, but **focus on the change between models** (not just overall significance)
+    - Why? If Model 1 was already significant, the overall significance might just reflect Model 1's contribution
+    - We need $\Delta R^2$ and $\Delta F$ to show treatment adds predictive value beyond family history
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+model2 <- lm(after ~ familyhistory + treat, data = hdata)
+summary(model2)
+```
+
+## Example: Hierarchical Regression + Dummy Coding
+
+## Example: Hierarchical Regression + Dummy Coding
+
+**Model Comparison via ANOVA:**
+- Use `anova(model1, model2)` to test: Does treatment add significant predictive value?
+- **Key statistics**:
+    - $\Delta R^2$: Increase in R² from Model 1 to Model 2 (variance explained by treatment after family history)
+    - $\Delta F$: F-test comparing models' fit improvements
+- **Interpretation**: The addition of the treatment set was significant: $\Delta F(4, 44) = 4.99, p = .002, \Delta R^2 = .27$
+    - Treatment explains an additional 27% of depression rating variance
+    - This improvement is statistically significant (p = .002)
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+anova(model1, model2)
+```
+
+## Example: Hierarchical Regression + Dummy Coding
+
+## Example: Hierarchical Regression + Dummy Coding
+
+**Interpreting Dummy-Coded Coefficients:**
+- Each dummy coefficient ($b$) = **difference between that category and reference category**
+- **Reference category** (usually first level): automatically set to 0, acts as baseline
+- **Positive $b$**: That category has higher outcome than reference
+- **Negative $b$**: That category has lower outcome than reference
+- $b$ = difference in means, **controlling for (holding constant) other predictors**
+
+**Visualizing Results with `emmeans`:**
+- Raw $b$ values can be hard to interpret
+- Estimated Marginal Means (EMMs): Predicted mean Y for each group, given other predictors' values
+- **Advantage**: Shows group means on original scale (not as comparisons) 
+    
+## Example: Hierarchical Regression + Dummy Coding
+
+```{r, echo = TRUE, out.width="75%", fig.align='left'}
+summary(model2)
+
+library(emmeans)
+emmeans(model2, "treat")
+```
+
+## Example: Hierarchical Regression + Dummy Coding
+
+- We cannot really use the `pcor` code on our categorical variables. What can we do to calculate? 
+- Formula: $\frac{t^2}{t^2 + df_t}$
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+model_summary <- summary(model2)
+t_values <- model_summary$coefficients[ , 3] 
+df_t <- model_summary$df[2]
+
+t_values^2 / (t_values^2+df_t)
+```
+    
+## Hierarchical Regression: Power Analysis
+
+- Use the `pwr` library to calculate required **sample size** for desired power and effect size
+- **Key concept**: Convert $R^2$ to Cohen's $f^2$ (effect size for regression, different from ANOVA F) 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(pwr)
+R2 <- model_summary$r.squared
+f2 <- R2 / (1-R2)
+
+R2
+f2
+```
+
+## Hierarchical Regression: Power
+
+## Hierarchical Regression: Power
+
+**Function Arguments:**
+- `u` = degrees of freedom for the model (numerator df, first value in F-statistic)
+- `v` = degrees of freedom for error (denominator df); leave blank (NULL) when solving for sample size
+- `f2` = Cohen's $f^2$ (converted effect size)
+- `sig.level` = alpha level (typically .05)
+- `power` = desired statistical power (typically .80)
+
+**Final Sample Size Calculation:**
+- Output provides `v` (error df) needed
+- **Actual N = $v + k + 1$** where k = number of predictors
+
+```{r}
+#f2 is cohen f squared 
+pwr.f2.test(u = model_summary$df[1], 
+            v = NULL, f2 = f2, 
+            sig.level = .05, power = .80)
+```
+
+## Summary
+
+In this lecture, we've covered:
+
+**Foundations:**
+- Regression equation and interpretation of coefficients ($b_0$, $b_1$, $\varepsilon$)
+- Method of least squares for finding best-fit line
+- Sums of squares (SST, SSR, SSM) and their meaning
+
+**Model Evaluation:**
+- F-test for overall model significance
+- $R^2$ and $R$ as effect sizes for model fit
+- Comparison of H0 (mean-only) vs. H1 (regression) models
+
+**Individual Predictors:**
+- t-tests and hypothesis testing for coefficients
+- Unstandardized ($b$) vs. standardized ($\beta$) coefficients
+- Partial and semipartial correlations for relative importance
+
+**Advanced Topics:**
+- Regression assumptions and data screening
+- Outlier detection (Mahalanobis, leverage, Cook's D)
+- Hierarchical regression with model comparison
+- Categorical predictors and dummy coding
+- Power analysis for sample size planning
+
+**Field et al. (2012) reference:** Chapter 7, *Discovering Statistics Using R*
+    
+
