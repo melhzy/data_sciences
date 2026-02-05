@@ -1,0 +1,8 @@
+name: data_sciences
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+    - ipython  # Optional: for interactive testing

@@ -1,0 +1,6 @@
+# Python dependencies for textbook indexing script
+# Note: index_knowledge.py uses only Python standard library (re, json)
+# No external packages required for core functionality
+
+# Optional development tools
+ipython>=8.0.0  # Interactive shell for testing

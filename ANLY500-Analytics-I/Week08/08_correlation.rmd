@@ -1,0 +1,774 @@
+---
+title: "Correlation"
+author: "Ziyuan Huang"
+date: "Last Updated: `r Sys.Date()`"
+output: 
+  slidy_presentation:
+    incremental: true 
+---
+
+```{r machine-info, echo=FALSE, results='asis'}
+cat("**Machine:**", paste0(Sys.info()['nodename'], " - ", Sys.info()['sysname'], " ", Sys.info()['release']), "\n\n")
+```
+
+## What is a Correlation?
+
+- **Definition:** It is a way of measuring the extent to which two variables are related.
+- Correlation indicates the direction and strength of the relationship across variables. 
+
+    - Direction: none, positive, negative
+    - Strength: none (0) to perfect (1 or -1)
+
+## Visualizing Correlation
+
+- No relationship
+
+```{r, echo = FALSE, out.width="75%", fig.align='center'}
+knitr::include_graphics("pictures/1.png")
+```
+
+## Visualizing Correlation
+
+- Positive relationship
+
+```{r, echo = FALSE, out.width="75%", fig.align='center'}
+knitr::include_graphics("pictures/2.png")
+```
+
+## Visualizing Correlation
+
+- Negative relationship
+
+```{r, echo = FALSE, out.width="75%", fig.align='center'}
+knitr::include_graphics("pictures/3.png")
+```
+
+## Using Scatterplots 
+
+- **Plotting reminder:**
+
+- ggplot(data, aes(X, Y, color/fill = categorical)
+
+    - ,+ cleanup coding
+    - ,+ geom_point() to get the dots
+    - ,+ geom_smooth() to get a line
+    - ,+ xlab/ylab
+
+- We can additionally control the length of the X and Y axes with `coord_cartesian()`.
+
+    - coord_cartesian(xlim = NULL, ylim = NULL)
+    - coord_cartesian(xlim = c(0,100), ylim = c(0,101))
+
+## Using Scatterplots
+
+```{r message=FALSE, warning=FALSE}
+# Load required libraries
+library(rio)        # Data import
+library(ggplot2)    # Visualization
+library(corrplot)   # Correlation matrix visualization
+library(GGally)     # ggpairs for scatterplot matrices
+library(Hmisc)      # rcorr() function
+library(ppcor)      # Partial correlations
+
+# Define cleanup theme for professional graphs
+cleanup <- theme(panel.grid.major = element_blank(), 
+                panel.grid.minor = element_blank(), 
+                panel.background = element_blank(), 
+                axis.line.x = element_line(color = "black"),
+                axis.line.y = element_line(color = "black"),
+                legend.key = element_rect(fill = "white"),
+                text = element_text(size = 15))
+
+# Import datasets
+exam <- import("data/exam_data.csv")
+liar <- import("data/liar_data.csv")
+```
+
+## Using Scatterplots
+
+```{r echo=TRUE, fig.height=4, fig.width=8, message=FALSE, warning=FALSE}
+#from chapter 5 notes
+scatter <- ggplot(exam, aes(Anxiety, Exam))
+scatter +
+  geom_point() +
+  xlab("Anxiety Score") +
+  ylab("Exam Score") +
+  cleanup
+```
+
+## Using Scatterplots
+
+```{r echo=TRUE, fig.height=4, fig.width=8, message=FALSE, warning=FALSE}
+#from chapter 5 notes + coord_cartesian
+scatter <- ggplot(exam, aes(Anxiety, Exam))
+scatter +
+  geom_point() +
+  xlab("Anxiety Score") +
+  ylab("Exam Score") +
+  cleanup + 
+  coord_cartesian(xlim = c(50,100), ylim = c(0,100))
+  #just example numbers, you would want to use the real scale of the data
+```
+
+## Modeling Relationships
+
+- Remember, our all-in-one statistical equation:
+  
+    - $Outcome_i = Model + Error_i$
+
+- We have previously defined our model as the Mean and the Standard Deviation or Standard Error.
+- We used the SE to determine if our model "fit" well. 
+
+## Modeling Relationships
+
+- Now, we can use:
+
+  - $Outcome_i = \beta X_i + Error_i$
+
+- Correlation is a type of simple standardized regression, which is what this equation represents.
+- When you have one X and one Y variable, *r* and $\beta$ are equal. 
+- Now we are using *r* or $\beta$ to determine the strength of the model.
+- Traditionally you don't see the error values reported (sometimes you see CI).
+    
+## Measuring Relationships
+
+- How do we measure the direction and strength of the relationship of variables? 
+- We need to see whether as one variable increases, the other increases, decreases or stays the same.
+- This relationship can be found by calculating the covariance.
+
+    - We look at how much each score deviates from the mean.
+    - If both variables deviate from the mean by the same amount, they are likely to be related.
+
+## Revision of Variance
+
+- The **variance** tells us by how much scores deviate from the mean for a single variable.
+- We also described the variance as the sum of squares divided by degrees of freedom.
+
+$$SD^2 = \frac {\sum(X_i-\bar{X})^2}{N-1}$$
+
+- Or we could write it like this:
+
+$$SD^2 = \frac {\sum(X_i-\bar{X})(X_i-\bar{X})}{N-1}$$
+
+## Revision of Variance
+
+- **Covariance** is similar - it tells is by how much scores on two variables differ from their respective means.
+
+$$Cov(x,y) = \frac {\sum(X_i-\bar{X})(Y_i-\bar{Y})}{N-1} $$
+
+## Revision of Variance: Calculating Variance 
+
+```{r}
+var(exam$Revise)
+var(exam$Exam)
+```
+
+## Revision of Variance: Calculating Covariance
+
+```{r}
+cov(exam$Revise, exam$Exam)
+plot(exam$Revise, exam$Exam)
+```
+
+## Problems with Covariance
+
+- It depends upon the units of measurement.
+- One solution: standardize it!
+
+    - Divide by the standard deviations of both variables.
+
+- The standardized version of covariance is known as the correlation coefficient.
+
+    - It is relatively unaffected by units of measurement.
+
+## The Correlation Coefficient
+
+$$r = \frac{Cov(x,y)}{S_xS_y}$$
+
+$$r = \frac{\sum(X_i-\bar{X})(Y_i-\bar{Y})}{(N-1)S_xS_y} $$
+
+- We can just look at *r* to determine the strength of relationship.
+- We can also calculate the confidence interval or standard error for *r*. It has traditionally not been quite as popular because of the annoyance of calculating it. *R* makes this easy!
+- We can use this confidence interval to assess model fit. 
+
+## The Correlation Coefficient
+
+- It varies between -1 and +1
+
+    - 0 = no relationship
+
+- It is an effect size
+
+    - .1 = small effect
+    - .3 = medium effect
+    - .5 = large effect
+    - Remember, that these are guidelines.
+
+## The Correlation Coefficient
+    
+- Coefficient of determination, $r^2$
+
+    - By squaring the value of *r* you get the proportion of variance in one variable shared by the other.
+
+## R versus r
+
+- $R$ = correlation coefficient for 3+ variables (you will see this in the regression chapter).
+- $r$ = correlation coefficient for 2 variables.
+- $r^2$ = coefficient of determination for 2 variables.
+- $R^2$ = coefficient of determination for 3+ variables.
+- In reality, we often use $R^2$ for anything effect size related, even if it's only 2.
+
+## Correlation: Example
+
+- The correlation between exam revisions and exam scores is **positive** and **medium**. 
+- Correlation coefficient (r) = 0.397
+
+```{r}
+cor(exam$Revise, exam$Exam, use = "complete.obs")
+```
+
+## Visualizing Correlations: Modern Approaches
+
+- **Why visualize?** Anscombe's Quartet shows identical correlations (r=0.82) but totally different relationships!
+- Modern R offers several powerful visualization tools for correlations
+
+```{r echo=TRUE, fig.height=5, fig.width=7, message=FALSE, warning=FALSE}
+# Quick scatterplot matrix with ggpairs()
+ggpairs(exam[, c("Exam", "Anxiety", "Revise")],
+        title = "Scatterplot Matrix of Exam Data",
+        lower = list(continuous = "smooth"),
+        diag = list(continuous = "barDiag"))
+```
+
+## Correlation: Example
+
+- Correlation is an effect size and can be used for statistical testing. What should I check for data screening? 
+
+    - Accuracy
+    - Missing (pairwise exclusion may be useful)
+    - Outliers
+    - Normality
+    - Linearity
+    - Homogeneity
+    - Homoscedasticity
+
+## Assumptions for Correlation
+
+- Before running correlation analysis, check these assumptions:
+
+    - **Accuracy**: No data entry errors
+    - **Missing data**: Handle appropriately (pairwise or listwise deletion)
+    - **Outliers**: Can dramatically affect correlation coefficients
+    - **Normality**: Required for Pearson's correlation (use Spearman/Kendall if violated)
+    - **Linearity**: Relationship should be linear, not curved
+    - **Homoscedasticity**: Variance should be consistent across range
+    
+- **Reference**: Field, Miles, & Field (2012), Chapter 6
+
+## Correlation: Understanding the NHST
+
+- Remember that we discussed NHST as a framework for understanding the results of a statistical test. 
+- For correlation, we might consider using:
+
+    - H0: The correlation between exam performance and exam revisions is zero (ρ = 0). 
+    - H1: The correlation between exam performance and exam revisions is not zero (ρ ≠ 0). 
+
+## Correlation: Understanding the NHST
+
+- We can use many different forms of this type of set up:
+
+    - H0: The correlation between exam performance and exam revisions is less than .1 
+    - H1: The correlation between exam performance and exam revisions is greater than .1
+    
+## Correlation: Understanding the NHST
+    
+- The main "rule" is that the two hypotheses are opposites and cover the entire range of possibilities. For example, here's an incompatible set up:
+
+    - H0: The correlation between exam performance and exam revisions is zero.  
+    - H1: The correlation between exam performance and exam revisions is greater than .1
+    - What do you do if the relationship is negative? 
+  
+## Correlation: How to Calculate
+
+- We've already used `cor()` during data screening. 
+- But what about *p* values for our statistical test? What does a *p* value tell us again?
+- Also, what about confidence intervals and other types of correlation? 
+
+## Correlation: Three Main Functions in R
+
+- **Field et al. (2012, pp. 269-272) describe three key functions:**
+
+| Function | Methods | Multiple Vars | p-values | CI | Best Use |
+|----------|---------|---------------|----------|----|-----------|
+| `cor()` | All 3 | ✓ | ✗ | ✗ | Quick exploration |
+| `rcorr()` | P, S | ✓ | ✓ | ✗ | Matrix with p-values |
+| `cor.test()` | All 3 | ✗ | ✓ | ✓ | Single pair, full stats |
+
+- **Methods**: P = Pearson, S = Spearman, K = Kendall
+
+## Correlation: How to Calculate
+
+- **cor() function will calculate:** 
+    
+    - Pearson, Spearman, Kendall
+    - Multiple correlations at once
+    - No p-values 
+    - No confidence intervals
+    - **Use case**: Quick correlation matrix for data screening 
+    
+## Correlation Matrix: Numeric Methods
+
+- Note: here we have gender as a numeric value, we will come back to that issue in a little bit. 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Pearson correlation matrix
+cor(exam[ , -1], 
+    use = "pairwise.complete.obs",  # Handle missing data
+    method = "pearson")
+
+# Kendall's tau (better for small samples, tied ranks)
+cor(exam[ , -1], 
+    use = "pairwise.complete.obs", 
+    method = "kendall")
+```
+
+## Visualizing Correlation Matrix
+
+- **Modern approach using corrplot** (Field et al., 2012, pp. 270-271)
+
+```{r echo=TRUE, fig.height=6, fig.width=6, message=FALSE, warning=FALSE}
+# Create correlation matrix
+cor_matrix <- cor(exam[ , -1], use = "pairwise.complete.obs")
+
+# Visualize with corrplot
+corrplot(cor_matrix, 
+         method = "color",        # Color-coded cells
+         type = "upper",          # Show upper triangle only
+         addCoef.col = "black",   # Add correlation coefficients
+         tl.col = "black",        # Text label color
+         tl.srt = 45,             # Text label rotation
+         diag = FALSE)            # Hide diagonal
+```
+
+## Correlation: rcorr() with p-values
+
+- **rcorr() function will calculate:**
+
+    - Pearson, Spearman (not Kendall)
+    - Multiple correlations at once
+    - Includes p values
+    - No confidence intervals
+    - **Note**: Must convert data to matrix with `as.matrix()`
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# rcorr() requires matrix input
+rcorr(as.matrix(exam[ , -1]), type = "pearson")
+```
+
+- **Output**: Three matrices - correlations (r), sample sizes (n), and p-values (P)
+- **Field et al. (2012, p. 272)**: rcorr() rounds to 2 decimal places
+
+## Correlation: cor.test() with Full Statistics
+
+- **cor.test() function will calculate:**
+
+    - Pearson, Spearman, Kendall
+    - One correlation at a time
+    - Includes p values
+    - **Includes confidence interval** (only function that does!)
+    - Test statistic (t, S, or z depending on method)
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Full statistical test for single correlation
+cor.test(exam$Revise,
+         exam$Exam,
+         method = "pearson",
+         alternative = "two.sided",  # or "greater", "less"
+         conf.level = 0.95)          # 95% CI
+```
+
+## Interpreting cor.test() Output
+
+```{r echo=FALSE}
+cor.test(exam$Revise, exam$Exam, method = "pearson")
+```
+
+- **t-value**: Test statistic (tests H0: ρ = 0)
+- **df**: Degrees of freedom = n - 2
+- **p-value**: Probability of obtaining this r if H0 is true
+- **95% CI**: We're 95% confident true ρ is in this interval
+- **cor**: Sample correlation coefficient (r = 0.397)
+
+## Correlation Interpretation
+
+- **The third-variable problem:**
+
+    - In any correlation, causality between two variables cannot be assumed because there may be other measured or unmeasured variables that potentially affect the results.
+
+- **Direction of causality:**
+
+    - Correlation coefficients say nothing about which variable causes the other to change.
+
+## Nonparametric Correlation
+
+- **When to use**: Violations of normality or presence of outliers
+- **Field et al. (2012, pp. 277-279)** describe two non-parametric alternatives:
+
+- **Spearman's Rho (rs)**: 
+    - Pearson's correlation applied to ranked data
+    - Converts scores to ranks, then calculates correlation
+    - Good for monotonic (consistently increasing/decreasing) relationships
+    - Use when: Ordinal data or non-normal continuous data
+
+- **Kendall's Tau (τ)**: 
+    - Based on concordant vs. discordant pairs
+    - Better for small samples (n < 30)
+    - Better handling of tied ranks
+    - More robust to outliers
+    - **Preferred by Field et al. for non-parametric data** 
+
+## Correlation: Example - Liar Dataset
+
+- Dataset from Field et al. (2012) - World's Best Liar Competition:
+
+    - **Sample**: 68 contestants
+    - **Variables**:
+        - `Position`: Competition placement (1st, 2nd, 3rd, etc.) - **Ordinal**
+        - `Creativity`: Questionnaire score (0-60) - Continuous
+        - `Novice`: First time vs. returning competitor - Binary
+
+```{r}
+str(liar)
+summary(liar)
+```
+
+## Why Non-Parametric for Liar Data?
+
+- **Position is ordinal**: Rankings (1st, 2nd, 3rd) are ordered but intervals aren't equal
+- Distance between 1st and 2nd ≠ distance between 50th and 51st
+- **Pearson assumes interval/ratio data** with equal intervals
+- **Solution**: Use Spearman's rs or Kendall's τ which work with ranks
+
+## Correlation: Comparing Methods on Liar Data
+
+- **Spearman's Rho**
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+with(liar, cor.test(Creativity, Position, method = "spearman"))
+```
+
+- **Kendall's Tau** (preferred for this data)
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+with(liar, cor.test(Creativity, Position, method = "kendall"))
+```
+
+## Interpreting Non-Parametric Results
+
+- **Both methods show negative relationship**: More creative → better placement (lower number)
+- **Spearman rs = -0.373**: Moderate negative correlation
+- **Kendall τ = -0.300**: Similar strength, slightly more conservative
+- **Both significant** (p < 0.01): Relationship unlikely due to chance
+- **Field et al. (2012, p. 279)**: Report Kendall's tau for ordinal data with tied ranks
+
+## Visualizing the Liar Data Relationship
+
+```{r echo=TRUE, fig.height=4, fig.width=7, message=FALSE, warning=FALSE}
+scatter <- ggplot(liar, aes(Creativity, Position))
+scatter +
+  geom_point(size = 3, alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  xlab("Creativity Score (0-60)") +
+  ylab("Competition Position (1 = Winner)") +
+  ggtitle("Negative Correlation: Higher Creativity → Better Placement") +
+  cleanup +
+  scale_y_reverse()  # Reverse Y so winners at top
+```
+
+## Correlation: Example
+
+- All values must be numeric to be able to do any of these correlations.
+- Therefore, if you have any variables that import with labels, you will have defactor them using `as.numeric()`.
+- What type of correlation should we use with **binary** predictors? 
+
+    - When using correlation on binary outcomes, you are essentially creating a standardized difference between the group means.
+    - *t*-tests will give you equivalent answers and may be more interpretable. 
+
+## Correlation: Biserial and Point-Biserial
+
+- **Field et al. (2012, pp. 280-282)** discuss correlations with binary variables:
+
+- **Point-Biserial Correlation (rpb)**:
+    - Used when one variable is **truly dichotomous** (natural binary)
+    - Examples: Biological sex, alive/dead, yes/no responses
+    - No underlying continuum
+    
+- **Biserial Correlation (rb)**:
+    - Used when binary variable is **artificially dichotomized**
+    - Examples: Pass/fail from continuous test score, high/low from median split
+    - Assumes underlying continuous distribution
+    - **Higher values** than point-biserial (accounts for artificial split)
+
+## Point-Biserial Example
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Convert character variable to numeric (1, 2)
+liar$Novice2 <- as.numeric(as.factor(liar$Novice))
+str(liar$Novice2) 
+
+# Correlation between creativity and novice status
+with(liar, cor.test(Creativity, Novice2))
+```
+
+## Visualizing Point-Biserial Correlation
+
+```{r echo=TRUE, fig.height=4, fig.width=7, message=FALSE, warning=FALSE}
+# Better visualization with boxplot
+ggplot(liar, aes(x = Novice, y = Creativity, fill = Novice)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(width = 0.1, alpha = 0.3) +
+  xlab("Competitor Experience") +
+  ylab("Creativity Score") +
+  ggtitle("Point-Biserial: Creativity by Experience Level") +
+  cleanup +
+  scale_fill_manual(values = c("grey70", "grey30")) +
+  theme(legend.position = "none")
+```
+
+## Important Note on Binary Correlations
+
+- **Point-biserial correlation produces same result as independent t-test**
+- Mathematically equivalent: $r_{pb} = \frac{t}{\sqrt{t^2 + df}}$
+- **Field et al. (2012, p. 281)**: t-test may be more interpretable for binary predictors
+- Use correlation when: Part of larger correlation matrix
+- Use t-test when: Comparing two groups is primary research question
+
+## Comparing Correlations
+
+- **Research question**: Are two correlation coefficients significantly different?
+- **Field et al. (2012, pp. 285-288)** describe different scenarios
+- **Modern solution**: Use **cocor** package (Diedenhofen & Musch, 2015)
+
+## Types of Correlation Comparisons
+
+- **First,** you must determine the comparison type:
+
+1. **Independent correlations**: 
+    - Correlations from **separate groups** (e.g., men vs. women)
+    - Same variables in both groups
+    - Example: Is r(anxiety, performance) different between control vs. treatment?
+    
+2. **Dependent correlations - Overlapping**: 
+    - Same people, different variables sharing one variable
+    - Example: Compare r(X,Y) vs. r(X,Z) in same sample
+    
+3. **Dependent correlations - Non-overlapping**:
+    - Same people, completely different variable pairs
+    - Example: Compare r(W,X) vs. r(Y,Z) in same sample
+
+## Independent Correlations
+
+- There's no split/subset function within cocor.
+- Therefore, you have to split up the dataset on your independent variable, and then put it back together in `list` format.
+- Subset the data, then create a list.
+
+    - cocor(~ X + Y | X + Y, data = data)
+    - Fill in X and Y with your variables you want to correlate (on these they are likely to be the same).
+    - Data = new list we just created. 
+    
+## Independent Correlations
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(cocor)
+new <- subset(liar, Novice == "First Time")
+old <- subset(liar, Novice == "Had entered Competition Before")
+ind_data <- list(new, old)
+cocor(~Creativity + Position | Creativity + Position,
+      data = ind_data)
+```
+
+## Dependent Correlations
+
+- `cocor(~ X + Y | Y + Z, data = data)` - Overlapping correlation
+- Fill in X, Y, Z with your variables you want to correlate
+- You can also have `X + Y | Q + Z` - Non-overlapping correlation
+- Data is the dataframe with all of the columns
+
+## Dependent Correlations
+
+```{r}
+cocor(~Revise + Exam | Revise + Anxiety, 
+      data = exam)
+```
+
+## Partial and Semi-Partial Correlations
+
+- **Field et al. (2012, pp. 289-293)** describe controlling for third variables
+- **The third-variable problem**: Observed correlation may be due to confounding variable
+
+## Understanding Partial Correlation
+
+- **Partial correlation (pr)**:
+    - Relationship between X and Y, **controlling Z from both X and Y**
+    - Removes Z's effect from both variables
+    - Formula: Correlation between residuals of (X predicting Z) and (Y predicting Z)
+    - **Question answered**: "What's the correlation between X and Y after removing Z's influence on both?"
+    
+- **Example**: 
+    - Raw correlation: Exam performance (Y) and Revision time (X)
+    - Control for: Anxiety (Z) affects both revision and performance
+    - Partial correlation: Exam-Revision relationship **independent of anxiety**
+
+## Understanding Semi-Partial Correlation
+
+- **Semi-partial correlation (sr)** (also called "part correlation"):
+    - Relationship between X and Y, **controlling Z from X only**
+    - Removes Z's effect from predictor, not outcome
+    - Formula: Correlation between residuals of (X predicting Z) and raw Y
+    - **Question answered**: "What's the unique contribution of X to Y, after removing Z from X?"
+    
+- **Use in regression**: 
+    - $sr^2$ = unique variance in Y explained by X
+    - Sum of all $sr^2$ values = $R^2$ in multiple regression
+    - **Field et al. (2012, p. 292)**: Key for understanding unique predictor contributions
+
+## Partial and Semi-Partial Correlations
+
+```{r, echo = FALSE, out.width="75%", fig.align='center'}
+knitr::include_graphics("pictures/9.png")
+```
+
+## Partial Correlations in R
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Using ppcor package
+pcor(exam[ , -c(1)], method = "pearson")
+```
+
+- **Output**: Matrix shows partial correlations controlling for all other variables
+- **Example**: Exam-Revision partial r = 0.335 (was 0.397 raw)
+- **Interpretation**: After removing anxiety's effect, correlation slightly weaker
+
+## Semi-Partial Correlations in R
+
+- **Key difference**: Top and bottom triangles are **not equal** (asymmetric)
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+spcor(exam[ , -c(1)], method = "pearson")
+```
+
+- **Why asymmetric?** Depends on which variable has Z removed
+- **Reading**: Row variable has control removed, column variable is raw
+- **Example**: Row=Exam, Col=Revise ≠ Row=Revise, Col=Exam
+
+## Visualizing the Difference
+
+```{r echo=FALSE, out.width="75%", fig.align='center'}
+knitr::include_graphics("pictures/9.png")
+```
+
+- **Left**: Partial correlation - Z removed from both X and Y
+- **Center**: Semi-partial - Z removed from X only
+- **Right**: Semi-partial - Z removed from Y only
+
+## Reporting Correlations (APA Style)
+
+- **Field et al. (2012, p. 295)** provides reporting guidelines:
+
+- **Pearson's**: "There was a significant positive correlation between revision time and exam performance, r = .40, p < .001, 95% CI [.18, .58]."
+
+- **Spearman's**: "Creativity and competition position were significantly negatively correlated, rs = -.37, p = .002."
+
+- **Key elements to report**:
+    1. Direction (positive/negative)
+    2. Strength (use Cohen's guidelines)
+    3. Correlation coefficient with subscript (r, rs, τ)
+    4. p-value
+    5. Confidence interval (if using cor.test())
+    6. Sample size (n) if not clear from context
+
+## Effect Sizes for Correlation
+
+- **Correlation IS an effect size** (Field et al., 2012, p. 273)
+- **Cohen's (1988) guidelines for r**:
+
+| Effect Size | |r| Range | Interpretation |
+|-------------|----------|----------------|
+| Small | 0.10 - 0.29 | Variables weakly related |
+| Medium | 0.30 - 0.49 | Moderate relationship |
+| Large | 0.50 - 1.00 | Strong relationship |
+
+- **Coefficient of determination**: $r^2$ = proportion of variance shared
+- Example: r = .40 means $r^2$ = .16 (16% shared variance)
+- **Warning**: These are guidelines, not rigid cutoffs! Context matters.
+
+## Correlation Assumptions Summary
+
+```{r echo=FALSE, fig.height=5, fig.width=8, message=FALSE, warning=FALSE}
+# Create example datasets showing assumption violations
+par(mfrow = c(2, 3), mar = c(4, 4, 3, 1))
+
+# 1. Good - Linear relationship
+set.seed(123)
+x <- rnorm(100)
+y <- 0.7*x + rnorm(100, 0, 0.5)
+plot(x, y, main = "✓ Linear Relationship", pch = 19, col = "darkgreen")
+abline(lm(y ~ x), col = "blue", lwd = 2)
+text(min(x), max(y), paste("r =", round(cor(x,y), 2)), pos = 4, col = "darkgreen")
+
+# 2. Bad - Curvilinear relationship
+x2 <- seq(-3, 3, length.out = 100)
+y2 <- x2^2 + rnorm(100, 0, 1)
+plot(x2, y2, main = "✗ Curvilinear (Non-linear)", pch = 19, col = "red")
+lines(lowess(x2, y2), col = "blue", lwd = 2)
+text(min(x2), max(y2), paste("r =", round(cor(x2,y2), 2), "(misleading)"), pos = 4, col = "red")
+
+# 3. Good - Homoscedastic
+x3 <- rnorm(100)
+y3 <- 0.6*x3 + rnorm(100, 0, 0.5)
+plot(x3, y3, main = "✓ Homoscedastic", pch = 19, col = "darkgreen")
+abline(lm(y3 ~ x3), col = "blue", lwd = 2)
+
+# 4. Bad - Heteroscedastic
+x4 <- rnorm(100)
+y4 <- 0.6*x4 + rnorm(100, 0, abs(x4)*0.5)
+plot(x4, y4, main = "✗ Heteroscedastic", pch = 19, col = "red")
+abline(lm(y4 ~ x4), col = "blue", lwd = 2)
+
+# 5. Good - No outliers
+x5 <- rnorm(100)
+y5 <- 0.7*x5 + rnorm(100, 0, 0.5)
+plot(x5, y5, main = "✓ No Influential Outliers", pch = 19, col = "darkgreen")
+abline(lm(y5 ~ x5), col = "blue", lwd = 2)
+
+# 6. Bad - With outlier
+x6 <- c(rnorm(99), 4)
+y6 <- c(0.7*rnorm(99) + rnorm(99, 0, 0.5), -3)
+plot(x6, y6, main = "✗ With Influential Outlier", pch = 19, col = "red")
+abline(lm(y6 ~ x6), col = "blue", lwd = 2)
+points(x6[100], y6[100], col = "purple", pch = 19, cex = 2)
+
+par(mfrow = c(1, 1))
+```
+
+## Summary: Key Takeaways
+
+- **Multiple correlation methods** (Pearson, Spearman, Kendall) for different data types
+- **Three main R functions**: cor(), rcorr(), cor.test() - choose based on needs
+- **Check assumptions** before interpreting Pearson's r
+- **Modern visualization tools**: corrplot, ggpairs for comprehensive exploration
+- **Control for confounds**: Partial and semi-partial correlations
+- **Correlation ≠ Causation**: Third-variable problem and directionality
+- **Effect size interpretation**: Use Cohen's guidelines as starting point
+
+## Additional Resources
+
+- **Field, Miles, & Field (2012)**: Chapter 6 (pp. 265-298)
+- **Key concepts covered**:
+    - Covariance and standardization (pp. 268-270)
+    - Correlation functions in R (pp. 271-276)
+    - Non-parametric correlations (pp. 277-279)
+    - Partial correlations (pp. 289-293)
+    - Comparing correlations (pp. 285-288)
+- **R packages used**: Hmisc, ppcor, cocor, corrplot, GGally
+- **Next topic**: Regression - building predictive models

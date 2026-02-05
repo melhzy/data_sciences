@@ -1,0 +1,665 @@
+---
+title: "Week 09: R for Data Analytics - Regression Analysis"
+author: "Ziyuan Huang"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: cosmo
+    code_folding: show
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.align = 'center')
+```
+
+```{r machine-info, echo=FALSE, results='asis'}
+cat("**Machine:**", paste0(Sys.info()['nodename'], " - ", Sys.info()['sysname'], " ", Sys.info()['release']), "\n\n")
+```
+
+```{r seedhash, echo=FALSE, results='asis'}
+cat("**Random Seed Set To:** 3284\n\n")
+set.seed(3284)
+```
+
+---
+
+## Introduction
+
+Regression analysis is one of the most powerful and widely-used statistical techniques in data science. While correlation analysis (covered in Week 08) tells us whether two variables are related, regression analysis goes further: it allows us to **predict** one variable from one or more other variables, and to **understand the strength** of those relationships.
+
+In this practical tutorial, we'll learn how to conduct regression analysis using R, working with real data about mental health outcomes. By the end of this session, you should be able to:
+
+### Learning Objectives
+
+1. Understand the conceptual foundations of simple linear regression
+2. Fit a simple linear regression model and interpret model output
+3. Extend to multiple regression with several predictors
+4. Test regression assumptions (linearity, normality, homoscedasticity, independence)
+5. Identify outliers and influential cases using diagnostic statistics
+6. Compare regression models using hierarchical regression
+7. Work with categorical predictors using dummy coding
+8. Calculate and interpret effect sizes in regression (R², semi-partial correlations)
+9. Produce APA-formatted regression tables
+10. Understand when regression assumptions are violated and potential solutions
+
+### Required Packages
+
+We'll use several R packages for this analysis. Install them if needed:
+
+```{r packages, eval=FALSE}
+install.packages("tidyverse")      # Data manipulation and ggplot2
+install.packages("rio")            # Easy data import (CSV, SPSS, Excel)
+install.packages("car")            # Diagnostics (VIF, leverage, Cook's D)
+install.packages("corrplot")       # Correlation visualization
+install.packages("psych")          # Descriptive statistics
+install.packages("ppcor")          # Partial & semi-partial correlations
+```
+
+**Load libraries:**
+
+```{r load-libraries}
+library(tidyverse)      # ggplot2, dplyr
+library(rio)            # import() function
+library(car)            # vif(), influencePlot()
+library(corrplot)       # Visual correlation matrices
+library(psych)          # Descriptive statistics
+library(ppcor)          # spcor(), ppcor() for partial correlations
+library(knitr)          # Markdown tables
+library(kableExtra)     # Table formatting
+```
+
+---
+
+## Part 1: Understanding Regression (Conceptual Foundations)
+
+### What is Regression?
+
+Regression is a statistical technique for modeling the relationship between variables. In **simple linear regression**, we have:
+- One **independent variable** (predictor, X)
+- One **dependent variable** (outcome, Y)
+
+We fit a straight line through the data to predict Y from X. The line is described by the equation:
+
+$$\hat{Y}_i = b_0 + b_1X_i + \varepsilon_i$$
+
+Where:
+- $\hat{Y}_i$ = predicted value for person i
+- $b_0$ = intercept (where the line crosses the y-axis when X=0)
+- $b_1$ = slope (how much Y changes for each unit increase in X)
+- $\varepsilon_i$ = error (residual) for person i
+
+### Why Do We Use Regression?
+
+1. **Prediction:** Estimate outcomes for new individuals
+2. **Understanding relationships:** Quantify how X affects Y
+3. **Hypothesis testing:** Test whether relationships are statistically significant
+4. **Controlling for confounds:** In multiple regression, examine one predictor while holding others constant
+
+### The Logic of Least Squares
+
+Regression finds the "best fit" line by minimizing the **sum of squared residuals** (SSR):
+
+$$SSR = \sum_{i=1}^{n} (Y_i - \hat{Y}_i)^2$$
+
+This means we want predictions that are as close as possible to the actual data.
+
+> **Plain English:** Think of a **residual** as the "miss" or "error" of our prediction. If we predict a depression score of 20 but the person actually scored 25, the residual is 5. These residuals represent the error present in the model. If a model fits the data well, all residuals will be small. Regression tries to find the line that makes these "misses" as small as possible for everyone.
+
+---
+
+## Part 2: Data Import & Exploration
+
+### Loading Our Regression Data
+
+We'll work with mental health data examining predictors of depression scores. The dataset contains:
+- **CESD_total:** Center for Epidemiologic Studies Depression Scale (our outcome)
+- **PIL_total:** Purpose in Life subscale (meaning)
+- **AUDIT_TOTAL_NEW:** Alcohol Use Disorder Identification Test
+- **DAST_TOTAL_NEW:** Drug Abuse Screening Test
+
+```{r import-data}
+# Import the regression data
+regression_data <- import("data/regression_data.sav")
+
+# Quick look at the data
+head(regression_data)
+dim(regression_data)
+str(regression_data)
+```
+
+### Descriptive Statistics
+
+```{r descriptives}
+# Summary statistics
+summary(regression_data)
+
+# More detailed descriptives using psych package
+psych::describe(regression_data)
+```
+
+### Visualizing Distributions
+
+```{r distributions}
+# Create histograms for each numeric variable
+regression_data[, c("CESD_total", "PIL_total", "AUDIT_TOTAL_NEW", "DAST_TOTAL_NEW")] %>%
+  as.data.frame() %>%
+  pivot_longer(everything()) %>%
+  ggplot(aes(x = value)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "black", alpha = 0.7) +
+  facet_wrap(~name, scales = "free") +
+  theme_bw() +
+  labs(title = "Distributions of Regression Variables",
+       x = "Score", y = "Frequency")
+```
+
+### Check for Missing Data
+
+```{r missing-data}
+# Count missing values
+colSums(is.na(regression_data))
+
+# Percentage missing
+colMeans(is.na(regression_data)) * 100
+```
+
+---
+
+## Part 3: Simple Linear Regression
+
+### Correlation as a Starting Point
+
+Before fitting regression, let's examine correlations between depression (CESD) and our predictors:
+
+```{r correlation-check}
+# Pearson correlations with p-values using Hmisc
+# Create correlation matrix
+numeric_vars <- c("CESD_total", "PIL_total", "AUDIT_TOTAL_NEW", "DAST_TOTAL_NEW")
+corr_matrix <- cor(regression_data[, numeric_vars], use = "complete.obs")
+print(corr_matrix)
+
+# For p-values, use a simple approach with cor.test
+cat("\nPearson Correlations with Depression (CESD_total):\n")
+for (var in numeric_vars[-1]) {  # -1 excludes CESD
+  test <- cor.test(regression_data$CESD_total, regression_data[[var]])
+  cat(var, ": r =", round(test$estimate, 3), ", p =", round(test$p.value, 4), "\n")
+}
+```
+
+### Fitting a Simple Regression Model
+
+Let's predict depression (CESD_total) from purpose in life (PIL_total):
+
+```{r simple-regression}
+# Create a clean dataset with no missing values for regression comparison
+regression_data_clean <- regression_data %>%
+  dplyr::select(CESD_total, PIL_total, AUDIT_TOTAL_NEW, DAST_TOTAL_NEW) %>%
+  drop_na()
+
+# Fit the simple regression model on clean data
+model_simple <- lm(CESD_total ~ PIL_total, data = regression_data_clean)
+
+# View results
+summary(model_simple)
+```
+
+### Interpreting the Output
+
+The key elements of the summary are:
+
+- **Intercept (b₀):** When PIL_total = 0, predicted depression = intercept value
+- **PIL_total coefficient (b₁):** For each 1-unit increase in purpose in life, depression decreases by this amount
+- **Standard Error:** Uncertainty in the coefficient estimate
+- **t-value & Pr(>|t|):** Tests whether coefficient differs from zero
+- **R-squared (R²):** Proportion of variance in depression explained by purpose in life
+- **F-statistic:** Tests overall model significance
+
+> **Plain English (F-statistic):** The **F-ratio** is a measure of the ratio of the variation explained by the model and the variation explained by unsystematic factors. In other words, it is the ratio of how good the model is against how bad it is (how much error there is). If the F-ratio is less than 1, it means there is more error than explained variance.
+
+> **Plain English (t-statistic):** The **t-statistic** tests whether a specific predictor contributes significantly to the model. Like F, it is based on the ratio of explained variance against unexplained variance, but for a single variable. It tests whether the coefficient (b-value) is significantly different from 0.
+
+> **Plain English (R-squared):** $R^2$ is a measure of how much of the variability in the outcome is accounted for by the predictors. Think of it as the "percentage of the story" that our model explains. If $R^2 = 0.33$, it means our model explains 33% of the differences in depression scores between people. The remaining 67% is unexplained variance (due to factors we didn't measure).
+
+> **Plain English (Adjusted R-squared):** $R^2$ tends to get bigger just by adding more variables, even if they are useless. **Adjusted $R^2$** corrects for this. It estimates how well your model would work in the "real world" (the population) rather than just your specific sample. It's usually a bit lower than regular $R^2$.
+
+> **Plain English (Standard Error):** The **Standard Error (SE)** tells us how much the coefficient (b-value) might vary if we took a different sample of people. A small SE means we are very confident in our estimate of the relationship. A large SE means our estimate is wobbly and uncertain.
+
+> **Plain English (p-value):** In regression, the **p-value** tells us the probability of seeing a relationship this strong if there really was *no relationship* in the real world. If $p < .05$, we conclude the relationship is "statistically significant" (real enough to publish).
+
+```{r simple-interpretation}
+# Extract key values for interpretation
+cat("Simple Regression: CESD ~ PIL\n")
+cat("Intercept:", coef(model_simple)[1], "\n")
+cat("PIL_total slope:", coef(model_simple)[2], "\n")
+cat("R-squared:", summary(model_simple)$r.squared, "\n")
+cat("Adjusted R-squared:", summary(model_simple)$adj.r.squared, "\n")
+```
+
+### Visualizing the Regression Line
+
+```{r simple-plot}
+# Create cleanup theme
+cleanup <- theme(panel.grid.major = element_blank(),
+                panel.grid.minor = element_blank(),
+                panel.background = element_blank(),
+                axis.line.x = element_line(color = 'black'),
+                axis.line.y = element_line(color = 'black'),
+                legend.key = element_rect(fill = 'white'),
+                text = element_text(size = 12))
+
+# Plot with regression line
+ggplot(regression_data, aes(x = PIL_total, y = CESD_total)) +
+  geom_point(alpha = 0.5, size = 3) +
+  geom_smooth(method = "lm", se = TRUE, color = "black", fill = "grey80") +
+  xlab("Purpose in Life (PIL)") +
+  ylab("Depression Score (CESD)") +
+  ggtitle("Simple Regression: Depression Predicted by Purpose in Life") +
+  cleanup +
+  theme_bw()
+```
+
+---
+
+## Part 4: Multiple Regression
+
+### Adding More Predictors
+
+Depression likely has multiple causes. Let's add alcohol and drug use as predictors:
+
+```{r multiple-regression}
+# Fit multiple regression model on the same clean data
+model_multiple <- lm(CESD_total ~ PIL_total + AUDIT_TOTAL_NEW + DAST_TOTAL_NEW, 
+                     data = regression_data_clean)
+
+# View results
+summary(model_multiple)
+```
+
+### Comparing Models
+
+We can compare the simple and multiple models:
+
+```{r model-comparison}
+# ANOVA comparison
+anova(model_simple, model_multiple)
+
+# Or use R² to compare
+cat("Simple Model R²:", summary(model_simple)$r.squared, "\n")
+cat("Multiple Model R²:", summary(model_multiple)$r.squared, "\n")
+cat("Improvement:", 
+    summary(model_multiple)$r.squared - summary(model_simple)$r.squared, "\n")
+```
+
+### Standardized Coefficients
+
+The regression coefficients above are **unstandardized** (also called raw coefficients). They depend on the scale of measurement. Often we want **standardized coefficients** (beta weights) which are on a common scale:
+
+```{r standardized-coefficients}
+# Standardize the variables manually
+regression_data_std <- regression_data_clean %>%
+  dplyr::select(CESD_total, PIL_total, AUDIT_TOTAL_NEW, DAST_TOTAL_NEW) %>%
+  mutate(across(everything(), scale))
+
+# Fit model with standardized variables
+model_multiple_std <- lm(CESD_total ~ PIL_total + AUDIT_TOTAL_NEW + DAST_TOTAL_NEW,
+                         data = regression_data_std)
+
+# Extract standardized coefficients
+coef(model_multiple_std)
+```
+
+---
+
+## Part 5: Regression Assumptions
+
+> **Plain English (Assumptions):**
+> *   **Linearity:** The relationship between predictors and the outcome is a straight line.
+> *   **Homoscedasticity:** At each level of the predictor, the spread (variance) of the "misses" (residuals) should be roughly the same. If the points fan out like a funnel, that's bad (heteroscedasticity).
+> *   **Independence:** The errors for one person shouldn't be related to the errors for another person.
+> *   **Normality:** The errors should be normally distributed (bell curve).
+
+### Assumption 1: Linearity
+
+```{r linearity-check}
+par(mfrow = c(1, 3))
+plot(regression_data_clean$PIL_total, regression_data_clean$CESD_total,
+     main = "PIL vs CESD", xlab = "PIL", ylab = "CESD")
+abline(lm(CESD_total ~ PIL_total, regression_data_clean), col = "red")
+
+plot(regression_data_clean$AUDIT_TOTAL_NEW, regression_data_clean$CESD_total,
+     main = "AUDIT vs CESD", xlab = "AUDIT", ylab = "CESD")
+abline(lm(CESD_total ~ AUDIT_TOTAL_NEW, regression_data_clean), col = "red")
+
+plot(regression_data_clean$DAST_TOTAL_NEW, regression_data_clean$CESD_total,
+     main = "DAST vs CESD", xlab = "DAST", ylab = "CESD")
+abline(lm(CESD_total ~ DAST_TOTAL_NEW, regression_data_clean), col = "red")
+par(mfrow = c(1, 1))
+```
+
+### Assumption 2: Normality of Residuals
+
+Residuals (errors) should be normally distributed:
+
+```{r normality-check}
+# Extract residuals
+residuals_model <- residuals(model_multiple)
+
+# Histogram of residuals
+hist(residuals_model, breaks = 20, main = "Distribution of Residuals",
+     xlab = "Residuals", ylab = "Frequency", col = "steelblue")
+
+# Q-Q plot (quantile-quantile plot)
+qqnorm(residuals_model, main = "Q-Q Plot of Residuals")
+qqline(residuals_model, col = "red")
+
+# Shapiro-Wilk test for normality
+shapiro.test(residuals_model)
+```
+
+### Assumption 3: Homoscedasticity (Equal Variance)
+
+The spread of residuals should be consistent across fitted values:
+
+```{r homoscedasticity-check}
+# Residuals vs Fitted Values plot
+plot(model_multiple, which = 1, 
+     main = "Residuals vs Fitted Values\n(should show random scatter)")
+
+# Scale-Location plot
+plot(model_multiple, which = 2,
+     main = "Scale-Location Plot\n(check if points form a horizontal band)")
+```
+
+### Assumption 4: Independence
+
+Observations should be independent (especially important in time-series data). We can check the Durbin-Watson test:
+
+```{r independence-check}
+# Durbin-Watson test (if applicable)
+if(!require(lmtest)) install.packages("lmtest")
+library(lmtest)
+dwtest(model_multiple)
+
+# Values close to 2 suggest independence
+# < 2 suggests positive autocorrelation
+# > 2 suggests negative autocorrelation
+```
+
+---
+
+## Part 6: Detecting Outliers & Influential Cases
+
+### Outliers
+
+Outliers are extreme observations that deviate from the pattern:
+
+> **Plain English:** An **outlier** is a case that differs substantially from the main trend of the data. Imagine a regression predicting weight from height; a person who is very short but extremely heavy would be an outlier. These "weird" cases can bias the model, pulling the regression line towards them and making it less accurate for everyone else.
+
+```{r outliers}
+# Standardized residuals (residuals divided by SD)
+std_residuals <- rstandard(model_multiple)
+
+# Cases with |std residual| > 2.5 are potentially problematic
+outlier_cases <- which(abs(std_residuals) > 2.5)
+cat("Potential outliers (std residuals > 2.5):\n")
+print(outlier_cases)
+
+# Plot standardized residuals
+plot(std_residuals, 
+     main = "Standardized Residuals",
+     ylab = "Standardized Residuals",
+     xlab = "Observation")
+abline(h = c(-2.5, 2.5), col = "red", lty = 2)
+```
+
+### Leverage
+
+Leverage measures how extreme a case is on the predictor variables:
+
+```{r leverage}
+# Leverage (hat values)
+leverage <- hatvalues(model_multiple)
+
+# Average leverage = (p+1)/n where p = number of predictors
+p <- 3  # number of predictors
+n <- nrow(regression_data_clean)
+avg_leverage <- (p + 1) / n
+
+cat("Average leverage:", avg_leverage, "\n")
+cat("Cases with high leverage (>", 2*avg_leverage, "):\n")
+high_leverage <- which(leverage > 2*avg_leverage)
+print(high_leverage)
+
+# Plot leverage
+plot(leverage, main = "Leverage Values", ylab = "Leverage", xlab = "Observation")
+abline(h = 2*avg_leverage, col = "red", lty = 2)
+```
+
+### Cook's Distance
+
+Cook's Distance measures influential cases (high leverage AND high residuals):
+
+```{r cooks-distance}
+# Cook's D
+cooks_d <- cooks.distance(model_multiple)
+
+# Threshold is often 4/(n-p-1)
+threshold <- 4 / (n - p - 1)
+
+cat("Threshold for Cook's D:", threshold, "\n")
+cat("Influential cases:\n")
+influential <- which(cooks_d > threshold)
+print(influential)
+
+# Plot Cook's D
+plot(cooks_d, main = "Cook's Distance", ylab = "Cook's Distance", xlab = "Observation")
+abline(h = threshold, col = "red", lty = 2)
+```
+
+### All Diagnostics Together
+
+```{r all-diagnostics}
+# Comprehensive diagnostic plots
+par(mfrow = c(2, 2))
+plot(model_multiple)
+par(mfrow = c(1, 1))
+```
+
+---
+
+## Part 7: Multicollinearity
+
+When predictors are highly correlated with each other, it creates multicollinearity, which inflates standard errors and reduces precision:
+
+> **Plain English (Multicollinearity):** Multicollinearity means that the predictor variables are too closely related to each other. Crudely put, it means the b-values (coefficients) are less trustworthy. As Andy Field says: "Don’t lend them money and don’t let them go for dinner with your boy- or girlfriend." If variables are too similar, the model can't tell which one is actually doing the predicting.
+
+```{r multicollinearity}
+# Variance Inflation Factor (VIF)
+# VIF > 10 indicates problematic multicollinearity
+# VIF > 5 is concerning
+vif(model_multiple)
+
+# Correlation matrix of predictors
+predictor_corr <- regression_data_clean %>%
+  dplyr::select(PIL_total, AUDIT_TOTAL_NEW, DAST_TOTAL_NEW) %>%
+  cor()
+
+print(predictor_corr)
+
+# Visualize correlations
+corrplot(predictor_corr, method = "circle", 
+         addCoef.col = "black", diag = FALSE,
+         title = "Correlations Among Predictors")
+```
+
+---
+
+## Part 8: Hierarchical Regression
+
+Hierarchical regression allows us to test whether adding predictors significantly improves model fit:
+
+```{r hierarchical-regression}
+# Model 1: PIL only
+model_h1 <- lm(CESD_total ~ PIL_total, data = regression_data_clean)
+
+# Model 2: Add substance use
+model_h2 <- lm(CESD_total ~ PIL_total + AUDIT_TOTAL_NEW + DAST_TOTAL_NEW, 
+               data = regression_data_clean)
+
+# Compare models
+cat("Model 1 R²:", summary(model_h1)$r.squared, "\n")
+cat("Model 2 R²:", summary(model_h2)$r.squared, "\n")
+
+# F-test for improvement
+anova(model_h1, model_h2)
+
+# The p-value tells us if Model 2 is significantly better than Model 1
+```
+
+---
+
+## Part 9: Effect Sizes in Regression
+
+### R-squared
+
+R² tells us the proportion of variance in Y explained by the model:
+
+```{r r-squared}
+r2 <- summary(model_multiple)$r.squared
+cat("R-squared:", r2, "\n")
+cat("This means", r2*100, "% of variance in depression is explained by the model\n")
+
+# Adjusted R² penalizes for number of predictors
+adj_r2 <- summary(model_multiple)$adj.r.squared
+cat("Adjusted R-squared:", adj_r2, "\n")
+```
+
+### Semi-partial (Part) Correlations
+
+These correlations show the unique contribution of each predictor, removing the shared variance with other predictors:
+
+```{r semipartial-correlations}
+# Semi-partial correlations
+spcor_results <- spcor.test(regression_data_clean$CESD_total, 
+                            regression_data_clean$PIL_total,
+                            as.matrix(regression_data_clean[, c("AUDIT_TOTAL_NEW", "DAST_TOTAL_NEW")]))
+cat("Semi-partial correlation for PIL_total:", spcor_results$estimate, "\n")
+cat("p-value:", spcor_results$p.value, "\n")
+
+# Semi-partial correlation squared = unique variance explained
+cat("Unique variance explained by PIL_total:", spcor_results$estimate^2 * 100, "%\n")
+```
+
+---
+
+## Part 10: APA-Formatted Output
+
+### Regression Table
+
+```{r apa-table}
+# Extract model summary
+model_summary <- summary(model_multiple)
+
+# Create APA table
+regression_table <- data.frame(
+  Predictor = c("Intercept", "PIL_total", "AUDIT_TOTAL_NEW", "DAST_TOTAL_NEW"),
+  b = coef(model_multiple),
+  SE = model_summary$coefficients[, 2],
+  t = model_summary$coefficients[, 3],
+  p = model_summary$coefficients[, 4]
+)
+
+# Format for APA
+kable(regression_table, 
+      digits = 3,
+      caption = "Table 1. Multiple Regression Predicting Depression from Purpose in Life, Alcohol Use, and Drug Use",
+      format = "html") %>%
+  kable_styling("striped")
+
+cat("\nNote. R² =", round(model_summary$r.squared, 3), 
+    ", adjusted R² =", round(model_summary$adj.r.squared, 3), "\n")
+```
+
+### Model Summary Table
+
+```{r model-summary-table}
+# Compare models
+models_comparison <- data.frame(
+  Model = c("1. PIL only", "2. PIL + Substance Use"),
+  R2 = c(summary(model_h1)$r.squared, summary(model_h2)$r.squared),
+  Adj_R2 = c(summary(model_h1)$adj.r.squared, summary(model_h2)$adj.r.squared),
+  F = c(summary(model_h1)$fstatistic[1], summary(model_h2)$fstatistic[1])
+)
+
+kable(models_comparison,
+      digits = 3,
+      caption = "Table 2. Comparison of Regression Models") %>%
+  kable_styling("striped")
+```
+
+---
+
+## Part 11: When Assumptions Are Violated
+
+### What If Data Are Non-Normal?
+
+If residuals are non-normally distributed:
+- Consider data transformations (log, square root)
+- Use robust regression methods
+- Report bootstrapped confidence intervals
+
+### What If We Have Heteroscedasticity?
+
+If variance of residuals is unequal:
+- Use weighted least squares regression
+- Report heteroscedasticity-consistent standard errors
+- Consider transforming the outcome variable
+
+### What If We Have Outliers/Influential Cases?
+
+- Examine why the case is unusual
+- Check for data entry errors
+- Consider robust regression that downweights influential cases
+- Report results with and without outliers for comparison
+
+---
+
+## Summary & Key Points
+
+✓ **Regression extends correlation** by allowing prediction and testing directional relationships
+
+✓ **Simple regression** involves one predictor; **multiple regression** involves several
+
+✓ **Interpretation depends on scaling:** Unstandardized coefficients (b) vs. standardized (β)
+
+✓ **R² measures model fit:** The proportion of outcome variance explained
+
+✓ **Always check assumptions:** Linearity, normality, homoscedasticity, independence
+
+✓ **Diagnose problems:** Use plots, tests (Shapiro-Wilk, VIF), and distance measures (Cook's D, leverage)
+
+✓ **Hierarchical regression** tests whether added predictors improve model fit
+
+✓ **Effect sizes** (R², semi-partial correlations) quantify the practical importance of relationships
+
+---
+
+## References
+
+[1] Field, A., Miles, J., & Field, Z. (2012). *Discovering statistics using R*. Sage Publications.
+
+---
+
+## Further Resources
+
+- **Textbook:** Chapter 7 in Field, Miles, & Field (2012)
+- **Visualization:** Use `plot(model)` for quick diagnostic checks
+- **Robust methods:** See `rlm()` in the `MASS` package for robust regression
+- **Cross-validation:** Use `caret` package for evaluating model generalization
+
+---
+
+*Tutorial created for ANLY500: Analytics I*
+*Enter Your Name | Date: `r Sys.Date()`*
