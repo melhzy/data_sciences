@@ -293,23 +293,45 @@ summary.lm(trend_model)
 
 ## Part 8: Final Visualization
 
-Finally, we visualize the group differences using a bar chart with error bars.
+Finally, we will create a publication-quality visualization. Instead of just showing the means (bars), we should show the **distribution** of the data.
 
-```{r plot-final, fig.height=4, fig.width=6}
-# Define a clean theme
-cleanup <- theme(panel.grid.major = element_blank(), 
-                 panel.grid.minor = element_blank(), 
-                 panel.background = element_blank(), 
-                 axis.line = element_line(color = "black"))
+*   **Boxplots**: Show the median and spread (quartiles).
+*   **Jittered Points**: Show the actual individual participants (raw data).
+*   **Diamonds**: Show the Group Means.
 
-ggplot(master, aes(x = dose, y = libido)) +
-  cleanup +
-  # Bar for Mean
-  stat_summary(fun = mean, geom = "bar", fill = "White", color = "Black") +
-  # Error bars (Confidence Intervals)
-  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = .2) +
-  labs(x = "Dosage", y = "Libido Score", title = "Effect of Viagra on Libido")
+```{r plot-final, fig.height=5, fig.width=7}
+ggplot(master, aes(x = dose, y = libido, fill = dose)) +
+  # 1. Boxplot with transparency (alpha) so we can see points
+  geom_boxplot(alpha = 0.4, outlier.shape = NA, width = 0.5) +
+  
+  # 2. Add Jittered Points (Individual Participants)
+  # Jitter adds random noise to x-axis so points don't overlap
+  geom_jitter(width = 0.1, size = 3, alpha = 0.7) +
+  
+  # 3. Add Mean Points (White Diamonds)
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 4, 
+               fill = "white", color = "black", stroke = 1.5) +
+  
+  # 4. Make it colorful and clean
+  scale_fill_viridis_d(option = "plasma", begin = 0.3, end = 0.9) +
+  theme_minimal() +
+  labs(x = "Dosage Level", 
+       y = "Libido Score", 
+       title = "Impact of Viagra on Libido",
+       subtitle = "Comparison of Placebo, Low Dose, and High Dose groups",
+       caption = "White diamonds = Group Means; Dots = Individual Participants") +
+  theme(legend.position = "none",
+        plot.title = element_text(size = 16, face = "bold"),
+        axis.title = element_text(size = 12))
 ```
+
+### Interpretation (Plain English)
+
+This plot tells the whole story of our analysis:
+
+1.  **The Trend**: Look at the **White Diamonds** (the means). They clearly go up as the dose increases. This matches our "Linear Trend" finding.
+2.  **The Spread**: The colorful boxes show where the middle 50% of the data sits. The "High Dose" box is much higher on the Y-axis than the "Placebo" box.
+3.  **The Difference**: We can visually see why the Post Hoc test found a significant difference between **High Dose** and **Placebo**—there is almost no overlap between the lowest High Dose scores and the Placebo scores.
 
 ---
 
