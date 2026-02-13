@@ -4,8 +4,8 @@ This module explores advanced regression techniques: Mediation (explaining *how*
 
 ## 📚 Lecture Materials
 
-- **[View Tutorial (HTML)](10_R_for_DataAnalytics.html)** - *Comprehensive Step-by-Step Guide*
-- **[View Lecture Slides (HTML)](10_medmod.html)** - *Use arrow keys to navigate*
+- **[View Tutorial (HTML)](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week10/10_R_for_DataAnalytics.html)** - *Comprehensive Step-by-Step Guide*
+- **[View Lecture Slides (HTML)](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week10/10_medmod.html)** - *Use arrow keys to navigate*
 - **[Source Tutorial RMarkdown](10_R_for_DataAnalytics.rmd)**
 - **[Source Slides RMarkdown](10_medmod.rmd)**
 
