@@ -30,7 +30,17 @@ set.seed(4591)
 
 Welcome to Week 12! Previously, we learned how to compare two groups using t-tests. But what happens when we have three, four, or ten groups?
 
-If we simply ran multiple t-tests for every pair of groups, we would run into the **Familywise Error Rate** problem. Every test carries a 5% risk of a False Positive (Type I Error). If you run 3 tests, your risk isn't 5% anymore—it's nearly 15%.
+If we simply ran multiple t-tests for every pair of groups, we would run into the **Familywise Error Rate** problem. Every test carries a 5% risk of a False Positive (Type I Error, $\alpha = 0.05$).
+
+Mathematically, the probability of **not** making a Type I error in a single test is $1 - 0.05 = 0.95$. If we run $m$ independent tests, the probability of not making *any* error across all of them is $(0.95)^m$.
+
+Therefore, the probability of making **at least one** error (the Familywise Error Rate) is:
+
+$$ P(\text{Familywise Error}) = 1 - (0.95)^m $$
+
+If you run 3 tests ($m=3$), your risk isn't 5% anymore—it's nearly 15%:
+
+$$ 1 - (0.95)^3 = 1 - 0.857 \approx 0.143 \quad (14.3\%) $$
 
 **ANOVA (Analysis of Variance)** solves this by comparing all means simultaneously in a single "Omnibus" test. It relies on the **F-Ratio** [1].
 
