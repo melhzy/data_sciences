@@ -38,7 +38,7 @@ prob_all_correct <- prob_no_error^m
 fwer <- 1 - prob_all_correct
 ```
 
-If we simply ran multiple t-tests for every pair of groups, we would run into the **Familywise Error Rate** problem. Every test carries a `r alpha * 100`% risk of a False Positive (Type I Error, $\alpha = `r alpha`$).
+If we simply ran multiple t-tests for every pair of groups, we would run into the **Familywise Error Rate** (FWER) problem. Every test carries a `r alpha * 100`% risk of a False Positive (Type I Error, $\alpha = `r alpha`$).
 
 Mathematically, the probability of **not** making a Type I error in a single test is $1 - `r alpha` = `r prob_no_error`$. If we run $m$ independent tests, the probability of not making *any* error across all of them is $(`r prob_no_error`)^m$.
 
@@ -325,13 +325,24 @@ omega_sq <- effect$omega
 
 ## Part 7: Trend Analysis
 
-If the groups have a logical order (Placebo < Low < High), we can test for trends.
+When our groups have a natural order (e.g., **Placebo < Low Dose < High Dose**), we can ask a more specific question than just "Are they different?" We can ask: **"What is the shape of the relationship?"**
+
+This is called **Trend Analysis**. We typically test for two main shapes:
+
+1.  **Linear Trend (L)**: A straight line.
+    *   **Logic**: As the dose goes up, libido goes up (or down) consistently.
+    *   **Analogy**: Like climbing a ramp.
+    *   **Hypothesis**: "More drug = More effect."
+2.  **Quadratic Trend (Q)**: A curve (U-shape or Inverted-U).
+    *   **Logic**: The effect goes up for a while, but then might level off or even go down at very high doses.
+    *   **Analogy**: Like throwing a ball—it goes up, peaks, and comes down.
+    *   **Hypothesis**: "There is a 'sweet spot' dose, and too much might be bad (or just not better)."
 
 ```{r trend}
 # Create a copy for trend analysis
 master$dose_trend <- master$dose
 
-# Set polynomial contrasts
+# Set polynomial contrasts (Linear and Quadratic)
 contrasts(master$dose_trend) <- contr.poly(3) 
 
 # Run Analysis of Variance (aov is base R function)
@@ -344,8 +355,18 @@ p_linear <- trend_summary$coefficients["dose_trend.L", "Pr(>|t|)"]
 p_quad <- trend_summary$coefficients["dose_trend.Q", "Pr(>|t|)"]
 ```
 
-*   **Linear Trend (L):** `r ifelse(p_linear < 0.05, "Significant", "Not Significant")` ($p = `r round(p_linear, 3)`$). As dose increases, libido increases linearly.
-*   **Quadratic Trend (Q):** `r ifelse(p_quad < 0.05, "Significant", "Not Significant")` ($p = `r round(p_quad, 3)`$). There is no curve.
+### Interpretation of Results
+
+*   **Linear Trend (L):** `r ifelse(p_linear < 0.05, "Significant", "Not Significant")` ($p = `r round(p_linear, 3)`$).
+    *   **Meaning**: Since $p < .05$, we are confident that there is a straight-line relationship.
+    *   **In Plain English**: As we increase the dose of Viagra from Placebo to Low to High, libido scores consistently increase. The line on a graph would go **straight up**.
+
+*   **Quadratic Trend (Q):** `r ifelse(p_quad < 0.05, "Significant", "Not Significant")` ($p = `r round(p_quad, 3)`$).
+    *   **Meaning**: Since $p > .05$, there is no significant curve.
+    *   **In Plain English**: The data does not go up and then down (or down and then up). It's just a steady increase.
+
+**Why does this matter?**
+If the Quadratic Trend *was* significant, it would tell us something important: maybe "High Dose" isn't actually better than "Low Dose" (maybe it causes side effects that lower libido). But here, the Linear Trend wins: **More is Better** (statistically speaking, for this dataset!).
 
 ---
 

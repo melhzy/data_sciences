@@ -2872,8 +2872,8 @@ border-radius: 0px;
 using t-tests. But what happens when we have three, four, or ten
 groups?</p>
 <p>If we simply ran multiple t-tests for every pair of groups, we would
-run into the <strong>Familywise Error Rate</strong> problem. Every test
-carries a 5% risk of a False Positive (Type I Error, <span class="math inline">\(\alpha = 0.05\)</span>).</p>
+run into the <strong>Familywise Error Rate</strong> (FWER) problem.
+Every test carries a 5% risk of a False Positive (Type I Error, <span class="math inline">\(\alpha = 0.05\)</span>).</p>
 <p>Mathematically, the probability of <strong>not</strong> making a Type
 I error in a single test is <span class="math inline">\(1 - 0.05 =
 0.95\)</span>. If we run <span class="math inline">\(m\)</span>
@@ -3166,12 +3166,35 @@ The drug explains about 62% of the variance in libido.</li>
 </div>
 <div id="part-7-trend-analysis" class="section level2">
 <h2>Part 7: Trend Analysis</h2>
-<p>If the groups have a logical order (Placebo &lt; Low &lt; High), we
-can test for trends.</p>
+<p>When our groups have a natural order (e.g., <strong>Placebo &lt; Low
+Dose &lt; High Dose</strong>), we can ask a more specific question than
+just “Are they different?” We can ask: <strong>“What is the shape of the
+relationship?”</strong></p>
+<p>This is called <strong>Trend Analysis</strong>. We typically test for
+two main shapes:</p>
+<ol style="list-style-type: decimal">
+<li><strong>Linear Trend (L)</strong>: A straight line.
+<ul>
+<li><strong>Logic</strong>: As the dose goes up, libido goes up (or
+down) consistently.</li>
+<li><strong>Analogy</strong>: Like climbing a ramp.</li>
+<li><strong>Hypothesis</strong>: “More drug = More effect.”</li>
+</ul></li>
+<li><strong>Quadratic Trend (Q)</strong>: A curve (U-shape or
+Inverted-U).
+<ul>
+<li><strong>Logic</strong>: The effect goes up for a while, but then
+might level off or even go down at very high doses.</li>
+<li><strong>Analogy</strong>: Like throwing a ball—it goes up, peaks,
+and comes down.</li>
+<li><strong>Hypothesis</strong>: “There is a ‘sweet spot’ dose, and too
+much might be bad (or just not better).”</li>
+</ul></li>
+</ol>
 <pre class="r"><code># Create a copy for trend analysis
 master$dose_trend &lt;- master$dose
 
-# Set polynomial contrasts
+# Set polynomial contrasts (Linear and Quadratic)
 contrasts(master$dose_trend) &lt;- contr.poly(3) 
 
 # Run Analysis of Variance (aov is base R function)
@@ -3200,12 +3223,34 @@ trend_summary</code></pre>
 <pre class="r"><code># Extract P-values for dynamic reporting
 p_linear &lt;- trend_summary$coefficients[&quot;dose_trend.L&quot;, &quot;Pr(&gt;|t|)&quot;]
 p_quad &lt;- trend_summary$coefficients[&quot;dose_trend.Q&quot;, &quot;Pr(&gt;|t|)&quot;]</code></pre>
+<div id="interpretation-of-results" class="section level3">
+<h3>Interpretation of Results</h3>
 <ul>
-<li><strong>Linear Trend (L):</strong> Significant (<span class="math inline">\(p = 0.008\)</span>). As dose increases, libido
-increases linearly.</li>
-<li><strong>Quadratic Trend (Q):</strong> Not Significant (<span class="math inline">\(p = 0.612\)</span>). There is no curve.</li>
+<li><strong>Linear Trend (L):</strong> Significant (<span class="math inline">\(p = 0.008\)</span>).
+<ul>
+<li><strong>Meaning</strong>: Since <span class="math inline">\(p &lt;
+.05\)</span>, we are confident that there is a straight-line
+relationship.</li>
+<li><strong>In Plain English</strong>: As we increase the dose of Viagra
+from Placebo to Low to High, libido scores consistently increase. The
+line on a graph would go <strong>straight up</strong>.</li>
+</ul></li>
+<li><strong>Quadratic Trend (Q):</strong> Not Significant (<span class="math inline">\(p = 0.612\)</span>).
+<ul>
+<li><strong>Meaning</strong>: Since <span class="math inline">\(p &gt;
+.05\)</span>, there is no significant curve.</li>
+<li><strong>In Plain English</strong>: The data does not go up and then
+down (or down and then up). It’s just a steady increase.</li>
+</ul></li>
 </ul>
+<p><strong>Why does this matter?</strong> If the Quadratic Trend
+<em>was</em> significant, it would tell us something important: maybe
+“High Dose” isn’t actually better than “Low Dose” (maybe it causes side
+effects that lower libido). But here, the Linear Trend wins:
+<strong>More is Better</strong> (statistically speaking, for this
+dataset!).</p>
 <hr />
+</div>
 </div>
 <div id="part-8-final-visualization" class="section level2">
 <h2>Part 8: Final Visualization</h2>
