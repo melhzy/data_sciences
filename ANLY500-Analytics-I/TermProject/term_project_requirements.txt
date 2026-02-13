@@ -1,0 +1,273 @@
+The purpose of the project is to learn how to formulate a problem statement or research question, determine how to best find a solution to the stated problem or answer to the research question, do that and then develop a final written report and presentation. The project is team-based or individual, I leave the choice to you. Individual grades will include points for how well they contributed to the team effort.
+
+The course project has three (3) deliverables:
+
+Project proposal,
+Presentation and,
+Final Report
+
+Each of these deliverables will be described in the paragraphs below. As an overview, each team will select a company, organization, or industry to target as their focus. Collect some data that will allow you to develop a case study to address a problem. Each case study presents a situation, challenge or problem the company, organization, or industry has had or is having. The primary objective of the course project is to determine how analytics could or can help the respective company address the situation or overcome the challenge or problem it is facing.
+
+To do this each team must review the case study, formulate a problem statement or research question as appropriate, and then identify the appropriate analytics methods or techniques to complete an analysis where possible.
+
+Part 1: Each team must develop a proposal as described below consisting of 20% of the grade. Proposals due date refer to Canvas.
+
+Part 2: Last, the team should develop their presentation as described below consisting of 40% of the grade. Final presentations due date refer to Canvas.
+
+Part 3: The third piece to the final project is the final written report as described below consisting of 40% of the grade. Final Reports consisting of 40% due date refer to Canvas.
+
+Project Proposal
+
+The project proposal is intended to introduce the company and its situation, problem or challenge. It should include all the relevant information for that introduction. The proposal should try to answer the following questions:
+
+What is the problem you are trying to solve or question you are trying to answer?
+What data do you need?
+What work do you plan to do in the project?
+Which algorithms/techniques/models do you plan to use/develop? Be as specific as you can.
+How will you evaluate what you’ve done?
+What do you expect to submit/accomplish by the end of the project?
+
+Proposal Requirements:
+
+1-2 pages
+12 pt font
+Times New Roman.
+Word or pdf.
+Double Spacing.
+APA formatting.
+
+Presentation
+
+By the time your presentation is due you should have completed at least 90% of your project work. The presentation can serve as a draft of your final report but without your final analysis and results, but I do suggest having at least test results of a model. You should include at least the following in your presentation:
+
+What the problem is that you are trying to solve or question you are trying to answer.
+All relevant background information including any relevant literature you have/will use.
+The overall process you will follow for the entire project.
+A description of your data including how you obtained it.
+A description of any relevant, interesting exploratory data analyses.
+A description of the methods/techniques/tools/algorithms you have/will use to complete the project. Include test results if applicable.
+A description of the challenges you have had working on the project.
+A discussion of the parts of the project that have been completed.
+A discussion of the parts of the project that remain to be completed.
+A discussion of how you will finish the final project report and presentation.
+
+Presentation Requirements:
+
+10 slides minimum
+ppt
+APA formatting
+
+
+
+
+Final Project Report
+
+The final report and presentation should cover virtually everything about the project. It should cover the situation, problem or challenge that required attention, the relevant background, related work, data, and technical details of the analysis, conclusions and possible directions for future work. It is recognized that not all of the following sections will pertain to each report. However, it is strongly recommended that these section topics be used as a guideline for your final project reports. Final presentations can follow your final report in text and graphical content.
+
+Introduction, motivation and general description of the situation, problem or challenge.
+
+Following the proposal and status report, what is the situation, problem or challenge you are addressing?
+What preliminary examination leads you to believe analytics could help?
+What are the shortcomings of the current work/analysis that analytics could help with?
+
+Related work.
+
+Provide a thorough background for the project; e.g. about the company, about the situation, problem or challenge, about other companies that have undergone similar situations, problems or challenges and how they handled them or did not, etc.
+How does this project relate to other work that has been done on this situation, problem or challenge?
+
+Data
+
+Give a complete description of the data you use during the project, including any you reject.
+Provide the source(s) of your data.
+Provide a detailed description of your data.
+Provide any exploratory data analyses you complete.
+
+Technical Approach
+
+Give a detailed description of the process for your entire project.
+Given a detailed description of your approach to the analytics you have proposed to use including any algorithms, methods, tools or techniques. You do not have to describe well-known approaches themselves, e.g. linear regression. You do have to describe how you applied the approach you used.
+
+Test and evaluation
+
+Describe how you test your approach to ensure that it is valid.
+Discuss the validity of your approach.
+Describe how you will evaluate your results and/or conclusions including any specific metrics, output data, completed analyses, etc.
+Discuss the baseline you will use to compare your results to.
+Discuss how well your approach worked to address the situation or challenge, solve the problem or answer the research question.
+Discuss any potential future work. For example, if you were not able to resolve the situation or problem or answer the research question what will it take to do so? What else needs to be done?
+Evaluate and report whether or not someone unfamiliar with your work could accurately replicate it.
+
+Written work and Presentation Style
+
+Written work will be graded using the rubric provided.
+Presentation style will be graded on comprehensiveness and inclusiveness, as well as using the rubric provided.
+
+Final Report Requirements:
+
+Refer to ANLY_500_Report_Formatting
+
+Grading Guidelines for Deliverables:
+
+Critical Elements
+
+	
+
+Exemplary (100%)
+
+	
+
+Proficient (90%)
+
+	
+
+Needs Improvement (70%)
+
+	
+
+Not Evident (0%)
+
+	
+
+Value
+
+
+
+
+Data Source
+
+Business Value
+
+	
+
+Meets “Proficient” criteria and provides relevant examples or in-depth analysis of the data to support the explanation
+
+	
+
+Logically describes the business value of the available data and data sources for the organization
+
+	
+
+Describes the business value of the available data and data sources for the organization, but with gaps in logic
+
+	
+
+Does not describe the business value of the available data and data sources for the organization
+
+	
+
+25%
+
+
+
+
+Application
+
+	
+
+Meets “Proficient” criteria and provides relevant examples to support business value
+
+	
+
+Accurately explains how the phases of the methodology will enable proper execution of the data solution
+
+	
+
+Explains how the phases of the methodology will enable proper execution of the data solution, but the explanation contains errors or omissions
+
+	
+
+Does not explain how the phases of the methodology will enable proper execution of the data solution
+
+	
+
+25%
+
+
+
+
+Analytic Structure
+
+Selection
+
+	
+
+Meets “Proficient” criteria and provides relevant examples to support the defense of the structure
+
+	
+
+Logically defends how the selected structure could provide support, benefits, and value for the organization
+
+	
+
+Defends how the selected structure could provide support, benefits, and value for the organization, but with gaps in logical application to the organization
+
+	
+
+Does not defend how the selected structure could provide support, benefits, and value for the organization
+
+	
+
+25%
+
+
+
+
+Articulation of
+
+Tool Selection
+
+	
+
+Meets “Proficient” criteria and includes a comparison of the benefits of the selected tool over other potential options
+
+	
+
+Logically defends how the selected tool can produce analysis and reporting that could provide support, benefits, and value for the organization
+
+	
+
+Defends how the selected tool can produce analysis and reporting that could provide support, benefits, and value for the organization, but with gaps in logical application to the organization
+
+	
+
+Does not defend how the selected tool could provide support, benefits, and value for the organization
+
+	
+
+15%
+
+
+
+
+Additional Data
+
+Sources
+
+	
+
+Meets “Proficient” criteria and explanation of added value is qualified with relevant, real-world examples
+
+	
+
+Accurately explains how additional internal or external data sources may add further value to the organization as supported by evidence
+
+	
+
+Explains how additional internal or external data sources may add further value to the organization, but explanation is not accurate or not supported
+
+	
+
+Does not explain how additional internal or external data sources may add further value to the organization
+
+	
+
+10%
+
+ 
+
+Grading Rubric for Final Project:
+
+Proposal Report = 20%
+Presentation = 40%
+Final Report = 40%
+Total = 100%
