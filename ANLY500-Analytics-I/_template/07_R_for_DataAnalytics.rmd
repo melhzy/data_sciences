@@ -1,0 +1,2790 @@
+---
+title: "Week 07: R for Data Analytics (Data Screening Part 2 - Assumptions)"
+author: "Ziyuan Huang"
+date: "Last Updated: `r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: cosmo
+    highlight: tango
+    code_folding: show
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 5
+)
+
+# Reproducible seeds using seedhash (same pattern as Weeks 02-06)
+# install.packages("seedhash") # Uncomment if not installed
+library(seedhash)
+gen <- SeedHashGenerator$new("Week07 Data Screening Part 2 - ANLY500")
+seeds <- gen$generate_seeds(10)
+print(seeds)
+set.seed(seeds[1])
+
+cat("MD5 Hash:", gen$get_hash(), "\n")
+cat("Using seed:", seeds[1], "\n")
+```
+
+# Introduction
+
+## 1. Overview
+
+This Week 07 tutorial continues our data screening journey from Week 06, focusing on **testing statistical assumptions**. After cleaning data (accuracy, missing values, outliers), we must verify that our data meet the requirements of parametric statistical tests. This tutorial upgrades the lecture concepts from `07_datascreen_2.rmd` into hands-on, code-first workflows:
+
+-   **Independence**: Ensuring observations don't influence each other
+-   **Additivity**: Checking for multicollinearity among predictors
+-   **Linearity**: Verifying linear relationships between variables
+-   **Normality**: Assessing whether sampling distributions are normal
+-   **Homogeneity & Homoscedasticity**: Testing equal variances across groups and conditions
+
+> **Reference:** This tutorial draws heavily from Field, Miles, and Field [1], *Discovering Statistics Using R*, particularly Chapters 5 and 7 on assumptions and regression diagnostics, with IEEE-style citations throughout.
+
+> **Upgrade note:** This hands-on tutorial extends the Week 07 lecture slides in `07_datascreen_2.rmd` with code-first workflows, beginner-friendly explanations, and theoretical grounding from Field et al. [1].
+
+### For Beginners: Quick Start
+
+-   **How to run code:**
+    -   RStudio: place cursor in a chunk, press Ctrl+Enter (Cmd+Enter on Mac) to run; use Knit to render the full document.
+    -   VS Code: highlight lines and press Ctrl+Enter, or click the Run button above a chunk.
+-   **Installing packages:** if you see "there is no package called 'X'", run `install.packages("X")` once, then `library(X)`.
+-   **If stuck:** restart R (RStudio: Session → Restart R), then re-run chunks from the top (setup first).
+-   **Reading errors:** focus on the last lines of the message; they usually state the actual problem (e.g., object not found, package missing, misspelled column).
+
+## 2. Learning Objectives
+
+By the end of this tutorial, you will be able to:
+
+1.  Test the **independence** assumption using the Durbin-Watson test
+2.  Detect **multicollinearity** using correlation matrices and VIF values
+3.  Assess **linearity** using Q-Q plots and residual plots
+4.  Evaluate **normality** using histograms, Q-Q plots, and the Shapiro-Wilk test
+5.  Check **homogeneity of variance** using Levene's test
+6.  Test **homoscedasticity** using residual plots
+7.  Interpret diagnostic plots to identify assumption violations
+
+## 3. Required Packages
+
+```{r load-packages}
+# Install if needed
+# install.packages(c("tidyverse", "rio", "mice", "car", "moments", "corrplot", "knitr", "kableExtra"))
+
+library(tidyverse)
+library(ggplot2)  # For data visualization
+library(rio)      # For data import
+library(mice)     # For multiple imputation
+library(car)      # For VIF and Durbin-Watson tests
+library(moments)  # For skewness and kurtosis
+library(corrplot) # For correlation visualization
+library(knitr)
+library(kableExtra)
+
+cat("\n=== REPRODUCIBLE SEED INFORMATION ===")
+cat("\nGenerator Name: Week07 Data Screening Part 2 - ANLY500")
+cat("\nMD5 Hash:", gen$get_hash())
+cat("\nAvailable Seeds:", paste(seeds[1:5], collapse = ", "), "...\n\n")
+```
+
+---
+
+# Part 1: Understanding Statistical Assumptions
+
+## 1.1 Why Do Assumptions Matter?
+
+**The fundamental problem:** Parametric statistical tests (t-tests, ANOVA, regression) make specific assumptions about the data. When these assumptions are violated, our results become unreliable [1].
+
+**Analogy:** Think of assumptions like the foundation of a house. You can build a beautiful house on a weak foundation, but it won't stand for long. Similarly, you can run complex analyses on data that violate assumptions, but your conclusions will be shaky [1].
+
+### 1.1.0 Visual Workflow: The Complete Assumption Checking Process
+
+```{r assumption-workflow, echo=FALSE, fig.height=10, fig.width=10}
+# Create a comprehensive visual workflow
+library(DiagrammeR)
+
+grViz("
+digraph assumption_workflow {
+  
+  # Graph attributes
+  graph [rankdir = TB, fontsize = 11, compound = true]
+  
+  # Node styling
+  node [shape = box, style = filled, fontname = 'Arial']
+  
+  # Main workflow nodes
+  start [label = 'Start:\nCleaned Data\n(Week 06)', 
+         fillcolor = '#E8F5E9', shape = ellipse, fontsize = 12]
+  
+  fake_reg [label = 'Create Fake Regression\nY = random ~ all variables',
+            fillcolor = '#FFF9C4']
+  
+  extract [label = 'Extract Diagnostics:\n• Standardized residuals\n• Fitted values',
+           fillcolor = '#FFF9C4']
+  
+  # Five assumption checks
+  subgraph cluster_checks {
+    label = 'Check 5 Assumptions'
+    style = filled
+    fillcolor = '#E3F2FD'
+    
+    indep [label = '1. Independence\nDurbin-Watson Test\nDW ≈ 2?',
+           fillcolor = '#BBDEFB']
+    
+    multi [label = '2. Additivity\nCorrelations & VIF\nr < .80, VIF < 10?',
+           fillcolor = '#BBDEFB']
+    
+    linear [label = '3. Linearity\nQ-Q Plot & Residual Plot\nRandom scatter?',
+            fillcolor = '#BBDEFB']
+    
+    normal [label = '4. Normality\nHistogram, Q-Q, Shapiro-Wilk\nBell-shaped? p > .05?',
+            fillcolor = '#BBDEFB']
+    
+    homo [label = '5. Homogeneity/\nHomoscedasticity\nLevene Test, Residual Plot\nEqual variance?',
+          fillcolor = '#BBDEFB']
+  }
+  
+  # Decision nodes
+  all_met [label = 'All Assumptions\nMet?', 
+           shape = diamond, fillcolor = '#FFF9C4']
+  
+  # Outcomes
+  proceed [label = '✓ Proceed with\nParametric Tests\n(t-test, ANOVA, regression)',
+           fillcolor = '#C8E6C9', fontsize = 12]
+  
+  fix [label = '✗ Fix Violations:\n• Transform data\n• Remove predictors\n• Use robust methods\n• Use non-parametric tests',
+       fillcolor = '#FFCDD2', fontsize = 11]
+  
+  recheck [label = 'Re-check\nAssumptions',
+           fillcolor = '#FFE0B2']
+  
+  # Edges
+  start -> fake_reg
+  fake_reg -> extract
+  extract -> indep
+  indep -> multi
+  multi -> linear
+  linear -> normal
+  normal -> homo
+  homo -> all_met
+  
+  all_met -> proceed [label = 'Yes', color = 'darkgreen', fontcolor = 'darkgreen']
+  all_met -> fix [label = 'No', color = 'darkred', fontcolor = 'darkred']
+  fix -> recheck
+  recheck -> fake_reg [style = dashed]
+  
+  # Add notes
+  note1 [label = 'Visual checks\nare as important\nas statistical tests!',
+         shape = note, fillcolor = '#FFFDE7', fontsize = 10]
+  
+  note2 [label = 'Large samples (N≥30)\nare more forgiving\nof normality violations',
+         shape = note, fillcolor = '#FFFDE7', fontsize = 10]
+  
+  extract -> note1 [style = invis]
+  normal -> note2 [style = invis]
+}
+", width = 800, height = 900)
+```
+
+**How to read this diagram:**
+1.  **Start** with cleaned data (after Week 06 screening)
+2.  **Create fake regression** to generate diagnostic information
+3.  **Check each assumption** systematically (1-5)
+4.  **Decision point**: Are all assumptions met?
+    -   ✓ Yes → Proceed with your planned analysis
+    -   ✗ No → Fix violations and re-check
+
+**Key reminders:**
+-   Visual inspection is as important as statistical tests
+-   Large samples (N ≥ 30) are more forgiving of normality violations
+-   Some violations are more serious than others (independence is critical!)
+
+### 1.1.1 The Five Key Assumptions
+
+Field et al. [1] identify five critical assumptions for parametric statistics:
+
+```{r assumptions-table, echo=FALSE}
+assumptions_df <- data.frame(
+  Assumption = c(
+    "Independence",
+    "Additivity",
+    "Linearity",
+    "Normality",
+    "Homogeneity/Homoscedasticity"
+  ),
+  Plain_English = c(
+    "One person's score doesn't influence another's",
+    "Predictors aren't measuring the same thing",
+    "Relationships form straight lines, not curves",
+    "Sampling distribution is bell-shaped",
+    "Variance is equal across groups/conditions"
+  ),
+  What_Happens_If_Violated = c(
+    "Confidence intervals and p-values are wrong",
+    "Can't tell which predictor is important",
+    "Model predictions are biased",
+    "p-values are unreliable (especially in small samples)",
+    "Type I error rate increases"
+  ),
+  How_To_Check = c(
+    "Durbin-Watson test",
+    "Correlation matrix, VIF",
+    "Q-Q plots, residual plots",
+    "Histograms, Q-Q plots, Shapiro-Wilk",
+    "Levene's test, residual plots"
+  )
+)
+
+assumptions_df %>%
+  kable(caption = "The Five Key Assumptions for Parametric Statistics [1]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE, width = "12em")
+```
+
+### 1.1.2 Visual Summary: All Five Assumptions at a Glance
+
+```{r assumptions-visual-summary, echo=FALSE, fig.height=10, fig.width=12}
+# Create a comprehensive visual showing all 5 assumptions
+set.seed(seeds[1])
+n <- 100
+
+par(mfrow = c(3, 4), mar = c(4, 4, 3, 1))
+
+# Row 1: GOOD examples
+# 1. Independence (GOOD)
+indep_good <- rnorm(n, 0, 1)
+plot(1:n, indep_good, type = "l", col = "darkgreen", lwd = 2,
+     main = "✓ Independence: GOOD",
+     xlab = "Order", ylab = "Residual",
+     ylim = c(-3, 3))
+abline(h = 0, col = "red", lwd = 1, lty = 2)
+text(n/2, 2.5, "Random pattern\nDW ≈ 2", col = "darkgreen", font = 2)
+
+# 2. Additivity (GOOD)
+x1 <- rnorm(n, 50, 10)
+x2 <- rnorm(n, 50, 10)
+plot(x1, x2, pch = 19, col = rgb(0, 0.5, 0, 0.5),
+     main = "✓ Additivity: GOOD",
+     xlab = "Predictor 1", ylab = "Predictor 2")
+text(min(x1), max(x2), sprintf("r = %.2f\nVIF < 10", cor(x1, x2)),
+     adj = 0, col = "darkgreen", font = 2)
+
+# 3. Linearity (GOOD)
+x <- seq(0, 10, length.out = n)
+y_lin <- 2 + 0.5*x + rnorm(n, 0, 0.5)
+plot(x, y_lin, pch = 19, col = rgb(0, 0.5, 0, 0.5),
+     main = "✓ Linearity: GOOD",
+     xlab = "X", ylab = "Y")
+abline(lm(y_lin ~ x), col = "red", lwd = 2)
+text(2, max(y_lin), "Straight line", col = "darkgreen", font = 2, adj = 0)
+
+# 4. Normality (GOOD)
+norm_data <- rnorm(n, 0, 1)
+hist(norm_data, breaks = 20, col = "lightgreen", border = "white",
+     main = "✓ Normality: GOOD",
+     xlab = "Residuals", ylab = "Frequency")
+curve(dnorm(x, 0, 1) * n * 0.5, add = TRUE, col = "darkgreen", lwd = 2)
+text(0, max(hist(norm_data, breaks = 20, plot = FALSE)$counts) * 0.8,
+     "Bell-shaped", col = "darkgreen", font = 2)
+
+# Row 2: BAD examples
+# 5. Independence (BAD)
+indep_bad <- arima.sim(list(ar = 0.8), n = n)
+plot(1:n, indep_bad, type = "l", col = "darkred", lwd = 2,
+     main = "✗ Independence: BAD",
+     xlab = "Order", ylab = "Residual",
+     ylim = c(-3, 3))
+abline(h = 0, col = "red", lwd = 1, lty = 2)
+text(n/2, 2.5, "Waves/trends\nDW < 1 or > 3", col = "darkred", font = 2)
+
+# 6. Additivity (BAD)
+x1_bad <- rnorm(n, 50, 10)
+x2_bad <- 0.95*x1_bad + rnorm(n, 2.5, 2)
+plot(x1_bad, x2_bad, pch = 19, col = rgb(1, 0, 0, 0.5),
+     main = "✗ Additivity: BAD",
+     xlab = "Predictor 1", ylab = "Predictor 2")
+abline(lm(x2_bad ~ x1_bad), col = "red", lwd = 2)
+text(min(x1_bad), max(x2_bad), sprintf("r = %.2f\nVIF > 10", cor(x1_bad, x2_bad)),
+     adj = 0, col = "darkred", font = 2)
+
+# 7. Linearity (BAD)
+y_curve <- 2 + 0.1*x^2 + rnorm(n, 0, 1)
+plot(x, y_curve, pch = 19, col = rgb(1, 0, 0, 0.5),
+     main = "✗ Linearity: BAD",
+     xlab = "X", ylab = "Y")
+abline(lm(y_curve ~ x), col = "blue", lwd = 2, lty = 2)
+lines(x, predict(loess(y_curve ~ x)), col = "red", lwd = 2)
+text(2, max(y_curve), "Curved", col = "darkred", font = 2, adj = 0)
+
+# 8. Normality (BAD)
+skewed_data <- rexp(n, 1)
+hist(skewed_data, breaks = 20, col = "lightcoral", border = "white",
+     main = "✗ Normality: BAD",
+     xlab = "Residuals", ylab = "Frequency")
+text(mean(skewed_data) + 2, max(hist(skewed_data, breaks = 20, plot = FALSE)$counts) * 0.8,
+     "Skewed", col = "darkred", font = 2)
+
+# Row 3: Homogeneity/Homoscedasticity
+# 9. Homoscedasticity (GOOD)
+fitted_good <- seq(-2, 2, length.out = n)
+resid_good <- rnorm(n, 0, 1)
+plot(fitted_good, resid_good, pch = 19, col = rgb(0, 0.5, 0, 0.5),
+     main = "✓ Homoscedasticity: GOOD",
+     xlab = "Fitted Values", ylab = "Residuals")
+abline(h = 0, col = "red", lwd = 2)
+abline(h = c(-2, 2), lty = 2, col = "blue")
+text(min(fitted_good), 2.5, "Equal spread", col = "darkgreen", font = 2, adj = 0)
+
+# 10. Homoscedasticity (BAD)
+fitted_bad <- seq(-2, 2, length.out = n)
+resid_bad <- rnorm(n, 0, abs(fitted_bad)*0.5 + 0.2)
+plot(fitted_bad, resid_bad, pch = 19, col = rgb(1, 0, 0, 0.5),
+     main = "✗ Homoscedasticity: BAD",
+     xlab = "Fitted Values", ylab = "Residuals")
+abline(h = 0, col = "red", lwd = 2)
+lines(lowess(fitted_bad, resid_bad), col = "blue", lwd = 2)
+text(min(fitted_bad), max(resid_bad) * 0.8, "Funnel", col = "darkred", font = 2, adj = 0)
+
+# 11. Homogeneity (GOOD)
+group_data_good <- c(rnorm(50, 0, 1), rnorm(50, 0.5, 1))
+groups <- rep(c("A", "B"), each = 50)
+boxplot(group_data_good ~ groups, col = c("lightgreen", "lightgreen"),
+        main = "✓ Homogeneity: GOOD",
+        xlab = "Group", ylab = "Values")
+text(1.5, max(group_data_good) * 0.9, 
+     "Similar\nbox heights", col = "darkgreen", font = 2)
+
+# 12. Homogeneity (BAD)
+group_data_bad <- c(rnorm(50, 0, 0.5), rnorm(50, 0.5, 2))
+boxplot(group_data_bad ~ groups, col = c("lightcoral", "lightcoral"),
+        main = "✗ Homogeneity: BAD",
+        xlab = "Group", ylab = "Values")
+text(1.5, max(group_data_bad) * 0.9, 
+     "Different\nbox heights", col = "darkred", font = 2)
+
+par(mfrow = c(1, 1))
+```
+
+**Quick reference guide:**
+-   **Row 1 (Green)**: What GOOD looks like for each assumption
+-   **Row 2 (Red)**: What BAD looks like - violations to watch for
+-   **Row 3**: Homogeneity/Homoscedasticity examples (both good and bad)
+
+**Use this as a visual checklist** when examining your own data!
+
+## 1.2 The "Fake Regression" Approach
+
+**What is a fake regression?** We create a regression model not to test a hypothesis, but as a diagnostic tool to check assumptions [1]. This approach works because:
+
+1.  Many assumptions apply to the **residuals** (errors) of a model
+2.  Regression provides easy access to residuals and diagnostic plots
+3.  One set of checks works for multiple types of analyses
+
+**Why "fake"?** We're not interested in the regression coefficients or p-values. We only care about the diagnostic information it provides [1].
+
+### 1.2.1 Visual Concept: What Are Residuals?
+
+```{r residual-concept, echo=FALSE, fig.height=5, fig.width=8}
+# Create a simple visualization of residuals
+set.seed(seeds[1])
+n <- 20
+x <- seq(1, 10, length.out = n)
+y_true <- 2 + 0.5 * x
+y_observed <- y_true + rnorm(n, 0, 0.8)
+
+par(mar = c(5, 5, 4, 2))
+plot(x, y_observed, 
+     pch = 19, col = "steelblue", cex = 1.5,
+     main = "Understanding Residuals (Errors)",
+     xlab = "Predictor (X)", ylab = "Outcome (Y)",
+     ylim = c(min(y_observed) - 1, max(y_observed) + 1),
+     cex.main = 1.3, cex.lab = 1.2)
+
+# Add regression line
+abline(lm(y_observed ~ x), col = "red", lwd = 2)
+
+# Show residuals for a few points
+show_points <- c(5, 10, 15)
+for(i in show_points) {
+  predicted <- predict(lm(y_observed ~ x), newdata = data.frame(x = x[i]))
+  segments(x[i], y_observed[i], x[i], predicted, 
+           col = "darkgreen", lwd = 2, lty = 2)
+  
+  # Add labels
+  mid_y <- (y_observed[i] + predicted) / 2
+  text(x[i] + 0.3, mid_y, 
+       sprintf("Residual\n= %.2f", y_observed[i] - predicted),
+       col = "darkgreen", cex = 0.8, adj = 0)
+}
+
+# Add legend
+legend("topleft", 
+       legend = c("Observed Data", "Regression Line", "Residual (Error)"),
+       col = c("steelblue", "red", "darkgreen"),
+       pch = c(19, NA, NA),
+       lty = c(NA, 1, 2),
+       lwd = c(NA, 2, 2),
+       cex = 1.1,
+       bg = "white")
+
+# Add explanation text
+text(mean(x), max(y_observed) + 0.5,
+     "Residual = Observed - Predicted",
+     cex = 1.2, col = "darkgreen", font = 2)
+```
+
+**Key insight:** Residuals tell us how wrong our predictions are. If assumptions are met, residuals should be random and well-behaved [1].
+
+### 1.2.2 Types of Residuals: Understanding the Differences
+
+Field et al. [1] describe several types of residuals. Understanding the differences helps you choose the right diagnostic:
+
+```{r residual-types-visual, echo=FALSE, fig.height=8, fig.width=12}
+# Create visualization explaining different types of residuals
+set.seed(seeds[2])
+n <- 50
+x <- seq(1, 10, length.out = n)
+y <- 2 + 0.5*x + rnorm(n, 0, 1)
+
+# Add one influential point
+x <- c(x, 10)
+y <- c(y, 10)
+
+model <- lm(y ~ x)
+
+# Calculate different types of residuals
+raw_resid <- residuals(model)
+standardized_resid <- rstandard(model)
+studentized_resid <- rstudent(model)
+leverage <- hatvalues(model)
+cooks_d <- cooks.distance(model)
+
+par(mfrow = c(2, 3))
+
+# 1. Raw residuals
+plot(fitted(model), raw_resid, pch = 19, col = "steelblue",
+     main = "1. Raw Residuals\n(Observed - Predicted)",
+     xlab = "Fitted Values", ylab = "Raw Residuals")
+abline(h = 0, col = "red", lwd = 2)
+points(fitted(model)[51], raw_resid[51], pch = 19, col = "red", cex = 2)
+text(min(fitted(model)), max(raw_resid) * 0.9,
+     "Not standardized\nHard to compare",
+     col = "steelblue", font = 2, adj = 0)
+
+# 2. Standardized residuals
+plot(fitted(model), standardized_resid, pch = 19, col = "purple",
+     main = "2. Standardized Residuals\n(Divided by SD)",
+     xlab = "Fitted Values", ylab = "Standardized Residuals")
+abline(h = 0, col = "red", lwd = 2)
+abline(h = c(-2, 2), lty = 2, col = "blue")
+points(fitted(model)[51], standardized_resid[51], pch = 19, col = "red", cex = 2)
+text(min(fitted(model)), 2.5,
+     "Mean = 0, SD = 1\nCompare to ±2",
+     col = "purple", font = 2, adj = 0)
+
+# 3. Studentized residuals
+plot(fitted(model), studentized_resid, pch = 19, col = "darkgreen",
+     main = "3. Studentized Residuals\n(Accounts for leverage)",
+     xlab = "Fitted Values", ylab = "Studentized Residuals")
+abline(h = 0, col = "red", lwd = 2)
+abline(h = c(-2, 2), lty = 2, col = "blue")
+points(fitted(model)[51], studentized_resid[51], pch = 19, col = "red", cex = 2)
+text(min(fitted(model)), 2.5,
+     "Best for outliers\nFollows t-distribution",
+     col = "darkgreen", font = 2, adj = 0)
+
+# 4. Leverage
+plot(1:length(leverage), leverage, type = "h", col = "orange", lwd = 3,
+     main = "4. Leverage (Hat Values)\n(Influence potential)",
+     xlab = "Case Number", ylab = "Leverage")
+abline(h = 2*(2)/n, col = "red", lwd = 2, lty = 2)
+points(51, leverage[51], pch = 19, col = "red", cex = 2)
+text(n/2, max(leverage) * 0.8,
+     sprintf("Threshold: 2(k+1)/n = %.3f", 2*(2)/n),
+     col = "orange", font = 2)
+
+# 5. Cook's Distance
+plot(1:length(cooks_d), cooks_d, type = "h", col = "steelblue", lwd = 3,
+     main = "5. Cook's Distance\n(Overall influence)",
+     xlab = "Case Number", ylab = "Cook's D")
+abline(h = 1, col = "red", lwd = 2, lty = 2)
+abline(h = 4/n, col = "orange", lwd = 2, lty = 2)
+points(51, cooks_d[51], pch = 19, col = "red", cex = 2)
+text(n/2, max(cooks_d) * 0.8,
+     "D > 1: Major concern\nD > 4/n: Investigate",
+     col = "steelblue", font = 2)
+
+# 6. Comparison table
+plot.new()
+text(0.5, 0.95, "Residual Types Comparison", font = 2, cex = 1.5)
+
+comparison_text <- c(
+  "Raw Residuals:",
+  "  • Formula: Observed - Predicted",
+  "  • Scale: Original units",
+  "  • Use: Basic error checking",
+  "",
+  "Standardized Residuals:",
+  "  • Formula: Raw / SD(residuals)",
+  "  • Scale: Mean=0, SD≈1",
+  "  • Use: Compare across studies",
+  "",
+  "Studentized Residuals:",
+  "  • Formula: Accounts for leverage",
+  "  • Scale: t-distribution",
+  "  • Use: Best for outlier detection",
+  "",
+  "Leverage (Hat Values):",
+  "  • Measures: Unusual X values",
+  "  • Range: 0 to 1",
+  "  • Use: Identify potential influence",
+  "",
+  "Cook's Distance:",
+  "  • Combines: Residual + Leverage",
+  "  • Threshold: D > 1 (concern)",
+  "  • Use: Overall influence"
+)
+
+y_pos <- seq(0.88, 0.02, length.out = length(comparison_text))
+colors <- c(rep("steelblue", 4), "black",
+            rep("purple", 4), "black",
+            rep("darkgreen", 4), "black",
+            rep("orange", 4), "black",
+            rep("steelblue", 4))
+
+for(i in 1:length(comparison_text)) {
+  text(0.05, y_pos[i], comparison_text[i], adj = 0, cex = 0.95,
+       col = colors[i],
+       font = ifelse(grepl(":", comparison_text[i]) & !grepl("  •", comparison_text[i]), 2, 1))
+}
+
+par(mfrow = c(1, 1))
+```
+
+**Key differences [1]:**
+
+```{r residual-comparison-table, echo=FALSE}
+residual_types <- data.frame(
+  Type = c(
+    "Raw Residual",
+    "Standardized Residual",
+    "Studentized Residual",
+    "Leverage",
+    "Cook's Distance"
+  ),
+  Formula = c(
+    "e = y - ŷ",
+    "e / SD(e)",
+    "e / SD(e without case i)",
+    "Diagonal of hat matrix",
+    "Combines residual & leverage"
+  ),
+  Interpretation = c(
+    "Basic error in original units",
+    "Error in standard deviations",
+    "Error accounting for case's leverage",
+    "Potential to influence predictions",
+    "Actual influence on model"
+  ),
+  Threshold = c(
+    "No standard threshold",
+    "|z| > 2 or 3",
+    "|t| > 2 or 3",
+    "> 2(k+1)/n or 3(k+1)/n",
+    "> 1 (concern), > 4/n (investigate)"
+  ),
+  Best_For = c(
+    "Understanding raw errors",
+    "Quick screening",
+    "Outlier detection",
+    "Identifying unusual X",
+    "Overall influence assessment"
+  )
+)
+
+residual_types %>%
+  kable(caption = "Types of Residuals and Diagnostics [1]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), 
+                full_width = FALSE, font_size = 11) %>%
+  column_spec(1, bold = TRUE, width = "10em")
+```
+
+**In this tutorial, we use studentized residuals** because they are the most appropriate for assumption checking [1].
+
+```{r fake-regression-concept, echo=FALSE}
+concept_df <- data.frame(
+  Component = c("Y (Outcome)", "X (Predictors)", "Purpose", "What We Examine"),
+  Real_Regression = c(
+    "Your actual outcome variable",
+    "Your actual predictors",
+    "Test hypotheses about relationships",
+    "Coefficients, p-values, R²"
+  ),
+  Fake_Regression = c(
+    "Random chi-square variable",
+    "All variables in your dataset",
+    "Generate diagnostics for assumption checking",
+    "Residuals, Q-Q plots, residual plots"
+  )
+)
+
+concept_df %>%
+  kable(caption = "Real vs. Fake Regression [1]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE, width = "10em")
+```
+
+---
+
+# Part 2: Preparing the Data
+
+## 2.1 Loading Pre-Screened Data
+
+We'll use the same dataset from Week 06, picking up where we left off after removing outliers.
+
+```{r load-data}
+# Import the dataset
+# Note: Ensure "data/data_screening.csv" exists in your working directory
+if(file.exists("data/data_screening.csv")) {
+  master <- import("data/data_screening.csv")
+} else {
+  # Simulation for tutorial purposes if file is missing
+  set.seed(seeds[2])
+  n <- 100
+  master <- data.frame(
+    Sex = sample(c(1, 2), n, replace = TRUE),
+    SES = sample(c(1, 2, 3), n, replace = TRUE),
+    Grade = sample(9:12, n, replace = TRUE),
+    Absences = sample(0:15, n, replace = TRUE),
+    RS1 = sample(1:7, n, replace = TRUE),
+    RS2 = sample(1:7, n, replace = TRUE),
+    RS3 = sample(1:7, n, replace = TRUE),
+    RS4 = sample(1:7, n, replace = TRUE),
+    RS5 = sample(1:7, n, replace = TRUE),
+    RS6 = sample(1:7, n, replace = TRUE),
+    RS7 = sample(1:7, n, replace = TRUE),
+    RS8 = sample(1:7, n, replace = TRUE),
+    RS9 = sample(1:7, n, replace = TRUE),
+    RS10 = sample(1:7, n, replace = TRUE)
+  )
+  # Introduce some missingness
+  master[sample(1:n, 5), "RS1"] <- NA
+  master[sample(1:n, 3), "RS5"] <- NA
+}
+
+str(master)
+```
+
+## 2.2 Quick Data Screening Review
+
+Let's quickly apply the Week 06 screening steps to prepare our data.
+
+```{r quick-screening}
+# Step 1: Fix categorical variables
+notypos <- master
+notypos$Sex <- factor(notypos$Sex, 
+                     levels = c(1,2),
+                     labels = c("Women", "Men"))
+notypos$SES <- factor(notypos$SES, 
+                     levels = c(1,2, 3),
+                     labels = c("Low", "Medium", "High"))
+
+# Step 2: Fix out-of-range values (if any)
+notypos$Grade[ notypos$Grade > 15 ] <- NA
+rs_cols <- grep("^RS", names(notypos))
+notypos[ , rs_cols][ notypos[ , rs_cols] > 7 ] <- NA
+
+# Step 3: Handle missing data
+percentmiss <- function(x){ sum(is.na(x))/length(x) * 100 }
+missing <- apply(notypos, 1, percentmiss)
+replace_rows <- subset(notypos, missing <= 5)
+
+# Step 4: Multiple imputation
+temp_no_miss <- mice(replace_rows, printFlag = FALSE, seed = seeds[3])
+nomiss <- complete(temp_no_miss, 1)
+all_columns <- nomiss
+
+# Step 5: Remove multivariate outliers
+cont_vars_cols <- c("Grade", "Absences", paste0("RS", 1:10))
+cont_vars <- all_columns[, cont_vars_cols]
+mahal <- mahalanobis(cont_vars,
+                    colMeans(cont_vars, na.rm=TRUE),
+                    cov(cont_vars, use ="pairwise.complete.obs"))
+cutoff <- qchisq(1-.001, ncol(cont_vars))
+noout <- subset(all_columns, mahal < cutoff)
+
+cat("Final sample size after screening:", nrow(noout), "\n")
+```
+
+**Interpretation:** We now have a clean dataset with no typos, no missing values, and no extreme outliers. We're ready to check assumptions!
+
+### 2.2.1 Understanding Influential Cases
+
+Before we check assumptions, let's understand what makes a case "influential" [1]:
+
+**Key concepts from Field et al. [1]:**
+
+1. **Outliers**: Cases with large residuals (errors) - they don't fit the model well
+2. **Influential cases**: Cases that, if removed, would substantially change the regression coefficients
+3. **Leverage**: Cases with unusual predictor values that have potential to influence the model
+
+```{r influential-cases-concept, echo=FALSE, fig.height=8, fig.width=12}
+# Create comprehensive visualization of influential cases
+set.seed(seeds[2])
+n <- 30
+
+par(mfrow = c(2, 3))
+
+# 1. Normal case - no influence
+x_normal <- c(rnorm(n, 50, 10))
+y_normal <- 20 + 0.5*x_normal + rnorm(n, 0, 3)
+plot(x_normal, y_normal, pch = 19, col = "steelblue", cex = 1.5,
+     main = "✓ Normal Data\n(No influential cases)",
+     xlab = "X", ylab = "Y",
+     xlim = c(20, 90), ylim = c(15, 70))
+abline(lm(y_normal ~ x_normal), col = "red", lwd = 2)
+text(30, 65, "All points\ncontribute equally",
+     col = "darkgreen", font = 2, adj = 0)
+
+# 2. Outlier (large residual, low leverage)
+x_outlier <- c(x_normal, 50)
+y_outlier <- c(y_normal, 60)  # Way off the line
+plot(x_outlier, y_outlier, pch = 19, col = "steelblue", cex = 1.5,
+     main = "⚠ Outlier\n(Large residual, low leverage)",
+     xlab = "X", ylab = "Y",
+     xlim = c(20, 90), ylim = c(15, 70))
+points(50, 60, pch = 19, col = "orange", cex = 2)
+abline(lm(y_outlier ~ x_outlier), col = "red", lwd = 2, lty = 2)
+abline(lm(y_normal ~ x_normal), col = "blue", lwd = 2)
+arrows(50, 60, 50, predict(lm(y_normal ~ x_normal), newdata = data.frame(x_normal = 50)),
+       col = "orange", lwd = 2, length = 0.15)
+legend("topleft", 
+       legend = c("Original line", "With outlier", "Outlier"),
+       col = c("blue", "red", "orange"),
+       lty = c(1, 2, NA), pch = c(NA, NA, 19),
+       lwd = 2, cex = 0.8)
+text(30, 65, "Large error\nSmall influence",
+     col = "orange", font = 2, adj = 0)
+
+# 3. High leverage (unusual X, low residual)
+x_leverage <- c(x_normal, 85)
+y_leverage <- c(y_normal, 20 + 0.5*85)  # On the line
+plot(x_leverage, y_leverage, pch = 19, col = "steelblue", cex = 1.5,
+     main = "⚠ High Leverage\n(Unusual X, fits model)",
+     xlab = "X", ylab = "Y",
+     xlim = c(20, 90), ylim = c(15, 70))
+points(85, 20 + 0.5*85, pch = 19, col = "purple", cex = 2)
+abline(lm(y_leverage ~ x_leverage), col = "red", lwd = 2)
+abline(lm(y_normal ~ x_normal), col = "blue", lwd = 2, lty = 2)
+legend("topleft",
+       legend = c("Original line", "With leverage", "High leverage"),
+       col = c("blue", "red", "purple"),
+       lty = c(2, 1, NA), pch = c(NA, NA, 19),
+       lwd = 2, cex = 0.8)
+text(30, 65, "Unusual X\nPotential influence",
+     col = "purple", font = 2, adj = 0)
+
+# 4. Influential case (high leverage + large residual)
+x_influential <- c(x_normal, 85)
+y_influential <- c(y_normal, 30)  # Off the line AND unusual X
+plot(x_influential, y_influential, pch = 19, col = "steelblue", cex = 1.5,
+     main = "✗ INFLUENTIAL Case\n(High leverage + large residual)",
+     xlab = "X", ylab = "Y",
+     xlim = c(20, 90), ylim = c(15, 70))
+points(85, 30, pch = 19, col = "red", cex = 2)
+abline(lm(y_influential ~ x_influential), col = "red", lwd = 2)
+abline(lm(y_normal ~ x_normal), col = "blue", lwd = 2, lty = 2)
+arrows(85, 30, 85, predict(lm(y_normal ~ x_normal), newdata = data.frame(x_normal = 85)),
+       col = "red", lwd = 2, length = 0.15)
+legend("topleft",
+       legend = c("Original line", "With influential", "Influential"),
+       col = c("blue", "red", "red"),
+       lty = c(2, 1, NA), pch = c(NA, NA, 19),
+       lwd = 2, cex = 0.8)
+text(30, 65, "Unusual X\n+ Large error\n= HIGH influence!",
+     col = "darkred", font = 2, adj = 0)
+
+# 5. Cook's Distance visualization
+model_normal <- lm(y_normal ~ x_normal)
+model_influential <- lm(y_influential ~ x_influential)
+cooks_normal <- cooks.distance(model_normal)
+cooks_influential <- cooks.distance(model_influential)
+
+plot(1:length(cooks_influential), cooks_influential, 
+     type = "h", col = "steelblue", lwd = 3,
+     main = "Cook's Distance\n(Measures overall influence)",
+     xlab = "Case Number", ylab = "Cook's D")
+abline(h = 1, col = "red", lwd = 2, lty = 2)
+abline(h = 4/length(cooks_influential), col = "orange", lwd = 2, lty = 2)
+points(length(cooks_influential), cooks_influential[length(cooks_influential)],
+       pch = 19, col = "red", cex = 2)
+text(length(cooks_influential)/2, max(cooks_influential) * 0.8,
+     "Cook's D > 1:\nMajor concern",
+     col = "darkred", font = 2)
+text(length(cooks_influential)/2, 4/length(cooks_influential) + 0.05,
+     "4/n threshold",
+     col = "orange", font = 2, adj = 0)
+
+# 6. Summary comparison
+plot.new()
+text(0.5, 0.95, "Summary: Types of Cases", font = 2, cex = 1.5)
+
+case_types <- c(
+  "Normal Case:",
+  "  • Typical X value",
+  "  • Small residual",
+  "  • Low influence",
+  "",
+  "Outlier:",
+  "  • Typical X value",
+  "  • Large residual",
+  "  • May not be influential",
+  "",
+  "High Leverage:",
+  "  • Unusual X value",
+  "  • Small residual",
+  "  • Potential influence",
+  "",
+  "Influential Case:",
+  "  • Unusual X value",
+  "  • Large residual",
+  "  • HIGH influence!"
+)
+
+y_pos <- seq(0.85, 0.05, length.out = length(case_types))
+colors <- c(rep("darkgreen", 4), "black",
+            rep("orange", 4), "black",
+            rep("purple", 4), "black",
+            rep("darkred", 4))
+
+for(i in 1:length(case_types)) {
+  text(0.1, y_pos[i], case_types[i], adj = 0, cex = 1.1,
+       col = colors[i], font = ifelse(grepl(":", case_types[i]), 2, 1))
+}
+
+par(mfrow = c(1, 1))
+```
+
+**Key takeaways [1]:**
+-   **Outliers** have large residuals but may not influence the model much
+-   **High leverage** points have unusual X values and *potential* to influence
+-   **Influential cases** combine both: unusual X + large residual = changes the model substantially
+-   **Cook's Distance > 1** indicates a case that substantially influences the regression [1]
+
+## 2.3 Data Overview Visualization
+
+```{r data-overview, fig.height=8, fig.width=10}
+# Create a comprehensive data overview
+par(mfrow = c(2, 3))
+
+# 1. Sample size by groups
+sex_counts <- table(noout$Sex)
+barplot(sex_counts, col = c("lightblue", "lightpink"),
+        main = "Sample Size by Sex",
+        ylab = "Count", ylim = c(0, max(sex_counts) * 1.2))
+text(x = 1:length(sex_counts), y = sex_counts + max(sex_counts) * 0.05,
+     labels = sex_counts, font = 2)
+
+ses_counts <- table(noout$SES)
+barplot(ses_counts, col = c("lightcoral", "lightyellow", "lightgreen"),
+        main = "Sample Size by SES",
+        ylab = "Count", ylim = c(0, max(ses_counts) * 1.2))
+text(x = 1:length(ses_counts), y = ses_counts + max(ses_counts) * 0.05,
+     labels = ses_counts, font = 2)
+
+# 2. Distribution of continuous variables
+hist(noout$Grade, breaks = 10, col = "steelblue", border = "white",
+     main = "Distribution: Grade",
+     xlab = "Grade Level", ylab = "Frequency")
+
+hist(noout$Absences, breaks = 10, col = "orange", border = "white",
+     main = "Distribution: Absences",
+     xlab = "Number of Absences", ylab = "Frequency")
+
+# 3. Example resilience scores
+hist(noout$RS1, breaks = 7, col = "purple", border = "white",
+     main = "Distribution: Resilience Score 1",
+     xlab = "RS1 Score (1-7)", ylab = "Frequency")
+
+# 4. Summary statistics text
+plot.new()
+text(0.5, 0.9, "Dataset Summary", font = 2, cex = 1.5)
+text(0.1, 0.75, sprintf("Total N: %d", nrow(noout)), adj = 0, cex = 1.2)
+text(0.1, 0.65, sprintf("Variables: %d", ncol(noout)), adj = 0, cex = 1.2)
+text(0.1, 0.55, sprintf("Continuous: %d", length(grep("^RS|Grade|Absences", names(noout)))), adj = 0, cex = 1.2)
+text(0.1, 0.45, sprintf("Categorical: 2 (Sex, SES)"), adj = 0, cex = 1.2)
+text(0.1, 0.30, "Ready for assumption testing!", adj = 0, cex = 1.3, col = "darkgreen", font = 2)
+
+par(mfrow = c(1, 1))
+```
+
+---
+
+# Part 3: Testing Independence
+
+## 3.1 What is Independence?
+
+**Definition [1]:** The independence assumption states that the errors (residuals) in your model should not be related to each other.
+
+**Plain English Example:** Imagine you're measuring test scores from different students. Independence means that one student's score shouldn't influence another student's score. If students copied from each other, their scores would be related (not independent), which would violate this assumption [1].
+
+**When is independence violated?**
+
+1.  **Time series data:** Observations close in time are often correlated
+2.  **Clustered data:** Students within the same classroom, patients within the same hospital
+3.  **Repeated measures:** The same person measured multiple times
+
+### 3.1.1 The Durbin-Watson Test
+
+The Durbin-Watson test checks whether adjacent residuals (errors) are correlated [1].
+
+**Test statistic interpretation:**
+-   **DW ≈ 2**: Residuals are uncorrelated (GOOD!)
+-   **DW < 1 or DW > 3**: Serious concern about independence [1]
+-   **DW < 2**: Positive autocorrelation (adjacent errors are similar)
+-   **DW > 2**: Negative autocorrelation (adjacent errors alternate)
+
+### 3.1.2 Visualizing Independence vs. Autocorrelation
+
+```{r independence-visualization, echo=FALSE, fig.height=8, fig.width=10}
+# Create visualizations of different autocorrelation patterns
+set.seed(seeds[2])
+n <- 50
+
+par(mfrow = c(2, 3))
+
+# 1. Independent residuals (DW ≈ 2)
+independent <- rnorm(n, 0, 1)
+plot(1:n, independent, type = "b", pch = 19, col = "darkgreen",
+     main = "✓ GOOD: Independent Residuals\n(DW ≈ 2)",
+     xlab = "Observation Order", ylab = "Residual",
+     ylim = c(-3, 3))
+abline(h = 0, col = "red", lwd = 2)
+text(n/2, 2.5, sprintf("DW ≈ 2.0"), col = "darkgreen", font = 2, cex = 1.2)
+
+# 2. Positive autocorrelation (DW < 2)
+pos_auto <- arima.sim(list(ar = 0.7), n = n)
+plot(1:n, pos_auto, type = "b", pch = 19, col = "orange",
+     main = "⚠ Positive Autocorrelation\n(DW < 2)",
+     xlab = "Observation Order", ylab = "Residual",
+     ylim = c(-3, 3))
+abline(h = 0, col = "red", lwd = 2)
+text(n/2, 2.5, "DW ≈ 1.0", col = "orange", font = 2, cex = 1.2)
+text(n/2, -2.5, "Adjacent errors\nare similar", col = "orange", cex = 0.9)
+
+# 3. Negative autocorrelation (DW > 2)
+neg_auto <- arima.sim(list(ar = -0.7), n = n)
+plot(1:n, neg_auto, type = "b", pch = 19, col = "purple",
+     main = "⚠ Negative Autocorrelation\n(DW > 2)",
+     xlab = "Observation Order", ylab = "Residual",
+     ylim = c(-3, 3))
+abline(h = 0, col = "red", lwd = 2)
+text(n/2, 2.5, "DW ≈ 3.0", col = "purple", font = 2, cex = 1.2)
+text(n/2, -2.5, "Adjacent errors\nalternate", col = "purple", cex = 0.9)
+
+# ACF plots for each
+acf(independent, main = "ACF: Independent", col = "darkgreen", lwd = 2)
+acf(pos_auto, main = "ACF: Positive Autocorr.", col = "orange", lwd = 2)
+acf(neg_auto, main = "ACF: Negative Autocorr.", col = "purple", lwd = 2)
+
+par(mfrow = c(1, 1))
+```
+
+**Interpretation:**
+-   **Top row**: Time series plots showing how residuals change over time
+-   **Bottom row**: ACF (Autocorrelation Function) plots - bars outside blue lines indicate significant correlation
+-   **Independent residuals**: Random pattern, no correlation between adjacent points
+-   **Positive autocorrelation**: Smooth waves - if one error is positive, the next tends to be positive too
+-   **Negative autocorrelation**: Zigzag pattern - errors alternate between positive and negative
+
+## 3.2 Creating the Fake Regression
+
+```{r fake-regression}
+# Create a random outcome variable (chi-square distributed)
+# Why chi-square? Because errors should have lots of small values, few large ones
+random <- rchisq(nrow(noout), 7)  # df=7 works well for most cases
+
+# Create the fake regression
+# Y ~ . means "predict random from ALL other variables"
+fake <- lm(random ~ ., data = noout)
+
+# Extract standardized residuals
+standardized <- rstudent(fake)
+
+# Extract standardized fitted values
+fitvalues <- scale(fake$fitted.values)
+
+cat("Fake regression created successfully!\n")
+cat("Number of observations:", length(standardized), "\n")
+cat("Number of predictors:", length(coef(fake)) - 1, "\n")
+```
+
+**Code explanation:**
+-   `rchisq(n, df)`: Generates random numbers from a chi-square distribution
+-   `lm(random ~ .)`: Creates a linear model predicting `random` from all variables
+-   `rstudent()`: Calculates studentized residuals (standardized, accounting for leverage)
+-   `scale()`: Standardizes fitted values to have mean=0, sd=1
+
+## 3.3 Running the Durbin-Watson Test
+
+```{r durbin-watson}
+# Perform Durbin-Watson test
+dw_result <- durbinWatsonTest(fake)
+print(dw_result)
+
+# Interpretation helper
+dw_stat <- dw_result$dw
+if(dw_stat >= 1 && dw_stat <= 3) {
+  cat("\n✓ GOOD: Durbin-Watson statistic is", round(dw_stat, 3), 
+      "\n  This is within acceptable range (1-3).")
+  cat("\n  Independence assumption is likely met.\n")
+} else {
+  cat("\n✗ WARNING: Durbin-Watson statistic is", round(dw_stat, 3),
+      "\n  This is outside acceptable range (1-3).")
+  cat("\n  Independence assumption may be violated.\n")
+}
+```
+
+**Interpretation guide:**
+
+```{r dw-interpretation, echo=FALSE}
+dw_guide <- data.frame(
+  DW_Value = c("< 1", "1 to 1.5", "1.5 to 2.5", "2.5 to 3", "> 3"),
+  Interpretation = c(
+    "Strong positive autocorrelation - CONCERN",
+    "Mild positive autocorrelation - Monitor",
+    "No autocorrelation - GOOD",
+    "Mild negative autocorrelation - Monitor",
+    "Strong negative autocorrelation - CONCERN"
+  ),
+  Action = c(
+    "Consider time-series models or mixed models",
+    "Check data collection order; may be acceptable",
+    "Proceed with standard analyses",
+    "Check data collection order; may be acceptable",
+    "Consider time-series models or mixed models"
+  )
+)
+
+dw_guide %>%
+  kable(caption = "Durbin-Watson Interpretation Guide [1]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE, width = "8em")
+```
+
+---
+
+# Part 4: Testing Additivity (Multicollinearity)
+
+## 4.1 What is Additivity?
+
+**Definition [1]:** If you have several predictors, their combined effect should be best described by adding their effects together.
+
+**Plain English Example:** Think of additivity like ingredients in a recipe. If you're predicting cake quality from flour and sugar, each ingredient should contribute its own unique effect. If flour and sugar were essentially measuring the same thing (like two different brands of the same ingredient), you'd be counting the same effect twice [2].
+
+**The problem: Multicollinearity**
+
+When predictors are too highly correlated (r > .80 or .90), we have multicollinearity [2]. This causes:
+
+1.  **Untrustworthy coefficients:** Standard errors inflate, making coefficients unstable
+2.  **Can't determine importance:** If two predictors are highly correlated, which one is actually important?
+3.  **Limits R²:** Correlated predictors explain overlapping variance
+
+### 4.1.1 Visual Concept: Understanding Multicollinearity
+
+```{r multicollinearity-concept, echo=FALSE, fig.height=6, fig.width=10}
+# Create visualization showing the problem of multicollinearity
+set.seed(seeds[3])
+n <- 100
+
+par(mfrow = c(1, 3))
+
+# Scenario 1: No multicollinearity (r ≈ 0)
+x1 <- rnorm(n, 50, 10)
+x2 <- rnorm(n, 50, 10)
+y <- 20 + 0.5*x1 + 0.3*x2 + rnorm(n, 0, 5)
+
+plot(x1, x2, pch = 19, col = rgb(0, 0, 1, 0.5),
+     main = "✓ GOOD: Independent Predictors\n(r ≈ 0)",
+     xlab = "Predictor 1", ylab = "Predictor 2",
+     cex.main = 1.1)
+text(min(x1), max(x2), 
+     sprintf("r = %.2f\nEach adds unique\ninformation", cor(x1, x2)),
+     adj = 0, col = "darkgreen", font = 2)
+
+# Scenario 2: Moderate correlation (r ≈ 0.5)
+x1_mod <- rnorm(n, 50, 10)
+x2_mod <- 0.5*x1_mod + rnorm(n, 25, 8)
+y_mod <- 20 + 0.5*x1_mod + 0.3*x2_mod + rnorm(n, 0, 5)
+
+plot(x1_mod, x2_mod, pch = 19, col = rgb(1, 0.5, 0, 0.5),
+     main = "⚠ MONITOR: Moderate Correlation\n(r ≈ 0.5)",
+     xlab = "Predictor 1", ylab = "Predictor 2",
+     cex.main = 1.1)
+abline(lm(x2_mod ~ x1_mod), col = "orange", lwd = 2)
+text(min(x1_mod), max(x2_mod), 
+     sprintf("r = %.2f\nSome overlap\nbut acceptable", cor(x1_mod, x2_mod)),
+     adj = 0, col = "orange", font = 2)
+
+# Scenario 3: High multicollinearity (r > 0.90)
+x1_high <- rnorm(n, 50, 10)
+x2_high <- 0.95*x1_high + rnorm(n, 2.5, 2)
+y_high <- 20 + 0.5*x1_high + 0.3*x2_high + rnorm(n, 0, 5)
+
+plot(x1_high, x2_high, pch = 19, col = rgb(1, 0, 0, 0.5),
+     main = "✗ BAD: High Multicollinearity\n(r > 0.90)",
+     xlab = "Predictor 1", ylab = "Predictor 2",
+     cex.main = 1.1)
+abline(lm(x2_high ~ x1_high), col = "red", lwd = 2)
+text(min(x1_high), max(x2_high), 
+     sprintf("r = %.2f\nAlmost measuring\nthe same thing!", cor(x1_high, x2_high)),
+     adj = 0, col = "darkred", font = 2)
+
+par(mfrow = c(1, 1))
+```
+
+**Key insight:** When predictors are highly correlated (right plot), they're essentially measuring the same thing. Including both doesn't add much new information and makes it hard to determine which one is actually important [2].
+
+## 4.2 Checking Correlations
+
+```{r correlation-matrix}
+# Select only continuous variables for correlation check
+cont_vars_for_cor <- noout %>% 
+  select(Grade, Absences, starts_with("RS"))
+
+# Calculate correlation matrix
+cor_matrix <- cor(cont_vars_for_cor)
+
+# Display correlation matrix
+cor_matrix %>%
+  kable(caption = "Correlation Matrix of Continuous Variables", digits = 3) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), 
+                full_width = FALSE, font_size = 11) %>%
+  scroll_box(width = "100%", height = "400px")
+```
+
+### 4.2.1 Visualizing Correlations
+
+```{r correlation-plot, fig.height=8, fig.width=8}
+# Create a correlation plot
+corrplot(cor_matrix, 
+         method = "color",
+         type = "upper",
+         order = "hclust",
+         addCoef.col = "black",
+         number.cex = 0.7,
+         tl.col = "black",
+         tl.srt = 45,
+         title = "Correlation Matrix: Checking for Multicollinearity",
+         mar = c(0,0,2,0))
+
+# Add interpretation guide
+legend("bottomright", 
+       legend = c("r > 0.90: CONCERN", "r > 0.80: Monitor", "r < 0.80: OK"),
+       fill = c("darkred", "orange", "lightblue"),
+       cex = 0.8)
+```
+
+**Interpretation:**
+-   **Dark blue/red**: Strong correlations
+-   **Light colors**: Weak correlations
+-   **Look for**: Any correlations > 0.80 or 0.90 [2]
+
+```{r check-high-correlations}
+# Find high correlations (excluding diagonal)
+high_cor <- which(abs(cor_matrix) > 0.80 & abs(cor_matrix) < 1, arr.ind = TRUE)
+
+if(nrow(high_cor) > 0) {
+  cat("⚠ WARNING: Found", nrow(high_cor)/2, "pairs with correlations > 0.80:\n\n")
+  for(i in 1:nrow(high_cor)) {
+    if(high_cor[i,1] < high_cor[i,2]) {  # Avoid duplicates
+      var1 <- rownames(cor_matrix)[high_cor[i,1]]
+      var2 <- colnames(cor_matrix)[high_cor[i,2]]
+      cor_val <- cor_matrix[high_cor[i,1], high_cor[i,2]]
+      cat(sprintf("  %s <-> %s: r = %.3f\n", var1, var2, cor_val))
+    }
+  }
+  cat("\nConsider combining these variables or selecting one from each pair.\n")
+} else {
+  cat("✓ GOOD: No correlations exceed 0.80.\n")
+  cat("  Multicollinearity is not a concern based on correlations.\n")
+}
+```
+
+## 4.3 Variance Inflation Factor (VIF)
+
+**What is VIF?** The Variance Inflation Factor measures how much the variance of a regression coefficient is inflated due to multicollinearity [2].
+
+**Interpretation:**
+-   **VIF < 10**: Generally acceptable [2]
+-   **VIF > 10**: Serious multicollinearity problem [2]
+-   **Average VIF >> 1**: Possible bias in the model [2]
+
+```{r vif-check}
+# Calculate VIF for each predictor
+# Note: VIF requires a real regression, so we use our fake regression
+# VIF can only be calculated for numeric predictors, so we need to handle factors
+vif_values <- vif(fake)
+
+# Handle the case where VIF returns a matrix (for factors with multiple levels)
+if(is.matrix(vif_values)) {
+  # Extract GVIF^(1/(2*Df)) for factors, regular VIF for numeric
+  vif_clean <- vif_values[, "GVIF^(1/(2*Df))"]
+} else {
+  vif_clean <- vif_values
+}
+
+# Create a nice table
+vif_df <- data.frame(
+  Variable = names(vif_clean),
+  VIF = as.numeric(vif_clean),
+  Status = ifelse(as.numeric(vif_clean) > 10, "⚠ CONCERN", 
+                  ifelse(as.numeric(vif_clean) > 5, "Monitor", "✓ OK"))
+)
+
+vif_df %>%
+  arrange(desc(VIF)) %>%
+  kable(caption = "Variance Inflation Factors (VIF)", digits = 3) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  row_spec(which(vif_df$VIF > 10), bold = TRUE, color = "white", background = "darkred") %>%
+  row_spec(which(vif_df$VIF > 5 & vif_df$VIF <= 10), bold = TRUE, background = "orange")
+
+# Overall assessment
+avg_vif <- mean(as.numeric(vif_clean), na.rm = TRUE)
+cat("\nAverage VIF:", round(avg_vif, 3), "\n")
+
+if(max(as.numeric(vif_clean), na.rm = TRUE) < 10 && avg_vif < 2) {
+  cat("✓ GOOD: All VIF values < 10 and average VIF < 2.\n")
+  cat("  Multicollinearity is not a concern.\n")
+} else if(max(as.numeric(vif_clean), na.rm = TRUE) >= 10) {
+  cat("⚠ WARNING: Some VIF values ≥ 10.\n")
+  cat("  Consider removing or combining highly correlated predictors.\n")
+} else {
+  cat("⚠ CAUTION: Average VIF > 2.\n")
+  cat("  Multicollinearity may be biasing the model.\n")
+}
+```
+
+### 4.3.1 Visualizing VIF
+
+```{r vif-plot, fig.height=5}
+# Create a bar plot of VIF values
+ggplot(vif_df, aes(x = reorder(Variable, VIF), y = VIF, fill = Status)) +
+  geom_bar(stat = "identity", color = "black") +
+  geom_hline(yintercept = 10, linetype = "dashed", color = "red", linewidth = 1) +
+  geom_hline(yintercept = 5, linetype = "dashed", color = "orange", linewidth = 1) +
+  annotate("text", x = 1, y = 10.5, label = "VIF = 10 (Concern)", hjust = 0, color = "red") +
+  annotate("text", x = 1, y = 5.5, label = "VIF = 5 (Monitor)", hjust = 0, color = "orange") +
+  coord_flip() +
+  labs(title = "Variance Inflation Factors (VIF)",
+       subtitle = "Lower is better; VIF > 10 indicates multicollinearity",
+       x = "Variable",
+       y = "VIF Value") +
+  scale_fill_manual(values = c("✓ OK" = "lightgreen", 
+                               "Monitor" = "orange", 
+                               "⚠ CONCERN" = "darkred")) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+---
+
+# Part 5: Testing Linearity
+
+## 5.1 What is Linearity?
+
+**Definition [3]:** The linearity assumption states that the relationship between variables is linear (straight line) and not curved [3].
+
+**Plain English Example:** Imagine plotting height vs. weight. Linearity means the relationship forms a straight line (or close to it), not a curve. If taller people get heavier at a steady rate, that's linear. If the relationship curves (like exponential growth), that violates linearity [3].
+
+**Why it matters:** Most parametric statistics (ANOVA, regression, t-tests) assume linear relationships. If relationships are curved, our models will make biased predictions [3].
+
+### 5.1.1 Visual Concept: Linear vs. Non-Linear Relationships
+
+```{r linearity-concept, echo=FALSE, fig.height=8, fig.width=10}
+# Create visualizations of linear vs non-linear relationships
+set.seed(seeds[4])
+n <- 100
+x <- seq(0, 10, length.out = n)
+
+par(mfrow = c(2, 3))
+
+# 1. Perfect linear relationship
+y_linear <- 2 + 0.5*x + rnorm(n, 0, 0.5)
+plot(x, y_linear, pch = 19, col = rgb(0, 0, 1, 0.5),
+     main = "✓ Linear Relationship",
+     xlab = "X", ylab = "Y")
+abline(lm(y_linear ~ x), col = "red", lwd = 2)
+text(2, max(y_linear), "Straight line\nfits well", 
+     col = "darkgreen", font = 2, adj = 0)
+
+# 2. Quadratic (U-shaped)
+y_quad <- 2 + 0.1*x^2 + rnorm(n, 0, 1)
+plot(x, y_quad, pch = 19, col = rgb(1, 0, 0, 0.5),
+     main = "✗ Quadratic (U-shaped)",
+     xlab = "X", ylab = "Y")
+abline(lm(y_quad ~ x), col = "blue", lwd = 2, lty = 2)
+lines(x, predict(loess(y_quad ~ x)), col = "red", lwd = 2)
+text(2, max(y_quad), "Curved\nrelationship", 
+     col = "darkred", font = 2, adj = 0)
+
+# 3. Exponential
+y_exp <- exp(0.2*x) + rnorm(n, 0, 5)
+plot(x, y_exp, pch = 19, col = rgb(1, 0, 0, 0.5),
+     main = "✗ Exponential Growth",
+     xlab = "X", ylab = "Y")
+abline(lm(y_exp ~ x), col = "blue", lwd = 2, lty = 2)
+lines(x, predict(loess(y_exp ~ x)), col = "red", lwd = 2)
+text(2, max(y_exp)*0.8, "Accelerating\ngrowth", 
+     col = "darkred", font = 2, adj = 0)
+
+# 4. Residuals for linear (GOOD)
+resid_linear <- residuals(lm(y_linear ~ x))
+plot(fitted(lm(y_linear ~ x)), resid_linear, 
+     pch = 19, col = rgb(0, 0, 1, 0.5),
+     main = "✓ Residuals: Linear",
+     xlab = "Fitted Values", ylab = "Residuals")
+abline(h = 0, col = "red", lwd = 2)
+text(min(fitted(lm(y_linear ~ x))), max(resid_linear),
+     "Random scatter\naround zero",
+     col = "darkgreen", font = 2, adj = 0)
+
+# 5. Residuals for quadratic (BAD)
+resid_quad <- residuals(lm(y_quad ~ x))
+plot(fitted(lm(y_quad ~ x)), resid_quad, 
+     pch = 19, col = rgb(1, 0, 0, 0.5),
+     main = "✗ Residuals: Quadratic",
+     xlab = "Fitted Values", ylab = "Residuals")
+abline(h = 0, col = "red", lwd = 2)
+lines(lowess(fitted(lm(y_quad ~ x)), resid_quad), 
+      col = "blue", lwd = 2)
+text(min(fitted(lm(y_quad ~ x))), max(resid_quad),
+     "Curved pattern\nindicates non-linearity",
+     col = "darkred", font = 2, adj = 0)
+
+# 6. Residuals for exponential (BAD)
+resid_exp <- residuals(lm(y_exp ~ x))
+plot(fitted(lm(y_exp ~ x)), resid_exp, 
+     pch = 19, col = rgb(1, 0, 0, 0.5),
+     main = "✗ Residuals: Exponential",
+     xlab = "Fitted Values", ylab = "Residuals")
+abline(h = 0, col = "red", lwd = 2)
+lines(lowess(fitted(lm(y_exp ~ x)), resid_exp), 
+      col = "blue", lwd = 2)
+text(min(fitted(lm(y_exp ~ x))), max(resid_exp),
+     "Funnel pattern\nshows problems",
+     col = "darkred", font = 2, adj = 0)
+
+par(mfrow = c(1, 1))
+```
+
+**Key insight:** 
+-   **Top row**: Original data with fitted lines. Linear model (red line) fits well only for linear data.
+-   **Bottom row**: Residual plots reveal problems. Random scatter = good; patterns = bad [3].
+
+## 5.2 Q-Q Plots for Normality of Residuals
+
+**What is a Q-Q plot?** QQ stands for "quantile-quantile." This plot compares your data to what we'd expect from a perfect normal distribution [5]. If the dots follow the diagonal line closely, your data are normally distributed [5].
+
+```{r qq-plot-basic, fig.height=5}
+# Create Q-Q plot
+qqnorm(standardized, main = "Q-Q Plot: Assessing Normality of Residuals")
+qqline(standardized, col = "red", lwd = 2)
+
+# Add interpretation zones
+abline(h = c(-2, 2), lty = 2, col = "blue")
+text(-2, 2.5, "Most data should\nfall between -2 and +2", col = "blue", cex = 0.9)
+```
+
+**How to interpret:**
+
+1.  **Dots on the line (especially between -2 and +2)**: GOOD! Residuals are normally distributed [5]
+2.  **S-shaped curve**: Skewness problem
+3.  **Curved at extremes only**: Kurtosis problem (heavy or light tails)
+4.  **Systematic departure from line**: Non-normality
+
+```{r qq-interpretation}
+# Calculate how many points fall outside ±2
+outside_range <- sum(abs(standardized) > 2, na.rm = TRUE)
+percent_outside <- (outside_range / length(standardized)) * 100
+
+cat("Standardized residuals outside ±2:", outside_range, 
+    sprintf("(%.1f%%)\n", percent_outside))
+
+if(percent_outside <= 5) {
+  cat("✓ GOOD: ≤5% of residuals fall outside ±2.\n")
+  cat("  This is expected for normally distributed data.\n")
+} else {
+  cat("⚠ WARNING: >5% of residuals fall outside ±2.\n")
+  cat("  Normality assumption may be violated.\n")
+}
+```
+
+### 5.2.1 Enhanced Q-Q Plot with ggplot2
+
+```{r qq-plot-enhanced, fig.height=5}
+# Create a data frame for plotting
+qq_data <- data.frame(
+  Theoretical = qqnorm(standardized, plot.it = FALSE)$x,
+  Sample = qqnorm(standardized, plot.it = FALSE)$y,
+  Outlier = abs(standardized) > 2
+)
+
+# Create enhanced Q-Q plot
+ggplot(qq_data, aes(x = Theoretical, y = Sample)) +
+  geom_point(aes(color = Outlier), size = 2, alpha = 0.6) +
+  geom_abline(intercept = 0, slope = 1, color = "red", linewidth = 1) +
+  geom_hline(yintercept = c(-2, 2), linetype = "dashed", color = "blue") +
+  geom_vline(xintercept = c(-2, 2), linetype = "dashed", color = "blue") +
+  scale_color_manual(values = c("FALSE" = "black", "TRUE" = "red"),
+                     labels = c("Within ±2", "Outside ±2")) +
+  labs(title = "Q-Q Plot: Normality of Standardized Residuals",
+       subtitle = "Points should fall on the red diagonal line",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles (Standardized Residuals)",
+       color = "Status") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## 5.3 Residual Plots for Linearity
+
+**What are residual plots?** They plot the predicted values (X-axis) against the residuals/errors (Y-axis). If the model is good, residuals should be randomly scattered around zero [3].
+
+```{r residual-plot-linearity, fig.height=5}
+# Create residual plot
+plot(fitvalues, standardized,
+     main = "Residual Plot: Checking Linearity",
+     xlab = "Standardized Fitted Values",
+     ylab = "Standardized Residuals",
+     pch = 19, col = rgb(0, 0, 0, 0.5))
+abline(h = 0, col = "red", lwd = 2)
+abline(v = 0, col = "red", lwd = 2)
+abline(h = c(-2, 2), lty = 2, col = "blue")
+
+# Add interpretation text
+text(min(fitvalues, na.rm=TRUE), 3, 
+     "Look for: Random scatter\nNo curves or patterns",
+     adj = 0, col = "darkgreen", cex = 0.9)
+```
+
+**What to look for:**
+
+```{r linearity-patterns, echo=FALSE, fig.height=6}
+# Create example patterns
+set.seed(seeds[4])
+n <- 100
+x <- seq(-3, 3, length.out = n)
+
+par(mfrow = c(2, 2))
+
+# Good: Random scatter
+y_good <- rnorm(n, 0, 1)
+plot(x, y_good, main = "✓ GOOD: Random Scatter",
+     xlab = "Fitted Values", ylab = "Residuals",
+     pch = 19, col = rgb(0, 0, 0, 0.5))
+abline(h = 0, col = "red", lwd = 2)
+
+# Bad: Curved pattern (non-linearity)
+y_curve <- x^2 + rnorm(n, 0, 0.5)
+plot(x, y_curve, main = "✗ BAD: Curved Pattern (Non-linearity)",
+     xlab = "Fitted Values", ylab = "Residuals",
+     pch = 19, col = rgb(1, 0, 0, 0.5))
+abline(h = 0, col = "red", lwd = 2)
+
+# Bad: Funnel (heteroscedasticity)
+y_funnel <- rnorm(n, 0, abs(x)/2)
+plot(x, y_funnel, main = "✗ BAD: Funnel (Heteroscedasticity)",
+     xlab = "Fitted Values", ylab = "Residuals",
+     pch = 19, col = rgb(1, 0, 0, 0.5))
+abline(h = 0, col = "red", lwd = 2)
+
+# Bad: Clusters
+y_cluster <- c(rnorm(50, -1, 0.3), rnorm(50, 1, 0.3))
+plot(x, y_cluster, main = "✗ BAD: Clusters (Missing predictor)",
+     xlab = "Fitted Values", ylab = "Residuals",
+     pch = 19, col = rgb(1, 0, 0, 0.5))
+abline(h = 0, col = "red", lwd = 2)
+
+par(mfrow = c(1, 1))
+```
+
+---
+
+# Part 6: Testing Normality
+
+## 6.1 Understanding the Normality Assumption
+
+**Common misconception:** "My data need to be normally distributed."
+
+**The truth [6]:** The assumption is that the **sampling distribution** is normally distributed, not necessarily your raw data [6].
+
+**Plain English:** We don't need every individual score to be perfectly normal. What matters is that if we took many samples and calculated their means, those means would form a normal distribution [6].
+
+### 6.1.1 The Central Limit Theorem
+
+**The Central Limit Theorem [6]:** In large samples (N > 30), the sampling distribution tends to be normal anyway, regardless of how the original data look [6].
+
+**Practical implication:** With large samples, normality is less of a concern. Focus on outliers instead [6].
+
+### 6.1.2 Visualizing the Central Limit Theorem
+
+```{r clt-visualization, echo=FALSE, fig.height=8, fig.width=10}
+# Demonstrate Central Limit Theorem
+set.seed(seeds[5])
+
+par(mfrow = c(2, 3))
+
+# Start with a highly skewed population
+population <- rexp(10000, rate = 1)
+
+# Population distribution
+hist(population, breaks = 50, col = "lightcoral", border = "white",
+     main = "Population: Highly Skewed",
+     xlab = "Value", ylab = "Frequency",
+     xlim = c(0, 8))
+text(5, max(hist(population, breaks = 50, plot = FALSE)$counts) * 0.8,
+     "Original data\nis NOT normal",
+     col = "darkred", font = 2, cex = 1.2)
+
+# Sampling distribution with n=5
+samples_5 <- replicate(1000, mean(sample(population, 5)))
+hist(samples_5, breaks = 30, col = "lightyellow", border = "white",
+     main = "Sample Means (n=5)",
+     xlab = "Mean", ylab = "Frequency",
+     xlim = c(0, 4))
+text(2.5, max(hist(samples_5, breaks = 30, plot = FALSE)$counts) * 0.8,
+     "Still somewhat\nskewed",
+     col = "orange", font = 2, cex = 1.1)
+
+# Sampling distribution with n=30
+samples_30 <- replicate(1000, mean(sample(population, 30)))
+hist(samples_30, breaks = 30, col = "lightgreen", border = "white",
+     main = "Sample Means (n=30)",
+     xlab = "Mean", ylab = "Frequency",
+     xlim = c(0, 3))
+text(1.8, max(hist(samples_30, breaks = 30, plot = FALSE)$counts) * 0.8,
+     "Nearly normal!\nCLT works",
+     col = "darkgreen", font = 2, cex = 1.1)
+
+# Q-Q plots
+qqnorm(population[1:1000], main = "Q-Q Plot: Population",
+       col = rgb(1, 0, 0, 0.5), pch = 19)
+qqline(population[1:1000], col = "red", lwd = 2)
+text(-2, max(population[1:1000]) * 0.8, "Not normal",
+     col = "darkred", font = 2)
+
+qqnorm(samples_5, main = "Q-Q Plot: Means (n=5)",
+       col = rgb(1, 0.5, 0, 0.5), pch = 19)
+qqline(samples_5, col = "orange", lwd = 2)
+text(-2, max(samples_5) * 0.8, "Better",
+     col = "orange", font = 2)
+
+qqnorm(samples_30, main = "Q-Q Plot: Means (n=30)",
+       col = rgb(0, 1, 0, 0.5), pch = 19)
+qqline(samples_30, col = "darkgreen", lwd = 2)
+text(-2, max(samples_30) * 0.8, "Normal!",
+     col = "darkgreen", font = 2)
+
+par(mfrow = c(1, 1))
+```
+
+**The magic of the Central Limit Theorem:**
+-   **Left**: Original population is highly skewed (NOT normal)
+-   **Middle**: With small samples (n=5), means are still somewhat skewed
+-   **Right**: With n≥30, sample means become normally distributed!
+
+**Conclusion:** Even if your raw data are skewed, your statistical tests can still be valid if your sample size is large enough [6].
+
+```{r sample-size-check}
+cat("Sample size:", nrow(noout), "\n")
+
+if(nrow(noout) >= 30) {
+  cat("✓ GOOD: Sample size ≥ 30.\n")
+  cat("  Central Limit Theorem applies - sampling distribution should be normal.\n")
+  cat("  Normality of raw data is less critical.\n")
+} else {
+  cat("⚠ CAUTION: Sample size < 30.\n")
+  cat("  Normality of raw data is more important in small samples.\n")
+}
+```
+
+## 6.2 Histogram of Residuals
+
+```{r histogram-residuals, fig.height=5}
+# Create histogram of standardized residuals
+hist(standardized, 
+     breaks = 15,
+     main = "Histogram of Standardized Residuals",
+     xlab = "Standardized Residuals",
+     ylab = "Frequency",
+     col = "lightblue",
+     border = "black")
+
+# Overlay normal curve
+x_seq <- seq(min(standardized, na.rm=TRUE), 
+             max(standardized, na.rm=TRUE), 
+             length.out = 100)
+y_norm <- dnorm(x_seq, mean = mean(standardized, na.rm=TRUE), 
+                sd = sd(standardized, na.rm=TRUE))
+y_norm <- y_norm * length(standardized) * diff(range(standardized, na.rm=TRUE)) / 15
+lines(x_seq, y_norm, col = "red", lwd = 2)
+
+legend("topright", 
+       legend = c("Observed", "Normal Distribution"),
+       fill = c("lightblue", NA),
+       border = c("black", NA),
+       lty = c(NA, 1),
+       col = c(NA, "red"),
+       lwd = c(NA, 2))
+```
+
+**Interpretation:**
+-   **Bell-shaped**: GOOD! Residuals are normally distributed [5]
+-   **Skewed (lopsided)**: Normality may be violated
+-   **Flat or too pointy**: Kurtosis issues
+
+## 6.3 Skewness and Kurtosis
+
+**Skewness:** Measures asymmetry of the distribution [5]
+-   **Skewness ≈ 0**: Symmetric (normal)
+-   **Skewness > 0**: Positive skew (long right tail)
+-   **Skewness < 0**: Negative skew (long left tail)
+-   **Rule of thumb:** |Skewness| < 2 is acceptable [5]
+
+**Kurtosis:** Measures "peakedness" of the distribution [5]
+-   **Excess Kurtosis ≈ 0**: Normal peakedness
+-   **Excess Kurtosis > 0**: Heavy tails (more outliers than normal)
+-   **Excess Kurtosis < 0**: Light tails (fewer outliers than normal)
+-   **Rule of thumb:** |Excess Kurtosis| < 7 is acceptable [5]
+
+```{r skew-kurtosis}
+# Calculate skewness and kurtosis for each continuous variable
+skew_kurt_df <- data.frame(
+  Variable = names(cont_vars_for_cor),
+  Skewness = sapply(cont_vars_for_cor, skewness, na.rm = TRUE),
+  Excess_Kurtosis = sapply(cont_vars_for_cor, function(x) kurtosis(x, na.rm = TRUE) - 3),
+  Skew_Status = ifelse(abs(sapply(cont_vars_for_cor, skewness, na.rm = TRUE)) < 2, 
+                       "✓ OK", "⚠ CONCERN"),
+  Kurt_Status = ifelse(abs(sapply(cont_vars_for_cor, function(x) kurtosis(x, na.rm = TRUE) - 3)) < 7,
+                       "✓ OK", "⚠ CONCERN")
+)
+
+skew_kurt_df %>%
+  kable(caption = "Skewness and Kurtosis for Continuous Variables", digits = 3) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  row_spec(which(skew_kurt_df$Skew_Status == "⚠ CONCERN" | 
+                 skew_kurt_df$Kurt_Status == "⚠ CONCERN"), 
+           bold = TRUE, background = "lightyellow")
+```
+
+### 6.3.1 Visualizing Skewness and Kurtosis
+
+```{r skew-kurt-plot, fig.height=6}
+# Create a visual comparison
+par(mfrow = c(2, 2))
+
+# Normal distribution
+set.seed(seeds[5])
+normal_data <- rnorm(1000, 0, 1)
+hist(normal_data, main = "Normal (Skew=0, Kurt=0)",
+     xlab = "Value", col = "lightgreen", border = "black")
+
+# Positive skew
+pos_skew <- rexp(1000, 1)
+hist(pos_skew, main = "Positive Skew (Skew>0)",
+     xlab = "Value", col = "lightcoral", border = "black")
+
+# Negative skew
+neg_skew <- -rexp(1000, 1)
+hist(neg_skew, main = "Negative Skew (Skew<0)",
+     xlab = "Value", col = "lightcoral", border = "black")
+
+# Heavy tails (high kurtosis)
+heavy_tails <- rt(1000, df = 3)
+hist(heavy_tails, main = "Heavy Tails (Kurt>0)",
+     xlab = "Value", col = "lightyellow", border = "black")
+
+par(mfrow = c(1, 1))
+```
+
+## 6.4 Shapiro-Wilk Test
+
+**What is it?** A formal statistical test for normality [5].
+
+**Interpretation:**
+-   **p > .05**: Data are consistent with a normal distribution (GOOD)
+-   **p < .05**: Data significantly differ from normal (CONCERN)
+
+**Warning [5]:** In large samples, the Shapiro-Wilk test can be significant even for minor deviations from normality. Always interpret alongside visual checks (histograms, Q-Q plots).
+
+```{r shapiro-wilk}
+# Shapiro-Wilk test on standardized residuals
+shapiro_result <- shapiro.test(standardized)
+print(shapiro_result)
+
+# Interpretation
+if(shapiro_result$p.value > 0.05) {
+  cat("\n✓ GOOD: Shapiro-Wilk p-value =", round(shapiro_result$p.value, 4), "\n")
+  cat("  Residuals are consistent with a normal distribution.\n")
+} else {
+  cat("\n⚠ WARNING: Shapiro-Wilk p-value =", round(shapiro_result$p.value, 4), "\n")
+  cat("  Residuals significantly differ from normal distribution.\n")
+  if(nrow(noout) >= 30) {
+    cat("  However, with N ≥ 30, Central Limit Theorem applies.\n")
+    cat("  Check visual plots (Q-Q, histogram) for practical significance.\n")
+  }
+}
+```
+
+---
+
+# Part 7: Testing Homogeneity and Homoscedasticity
+
+## 7.1 What is Homogeneity of Variance?
+
+**Definition [7]:** The assumption that variances are roughly equal across groups [7].
+
+**Plain English Example:** Imagine comparing test scores from three classes. Homogeneity of variance means that the spread of scores (how much they vary) should be similar in all three classes. If one class has scores all between 80-90 (small variance) and another has scores between 40-100 (large variance), this assumption is violated [7].
+
+## 7.2 What is Homoscedasticity?
+
+**Definition [8]:** The spread of the variance of a variable is the same across all values of another variable [8].
+
+**Plain English Example:** Imagine predicting income from years of education. Homoscedasticity means the variability in income should be roughly the same whether someone has 12 years or 20 years of education. If income becomes much more variable at higher education levels (some people make a lot, some don't), that's heteroscedasticity (violation of this assumption) [8].
+
+### 7.2.0 Visual Concept: Homoscedasticity Explained
+
+```{r homoscedasticity-concept, echo=FALSE, fig.height=6, fig.width=10}
+# Create clear visualization of homoscedasticity vs heteroscedasticity
+set.seed(seeds[6])
+n <- 100
+x <- seq(0, 10, length.out = n)
+
+par(mfrow = c(2, 3))
+
+# 1. Homoscedastic (GOOD)
+y_homo <- 2 + 0.5*x + rnorm(n, 0, 1)
+plot(x, y_homo, pch = 19, col = rgb(0, 0, 1, 0.5),
+     main = "✓ Homoscedastic Data",
+     xlab = "Predictor (X)", ylab = "Outcome (Y)",
+     ylim = c(-2, 10))
+abline(lm(y_homo ~ x), col = "red", lwd = 2)
+
+# Add variance bands
+for(i in seq(2, 8, by = 2)) {
+  x_window <- x[x >= i-1 & x <= i+1]
+  y_window <- y_homo[x >= i-1 & x <= i+1]
+  rect(i-1, mean(y_window) - sd(y_window), 
+       i+1, mean(y_window) + sd(y_window),
+       border = "darkgreen", lwd = 2)
+}
+text(5, -1, "Equal spread\nat all X values",
+     col = "darkgreen", font = 2, cex = 1.1)
+
+# 2. Heteroscedastic - Funnel (BAD)
+y_hetero_funnel <- 2 + 0.5*x + rnorm(n, 0, 0.1 + 0.15*x)
+plot(x, y_hetero_funnel, pch = 19, col = rgb(1, 0, 0, 0.5),
+     main = "✗ Heteroscedastic: Funnel",
+     xlab = "Predictor (X)", ylab = "Outcome (Y)",
+     ylim = c(-2, 12))
+abline(lm(y_hetero_funnel ~ x), col = "blue", lwd = 2)
+
+# Add variance bands
+for(i in seq(2, 8, by = 2)) {
+  x_window <- x[x >= i-1 & x <= i+1]
+  y_window <- y_hetero_funnel[x >= i-1 & x <= i+1]
+  rect(i-1, mean(y_window) - sd(y_window), 
+       i+1, mean(y_window) + sd(y_window),
+       border = "darkred", lwd = 2)
+}
+text(5, -1, "Spread increases\nwith X",
+     col = "darkred", font = 2, cex = 1.1)
+
+# 3. Heteroscedastic - Bow tie (BAD)
+y_hetero_bow <- 2 + 0.5*x + rnorm(n, 0, abs(x-5)*0.3 + 0.3)
+plot(x, y_hetero_bow, pch = 19, col = rgb(1, 0, 0, 0.5),
+     main = "✗ Heteroscedastic: Bow Tie",
+     xlab = "Predictor (X)", ylab = "Outcome (Y)",
+     ylim = c(-2, 10))
+abline(lm(y_hetero_bow ~ x), col = "blue", lwd = 2)
+
+# Add variance bands
+for(i in seq(2, 8, by = 2)) {
+  x_window <- x[x >= i-1 & x <= i+1]
+  y_window <- y_hetero_bow[x >= i-1 & x <= i+1]
+  rect(i-1, mean(y_window) - sd(y_window), 
+       i+1, mean(y_window) + sd(y_window),
+       border = "darkred", lwd = 2)
+}
+text(5, -1, "Spread varies\nacross X",
+     col = "darkred", font = 2, cex = 1.1)
+
+# Residual plots
+resid_homo <- residuals(lm(y_homo ~ x))
+plot(fitted(lm(y_homo ~ x)), resid_homo,
+     pch = 19, col = rgb(0, 0, 1, 0.5),
+     main = "✓ Residuals: Homoscedastic",
+     xlab = "Fitted Values", ylab = "Residuals",
+     ylim = c(-3, 3))
+abline(h = 0, col = "red", lwd = 2)
+abline(h = c(-2, 2), lty = 2, col = "blue")
+text(min(fitted(lm(y_homo ~ x))), 2.5,
+     "Even spread\ntop & bottom",
+     col = "darkgreen", font = 2, adj = 0)
+
+resid_funnel <- residuals(lm(y_hetero_funnel ~ x))
+plot(fitted(lm(y_hetero_funnel ~ x)), resid_funnel,
+     pch = 19, col = rgb(1, 0, 0, 0.5),
+     main = "✗ Residuals: Funnel Pattern",
+     xlab = "Fitted Values", ylab = "Residuals",
+     ylim = c(-5, 5))
+abline(h = 0, col = "red", lwd = 2)
+lines(lowess(fitted(lm(y_hetero_funnel ~ x)), resid_funnel),
+      col = "blue", lwd = 2)
+text(min(fitted(lm(y_hetero_funnel ~ x))), 4,
+     "Spread increases\nto the right",
+     col = "darkred", font = 2, adj = 0)
+
+resid_bow <- residuals(lm(y_hetero_bow ~ x))
+plot(fitted(lm(y_hetero_bow ~ x)), resid_bow,
+     pch = 19, col = rgb(1, 0, 0, 0.5),
+     main = "✗ Residuals: Bow Tie Pattern",
+     xlab = "Fitted Values", ylab = "Residuals",
+     ylim = c(-4, 4))
+abline(h = 0, col = "red", lwd = 2)
+lines(lowess(fitted(lm(y_hetero_bow ~ x)), resid_bow),
+      col = "blue", lwd = 2)
+text(min(fitted(lm(y_hetero_bow ~ x))), 3.5,
+     "Spread varies\nacross range",
+     col = "darkred", font = 2, adj = 0)
+
+par(mfrow = c(1, 1))
+```
+
+**Key insight:**
+-   **Top row**: Original data with green/red boxes showing variance at different X values
+-   **Bottom row**: Residual plots make patterns easier to see
+-   **Homoscedastic**: Variance boxes are similar height; residuals evenly scattered
+-   **Heteroscedastic**: Variance boxes differ in height; residuals show funnel or bow tie patterns [8]
+
+### 7.2.1 Difference Between Homogeneity and Homoscedasticity
+
+```{r homogeneity-vs-homoscedasticity, echo=FALSE}
+comparison_df <- data.frame(
+  Aspect = c("Context", "What it checks", "Visualization", "Test"),
+  Homogeneity = c(
+    "Categorical groups (ANOVA, t-test)",
+    "Equal variance across groups",
+    "Boxplots by group",
+    "Levene's test"
+  ),
+  Homoscedasticity = c(
+    "Continuous predictor (Regression)",
+    "Equal variance across predictor range",
+    "Residual plot (fitted vs. residuals)",
+    "Visual inspection of residual plot"
+  )
+)
+
+comparison_df %>%
+  kable(caption = "Homogeneity vs. Homoscedasticity [7, 8]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE, width = "10em")
+```
+
+## 7.3 Visual Check: Residual Plot
+
+```{r residual-plot-homoscedasticity, fig.height=6}
+# Create enhanced residual plot
+plot_data <- data.frame(
+  Fitted = as.numeric(fitvalues),
+  Residuals = standardized,
+  Outlier = abs(standardized) > 2
+)
+
+ggplot(plot_data, aes(x = Fitted, y = Residuals)) +
+  geom_point(aes(color = Outlier), size = 2, alpha = 0.6) +
+  geom_hline(yintercept = 0, color = "red", linewidth = 1) +
+  geom_vline(xintercept = 0, color = "red", linewidth = 1) +
+  geom_hline(yintercept = c(-2, 2), linetype = "dashed", color = "blue") +
+  geom_smooth(method = "loess", se = TRUE, color = "darkgreen", linewidth = 1) +
+  scale_color_manual(values = c("FALSE" = "black", "TRUE" = "red"),
+                     labels = c("Within ±2", "Outside ±2")) +
+  labs(title = "Residual Plot: Checking Homoscedasticity",
+       subtitle = "Points should be randomly scattered with equal spread across X-axis",
+       x = "Standardized Fitted Values",
+       y = "Standardized Residuals",
+       color = "Status") +
+  annotate("text", x = min(plot_data$Fitted, na.rm=TRUE), y = 3,
+           label = "✓ GOOD: Random scatter\n✗ BAD: Funnel, curve, or clusters",
+           hjust = 0, vjust = 1, color = "darkgreen", size = 3.5) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+**What to look for:**
+
+1.  **Homogeneity (vertical):** Is the spread above the horizontal line the same as below? [8]
+    -   ✓ GOOD: Points evenly scattered above and below zero
+    -   ✗ BAD: Large spread on one side, small on the other (looks like it's raining)
+
+2.  **Homoscedasticity (horizontal):** Is the spread equal all the way across the X-axis? [8]
+    -   ✓ GOOD: Even random spread of dots across the entire plot
+    -   ✗ BAD: Megaphones (funnel shapes), triangles, or big groupings
+
+### 7.3.1 Pattern Examples
+
+```{r homoscedasticity-patterns, echo=FALSE, fig.height=8}
+# Create example patterns
+set.seed(seeds[6])
+n <- 200
+x <- seq(-3, 3, length.out = n)
+
+par(mfrow = c(3, 2))
+
+# Good: Homoscedastic
+y_good <- rnorm(n, 0, 1)
+plot(x, y_good, main = "✓ GOOD: Homoscedastic",
+     xlab = "Fitted Values", ylab = "Residuals",
+     pch = 19, col = rgb(0, 0, 0, 0.5))
+abline(h = 0, col = "red", lwd = 2)
+text(-2, 3, "Equal spread\nacross X-axis", col = "darkgreen", adj = 0)
+
+# Bad: Heteroscedastic (funnel)
+y_funnel <- rnorm(n, 0, abs(x)/2 + 0.2)
+plot(x, y_funnel, main = "✗ BAD: Heteroscedastic (Funnel)",
+     xlab = "Fitted Values", ylab = "Residuals",
+     pch = 19, col = rgb(1, 0, 0, 0.5))
+abline(h = 0, col = "red", lwd = 2)
+text(-2, 3, "Spread increases\nwith X", col = "darkred", adj = 0)
+
+# Good: Homogeneous
+y_homog <- c(rnorm(100, 0, 1), rnorm(100, 0, 1))
+groups <- rep(c("A", "B"), each = 100)
+boxplot(y_homog ~ groups, main = "✓ GOOD: Homogeneous",
+        xlab = "Group", ylab = "Residuals",
+        col = c("lightgreen", "lightgreen"))
+abline(h = 0, col = "red", lwd = 2)
+
+# Bad: Heterogeneous
+y_heterog <- c(rnorm(100, 0, 0.5), rnorm(100, 0, 2))
+boxplot(y_heterog ~ groups, main = "✗ BAD: Heterogeneous",
+        xlab = "Group", ylab = "Residuals",
+        col = c("lightcoral", "lightcoral"))
+abline(h = 0, col = "red", lwd = 2)
+
+# Bad: Curved (non-linearity)
+y_curve <- x^2 + rnorm(n, 0, 0.5)
+plot(x, y_curve, main = "✗ BAD: Curved (Non-linearity)",
+     xlab = "Fitted Values", ylab = "Residuals",
+     pch = 19, col = rgb(1, 0, 0, 0.5))
+abline(h = 0, col = "red", lwd = 2)
+lines(lowess(x, y_curve), col = "blue", lwd = 2)
+
+# Bad: Clusters
+y_cluster <- c(rnorm(100, -1.5, 0.3), rnorm(100, 1.5, 0.3))
+plot(x, y_cluster, main = "✗ BAD: Clusters",
+     xlab = "Fitted Values", ylab = "Residuals",
+     pch = 19, col = rgb(1, 0, 0, 0.5))
+abline(h = 0, col = "red", lwd = 2)
+
+par(mfrow = c(1, 1))
+```
+
+## 7.4 Levene's Test for Homogeneity
+
+**What is Levene's test?** A formal test for homogeneity of variance across groups [7].
+
+**Interpretation:**
+-   **p > .05**: Variances are not significantly different (GOOD)
+-   **p < .05**: Variances are significantly different (CONCERN)
+
+**Note:** Levene's test requires categorical grouping variables. We'll demonstrate with Sex and SES.
+
+```{r levenes-test}
+# Levene's test for Sex groups
+# We'll test if RS1 variance differs by Sex
+levene_sex <- leveneTest(noout$RS1, noout$Sex, center = median)
+print(levene_sex)
+
+cat("\nInterpretation for Sex:\n")
+if(levene_sex$`Pr(>F)`[1] > 0.05) {
+  cat("✓ GOOD: Levene's test p-value =", round(levene_sex$`Pr(>F)`[1], 4), "\n")
+  cat("  Variances are not significantly different across Sex groups.\n")
+} else {
+  cat("⚠ WARNING: Levene's test p-value =", round(levene_sex$`Pr(>F)`[1], 4), "\n")
+  cat("  Variances are significantly different across Sex groups.\n")
+  cat("  Consider using Welch's correction or non-parametric tests.\n")
+}
+
+# Levene's test for SES groups
+levene_ses <- leveneTest(noout$RS1, noout$SES, center = median)
+print(levene_ses)
+
+cat("\nInterpretation for SES:\n")
+if(levene_ses$`Pr(>F)`[1] > 0.05) {
+  cat("✓ GOOD: Levene's test p-value =", round(levene_ses$`Pr(>F)`[1], 4), "\n")
+  cat("  Variances are not significantly different across SES groups.\n")
+} else {
+  cat("⚠ WARNING: Levene's test p-value =", round(levene_ses$`Pr(>F)`[1], 4), "\n")
+  cat("  Variances are significantly different across SES groups.\n")
+  cat("  Consider using Welch's correction or non-parametric tests.\n")
+}
+```
+
+### 7.4.1 Visualizing Variance by Groups
+
+```{r variance-by-group, fig.height=6}
+# Create boxplots to visualize variance differences
+par(mfrow = c(1, 2))
+
+# RS1 by Sex
+boxplot(RS1 ~ Sex, data = noout,
+        main = "RS1 by Sex",
+        xlab = "Sex",
+        ylab = "RS1 Score",
+        col = c("lightblue", "lightpink"))
+
+# RS1 by SES
+boxplot(RS1 ~ SES, data = noout,
+        main = "RS1 by SES",
+        xlab = "Socioeconomic Status",
+        ylab = "RS1 Score",
+        col = c("lightcoral", "lightyellow", "lightgreen"))
+
+par(mfrow = c(1, 1))
+```
+
+**Interpretation:** If the boxes have similar heights (interquartile ranges), variances are roughly equal. If one box is much taller/shorter than others, homogeneity may be violated [7].
+
+---
+
+# Part 8: Summary and Decision Tree
+
+## 8.1 Assumption Checking Summary
+
+```{r assumption-summary, echo=FALSE}
+# Create summary table
+summary_df <- data.frame(
+  Assumption = c(
+    "Independence",
+    "Additivity (Multicollinearity)",
+    "Linearity",
+    "Normality",
+    "Homogeneity",
+    "Homoscedasticity"
+  ),
+  Test_Method = c(
+    "Durbin-Watson test",
+    "Correlation matrix, VIF",
+    "Q-Q plot, Residual plot",
+    "Histogram, Q-Q plot, Shapiro-Wilk, Skew/Kurt",
+    "Levene's test, Boxplots",
+    "Residual plot (fitted vs. residuals)"
+  ),
+  Good_Result = c(
+    "DW: 1.5-2.5, p > .05",
+    "r < .80, VIF < 10",
+    "Points on Q-Q line, Random scatter",
+    "Bell-shaped, p > .05, |Skew| < 2, |Kurt| < 7",
+    "p > .05, Similar box heights",
+    "Random scatter, Equal spread"
+  ),
+  If_Violated = c(
+    "Use mixed models or time-series methods",
+    "Remove/combine correlated predictors",
+    "Transform variables or use non-linear models",
+    "Transform data or use robust/non-parametric tests",
+    "Use Welch's correction or non-parametric tests",
+    "Transform outcome or use robust standard errors"
+  )
+)
+
+summary_df %>%
+  kable(caption = "Assumption Checking Summary [1]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), 
+                full_width = FALSE, font_size = 11) %>%
+  column_spec(1, bold = TRUE, width = "12em") %>%
+  column_spec(2, width = "15em") %>%
+  column_spec(3, width = "15em") %>%
+  column_spec(4, width = "18em")
+```
+
+## 8.2 Decision Tree: What to Do When Assumptions Are Violated
+
+```{r decision-tree, echo=FALSE, fig.height=8}
+# Create a simple decision tree visualization
+library(DiagrammeR)
+
+grViz("
+digraph assumption_violations {
+  
+  # Graph attributes
+  graph [rankdir = TB, fontsize = 12]
+  
+  # Node definitions
+  node [shape = box, style = filled, fillcolor = lightblue]
+  
+  start [label = 'Assumption\nViolated?', fillcolor = lightyellow]
+  
+  # Independence
+  indep [label = 'Independence\nViolated']
+  indep_fix [label = '• Check data order\n• Use mixed models\n• Account for clustering', fillcolor = lightgreen]
+  
+  # Multicollinearity
+  multi [label = 'Multicollinearity\n(VIF > 10)']
+  multi_fix [label = '• Remove one predictor\n• Combine predictors\n• Use PCA', fillcolor = lightgreen]
+  
+  # Linearity
+  linear [label = 'Linearity\nViolated']
+  linear_fix [label = '• Transform variables\n• Add polynomial terms\n• Use non-linear models', fillcolor = lightgreen]
+  
+  # Normality
+  normal [label = 'Normality\nViolated']
+  normal_check [label = 'N ≥ 30?', shape = diamond, fillcolor = lightyellow]
+  normal_large [label = 'Proceed\n(CLT applies)', fillcolor = lightgreen]
+  normal_small [label = '• Transform data\n• Use non-parametric tests\n• Use robust methods', fillcolor = lightgreen]
+  
+  # Homogeneity
+  homog [label = 'Homogeneity\nViolated']
+  homog_fix [label = '• Use Welch correction\n• Transform data\n• Use non-parametric tests', fillcolor = lightgreen]
+  
+  # Homoscedasticity
+  homosc [label = 'Homoscedasticity\nViolated']
+  homosc_fix [label = '• Transform outcome\n• Use robust SE\n• Use WLS regression', fillcolor = lightgreen]
+  
+  # Edges
+  start -> indep
+  start -> multi
+  start -> linear
+  start -> normal
+  start -> homog
+  start -> homosc
+  
+  indep -> indep_fix
+  multi -> multi_fix
+  linear -> linear_fix
+  normal -> normal_check
+  normal_check -> normal_large [label = 'Yes']
+  normal_check -> normal_small [label = 'No']
+  homog -> homog_fix
+  homosc -> homosc_fix
+}
+", width = 800, height = 600)
+```
+
+## 8.3 Comprehensive Diagnostic Dashboard
+
+Let's create a single comprehensive view of all our assumption checks:
+
+```{r diagnostic-dashboard, fig.height=12, fig.width=14}
+# Create a comprehensive diagnostic dashboard
+par(mfrow = c(3, 4), mar = c(4, 4, 3, 2))
+
+# Row 1: Independence & Multicollinearity
+# 1. Residuals over time (Independence)
+plot(1:length(standardized), standardized, type = "l", col = "steelblue", lwd = 1.5,
+     main = "1. Independence Check",
+     xlab = "Observation Order", ylab = "Standardized Residuals",
+     ylim = c(-3, 3))
+abline(h = 0, col = "red", lwd = 2)
+abline(h = c(-2, 2), lty = 2, col = "gray")
+# Add DW result
+dw_stat <- durbinWatsonTest(fake)$dw
+dw_status <- ifelse(dw_stat >= 1.5 & dw_stat <= 2.5, "✓ PASS", "⚠ CHECK")
+text(length(standardized)/2, 2.5, 
+     sprintf("DW = %.2f\n%s", dw_stat, dw_status),
+     col = ifelse(dw_status == "✓ PASS", "darkgreen", "orange"),
+     font = 2, cex = 1.1)
+
+# 2. ACF plot
+acf(standardized, main = "2. Autocorrelation Function",
+    col = "steelblue", lwd = 2)
+
+# 3. Correlation heatmap (simplified)
+cor_subset <- cor(cont_vars_for_cor[, 1:min(6, ncol(cont_vars_for_cor))])
+image(1:nrow(cor_subset), 1:ncol(cor_subset), cor_subset,
+      col = colorRampPalette(c("blue", "white", "red"))(100),
+      main = "3. Correlation Matrix",
+      xlab = "", ylab = "", axes = FALSE)
+axis(1, at = 1:nrow(cor_subset), labels = rownames(cor_subset), las = 2, cex.axis = 0.8)
+axis(2, at = 1:ncol(cor_subset), labels = colnames(cor_subset), las = 2, cex.axis = 0.8)
+max_cor <- max(abs(cor_subset[upper.tri(cor_subset)]))
+cor_status <- ifelse(max_cor < 0.80, "✓ PASS", "⚠ CHECK")
+text(nrow(cor_subset)/2, ncol(cor_subset) + 1,
+     sprintf("Max r = %.2f\n%s", max_cor, cor_status),
+     col = ifelse(cor_status == "✓ PASS", "darkgreen", "orange"),
+     font = 2, cex = 1.1)
+
+# 4. VIF bar plot (top 6)
+vif_top <- head(vif_df[order(-vif_df$VIF), ], 6)
+barplot(vif_top$VIF, names.arg = vif_top$Variable,
+        col = ifelse(vif_top$VIF > 10, "red", 
+                    ifelse(vif_top$VIF > 5, "orange", "lightgreen")),
+        main = "4. VIF Values (Top 6)",
+        ylab = "VIF", las = 2, cex.names = 0.7)
+abline(h = 10, col = "red", lwd = 2, lty = 2)
+abline(h = 5, col = "orange", lwd = 2, lty = 2)
+max_vif <- max(vif_df$VIF)
+vif_status <- ifelse(max_vif < 10, "✓ PASS", "⚠ CHECK")
+text(3, max(vif_top$VIF) * 0.9,
+     sprintf("Max VIF = %.1f\n%s", max_vif, vif_status),
+     col = ifelse(vif_status == "✓ PASS", "darkgreen", "orange"),
+     font = 2, cex = 1.1)
+
+# Row 2: Linearity & Normality
+# 5. Q-Q plot
+qqnorm(standardized, main = "5. Q-Q Plot (Normality)",
+       pch = 19, col = rgb(0, 0, 1, 0.5))
+qqline(standardized, col = "red", lwd = 2)
+outside_2 <- sum(abs(standardized) > 2, na.rm = TRUE) / length(standardized) * 100
+qq_status <- ifelse(outside_2 <= 5, "✓ PASS", "⚠ CHECK")
+text(-2, max(standardized, na.rm = TRUE) * 0.9,
+     sprintf("%.1f%% outside ±2\n%s", outside_2, qq_status),
+     col = ifelse(qq_status == "✓ PASS", "darkgreen", "orange"),
+     font = 2, cex = 1.1, adj = 0)
+
+# 6. Histogram of residuals
+hist(standardized, breaks = 15, col = "lightblue", border = "white",
+     main = "6. Histogram of Residuals",
+     xlab = "Standardized Residuals", ylab = "Frequency")
+curve(dnorm(x, mean(standardized, na.rm=TRUE), sd(standardized, na.rm=TRUE)) * 
+      length(standardized) * diff(range(standardized, na.rm=TRUE)) / 15,
+      add = TRUE, col = "red", lwd = 2)
+shapiro_p <- shapiro.test(standardized)$p.value
+shapiro_status <- ifelse(shapiro_p > 0.05, "✓ PASS", "⚠ CHECK")
+text(mean(standardized, na.rm=TRUE), 
+     max(hist(standardized, breaks = 15, plot = FALSE)$counts) * 0.9,
+     sprintf("Shapiro p = %.3f\n%s", shapiro_p, shapiro_status),
+     col = ifelse(shapiro_status == "✓ PASS", "darkgreen", "orange"),
+     font = 2, cex = 1.1)
+
+# 7. Residual plot (Linearity)
+plot(fitvalues, standardized, pch = 19, col = rgb(0, 0, 0, 0.5),
+     main = "7. Residual Plot (Linearity)",
+     xlab = "Fitted Values", ylab = "Residuals")
+abline(h = 0, col = "red", lwd = 2)
+abline(h = c(-2, 2), lty = 2, col = "gray")
+lines(lowess(fitvalues, standardized), col = "blue", lwd = 2)
+text(min(fitvalues, na.rm=TRUE), 2.5,
+     "Look for:\nRandom scatter",
+     col = "darkgreen", font = 2, adj = 0, cex = 0.9)
+
+# 8. Scale-Location plot
+sqrt_abs_resid <- sqrt(abs(standardized))
+plot(fitvalues, sqrt_abs_resid, pch = 19, col = rgb(0, 0, 0, 0.5),
+     main = "8. Scale-Location\n(Homoscedasticity)",
+     xlab = "Fitted Values", ylab = "√|Residuals|")
+lines(lowess(fitvalues, sqrt_abs_resid), col = "red", lwd = 2)
+text(min(fitvalues, na.rm=TRUE), max(sqrt_abs_resid, na.rm=TRUE) * 0.9,
+     "Flat line = good",
+     col = "darkgreen", font = 2, adj = 0, cex = 0.9)
+
+# Row 3: Homogeneity & Summary
+# 9. Boxplot by Sex
+boxplot(RS1 ~ Sex, data = noout,
+        col = c("lightblue", "lightpink"),
+        main = "9. RS1 by Sex",
+        ylab = "RS1 Score")
+levene_sex_p <- leveneTest(noout$RS1, noout$Sex, center = median)$`Pr(>F)`[1]
+levene_status <- ifelse(levene_sex_p > 0.05, "✓ PASS", "⚠ CHECK")
+text(1.5, max(noout$RS1, na.rm=TRUE) * 0.95,
+     sprintf("Levene p = %.3f\n%s", levene_sex_p, levene_status),
+     col = ifelse(levene_status == "✓ PASS", "darkgreen", "orange"),
+     font = 2, cex = 1.1)
+
+# 10. Boxplot by SES
+boxplot(RS1 ~ SES, data = noout,
+        col = c("lightcoral", "lightyellow", "lightgreen"),
+        main = "10. RS1 by SES",
+        ylab = "RS1 Score")
+levene_ses_p <- leveneTest(noout$RS1, noout$SES, center = median)$`Pr(>F)`[1]
+levene_status2 <- ifelse(levene_ses_p > 0.05, "✓ PASS", "⚠ CHECK")
+text(2, max(noout$RS1, na.rm=TRUE) * 0.95,
+     sprintf("Levene p = %.3f\n%s", levene_ses_p, levene_status2),
+     col = ifelse(levene_status2 == "✓ PASS", "darkgreen", "orange"),
+     font = 2, cex = 1.1)
+
+# 11. Cook's Distance
+cooks_d <- cooks.distance(fake)
+plot(1:length(cooks_d), cooks_d, type = "h", col = "steelblue", lwd = 2,
+     main = "11. Cook's Distance",
+     xlab = "Observation", ylab = "Cook's D")
+abline(h = 4/length(cooks_d), col = "red", lwd = 2, lty = 2)
+influential <- sum(cooks_d > 4/length(cooks_d))
+text(length(cooks_d)/2, max(cooks_d) * 0.9,
+     sprintf("%d influential\npoints", influential),
+     col = ifelse(influential == 0, "darkgreen", "orange"),
+     font = 2, cex = 1.1)
+
+# 12. Summary Report
+plot.new()
+text(0.5, 0.95, "Assumption Check Summary", font = 2, cex = 1.5)
+
+checks <- c(
+  sprintf("1. Independence: %s", ifelse(dw_stat >= 1.5 & dw_stat <= 2.5, "✓", "⚠")),
+  sprintf("2. Multicollinearity: %s", ifelse(max_vif < 10, "✓", "⚠")),
+  sprintf("3. Linearity: Visual check"),
+  sprintf("4. Normality: %s", ifelse(shapiro_p > 0.05, "✓", "⚠")),
+  sprintf("5. Homogeneity: %s", ifelse(levene_sex_p > 0.05 & levene_ses_p > 0.05, "✓", "⚠"))
+)
+
+y_pos <- seq(0.75, 0.35, length.out = 5)
+for(i in 1:5) {
+  color <- ifelse(grepl("✓", checks[i]), "darkgreen", "orange")
+  text(0.1, y_pos[i], checks[i], adj = 0, cex = 1.2, col = color, font = 2)
+}
+
+text(0.5, 0.15, sprintf("Sample Size: N = %d", nrow(noout)),
+     cex = 1.2, font = 2)
+
+overall_status <- sum(grepl("✓", checks))
+text(0.5, 0.05,
+     sprintf("Overall: %d/5 checks passed", overall_status),
+     cex = 1.3, font = 2,
+     col = ifelse(overall_status >= 4, "darkgreen", "orange"))
+
+par(mfrow = c(1, 1))
+```
+
+**How to read this dashboard:**
+
+-   **Plots 1-4**: Independence and Multicollinearity checks
+-   **Plots 5-8**: Normality and Linearity checks  
+-   **Plots 9-11**: Homogeneity and influential points
+-   **Plot 12**: Summary scorecard
+
+**Status indicators:**
+-   ✓ PASS (green) = Assumption met
+-   ⚠ CHECK (orange) = Potential violation, investigate further
+
+## 8.4 What to Do When Assumptions Are Violated
+
+### 8.4.1 Common Data Transformations
+
+When assumptions are violated, transformations can often help [1]. Here are the most common transformations and when to use them:
+
+```{r transformations-visual, echo=FALSE, fig.height=10, fig.width=12}
+# Demonstrate common transformations
+set.seed(seeds[7])
+n <- 200
+
+par(mfrow = c(3, 4))
+
+# Original skewed data
+skewed_data <- rexp(n, rate = 0.5)
+
+# 1. Original data
+hist(skewed_data, breaks = 30, col = "lightcoral", border = "white",
+     main = "Original Data\n(Positively Skewed)",
+     xlab = "Value", ylab = "Frequency")
+text(max(skewed_data) * 0.7, max(hist(skewed_data, breaks = 30, plot = FALSE)$counts) * 0.8,
+     sprintf("Skew = %.2f", skewness(skewed_data)),
+     col = "darkred", font = 2, cex = 1.2)
+
+# 2. Log transformation
+log_data <- log(skewed_data + 1)  # +1 to handle zeros
+hist(log_data, breaks = 30, col = "lightgreen", border = "white",
+     main = "Log Transformation\nlog(x + 1)",
+     xlab = "log(Value)", ylab = "Frequency")
+text(mean(log_data), max(hist(log_data, breaks = 30, plot = FALSE)$counts) * 0.8,
+     sprintf("Skew = %.2f", skewness(log_data)),
+     col = "darkgreen", font = 2, cex = 1.2)
+
+# 3. Square root transformation
+sqrt_data <- sqrt(skewed_data)
+hist(sqrt_data, breaks = 30, col = "lightblue", border = "white",
+     main = "Square Root Transformation\nsqrt(x)",
+     xlab = "sqrt(Value)", ylab = "Frequency")
+text(mean(sqrt_data), max(hist(sqrt_data, breaks = 30, plot = FALSE)$counts) * 0.8,
+     sprintf("Skew = %.2f", skewness(sqrt_data)),
+     col = "darkblue", font = 2, cex = 1.2)
+
+# 4. Reciprocal transformation
+reciprocal_data <- 1 / (skewed_data + 1)
+hist(reciprocal_data, breaks = 30, col = "lightyellow", border = "white",
+     main = "Reciprocal Transformation\n1/(x + 1)",
+     xlab = "1/Value", ylab = "Frequency")
+text(mean(reciprocal_data), max(hist(reciprocal_data, breaks = 30, plot = FALSE)$counts) * 0.8,
+     sprintf("Skew = %.2f", skewness(reciprocal_data)),
+     col = "darkorange", font = 2, cex = 1.2)
+
+# Q-Q plots for each
+qqnorm(skewed_data, main = "Q-Q: Original", pch = 19, col = rgb(1, 0, 0, 0.5))
+qqline(skewed_data, col = "red", lwd = 2)
+
+qqnorm(log_data, main = "Q-Q: Log Transform", pch = 19, col = rgb(0, 1, 0, 0.5))
+qqline(log_data, col = "darkgreen", lwd = 2)
+
+qqnorm(sqrt_data, main = "Q-Q: Sqrt Transform", pch = 19, col = rgb(0, 0, 1, 0.5))
+qqline(sqrt_data, col = "darkblue", lwd = 2)
+
+qqnorm(reciprocal_data, main = "Q-Q: Reciprocal", pch = 19, col = rgb(1, 0.5, 0, 0.5))
+qqline(reciprocal_data, col = "darkorange", lwd = 2)
+
+# Comparison table
+plot.new()
+text(0.5, 0.95, "Transformation Guide", font = 2, cex = 1.5)
+
+guide_text <- c(
+  "Log: log(x)",
+  "  • Best for: Positive skew",
+  "  • Reduces: Right tail",
+  "  • Use when: x > 0",
+  "",
+  "Square Root: sqrt(x)",
+  "  • Best for: Moderate positive skew",
+  "  • Reduces: Right tail (less aggressive)",
+  "  • Use when: x ≥ 0",
+  "",
+  "Reciprocal: 1/x",
+  "  • Best for: Severe positive skew",
+  "  • Reduces: Right tail (most aggressive)",
+  "  • Reverses scale!",
+  "",
+  "Reflect & Transform:",
+  "  • For negative skew",
+  "  • max(x) - x, then transform"
+)
+
+y_pos <- seq(0.85, 0.05, length.out = length(guide_text))
+for(i in 1:length(guide_text)) {
+  text(0.05, y_pos[i], guide_text[i], adj = 0, cex = 1.0,
+       font = ifelse(grepl(":", guide_text[i]) & !grepl("  •", guide_text[i]), 2, 1))
+}
+
+# Before/After comparison
+plot(skewed_data, pch = 19, col = rgb(1, 0, 0, 0.5),
+     main = "Before Transformation",
+     xlab = "Index", ylab = "Value")
+
+plot(log_data, pch = 19, col = rgb(0, 1, 0, 0.5),
+     main = "After Log Transformation",
+     xlab = "Index", ylab = "log(Value)")
+
+# Summary statistics comparison
+plot.new()
+text(0.5, 0.95, "Impact on Statistics", font = 2, cex = 1.5)
+
+stats_comparison <- data.frame(
+  Statistic = c("Mean", "Median", "SD", "Skewness", "Kurtosis"),
+  Original = c(mean(skewed_data), median(skewed_data), sd(skewed_data),
+               skewness(skewed_data), kurtosis(skewed_data) - 3),
+  Log_Transform = c(mean(log_data), median(log_data), sd(log_data),
+                    skewness(log_data), kurtosis(log_data) - 3)
+)
+
+y_start <- 0.75
+text(0.2, y_start + 0.05, "Statistic", font = 2, adj = 0)
+text(0.45, y_start + 0.05, "Original", font = 2, adj = 0.5)
+text(0.75, y_start + 0.05, "Log", font = 2, adj = 0.5)
+
+for(i in 1:nrow(stats_comparison)) {
+  y <- y_start - i * 0.12
+  text(0.2, y, stats_comparison$Statistic[i], adj = 0)
+  text(0.45, y, sprintf("%.2f", stats_comparison$Original[i]), adj = 0.5)
+  text(0.75, y, sprintf("%.2f", stats_comparison$Log_Transform[i]), adj = 0.5)
+  
+  # Highlight improvement in skewness
+  if(stats_comparison$Statistic[i] == "Skewness") {
+    if(abs(stats_comparison$Log_Transform[i]) < abs(stats_comparison$Original[i])) {
+      text(0.9, y, "✓", col = "darkgreen", font = 2, cex = 1.5)
+    }
+  }
+}
+
+par(mfrow = c(1, 1))
+```
+
+**When to use each transformation [1]:**
+
+```{r transformation-guide, echo=FALSE}
+transform_guide <- data.frame(
+  Problem = c(
+    "Positive skew (mild)",
+    "Positive skew (moderate)",
+    "Positive skew (severe)",
+    "Negative skew",
+    "Heteroscedasticity",
+    "Non-linearity"
+  ),
+  Transformation = c(
+    "Square root: sqrt(x)",
+    "Log: log(x) or log(x + 1)",
+    "Reciprocal: 1/x or 1/(x + 1)",
+    "Reflect then transform: max(x) - x, then apply above",
+    "Log outcome variable",
+    "Add polynomial terms or use non-linear model"
+  ),
+  R_Code = c(
+    "sqrt(variable)",
+    "log(variable + 1)",
+    "1 / (variable + 1)",
+    "max(variable) - variable",
+    "log(outcome + 1)",
+    "lm(y ~ x + I(x^2))"
+  )
+)
+
+transform_guide %>%
+  kable(caption = "Transformation Guide for Common Violations [1]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE, width = "12em")
+```
+
+**Important notes [1]:**
+-   Always add a small constant (like 1) before log/reciprocal if data contain zeros
+-   Transformations change the interpretation of your results
+-   Report both original and transformed statistics
+-   If transformations don't help, consider robust or non-parametric methods
+
+### 8.4.2 Alternative Approaches When Assumptions Fail
+
+```{r alternatives-guide, echo=FALSE}
+alternatives_df <- data.frame(
+  Violated_Assumption = c(
+    "Independence",
+    "Multicollinearity",
+    "Linearity",
+    "Normality (small N)",
+    "Normality (large N)",
+    "Homogeneity",
+    "Homoscedasticity"
+  ),
+  Parametric_Fix = c(
+    "Mixed models, time-series models",
+    "Remove/combine predictors, PCA",
+    "Add polynomial terms, splines",
+    "Transform data, bootstrap",
+    "Proceed (CLT applies)",
+    "Welch's correction",
+    "Weighted least squares, robust SE"
+  ),
+  Non_Parametric_Alternative = c(
+    "Account for clustering structure",
+    "Ridge/Lasso regression",
+    "GAM (Generalized Additive Models)",
+    "Mann-Whitney, Kruskal-Wallis",
+    "Standard tests are robust",
+    "Mann-Whitney, Kruskal-Wallis",
+    "Rank-based tests"
+  )
+)
+
+alternatives_df %>%
+  kable(caption = "Solutions for Assumption Violations [1]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE, width = "12em")
+```
+
+## 8.5 Key Takeaways
+
+Based on Field et al. [1]:
+
+1.  **Always check assumptions** before interpreting statistical tests
+2.  **Use multiple methods** (visual + statistical tests) to assess each assumption
+3.  **Sample size matters:** Large samples (N ≥ 30) are more forgiving of normality violations [6]
+4.  **Prioritize visual checks:** Statistical tests can be overly sensitive in large samples [5]
+5.  **Independence is critical:** Violations of independence are more serious than other assumptions [1]
+6.  **Transformations can help:** Log, square root, or reciprocal transformations often fix violations [1]
+7.  **Robust methods exist:** When assumptions fail, consider robust or non-parametric alternatives [1]
+8.  **Document your decisions:** Always report which assumptions you checked and how [1]
+9.  **Influential cases matter:** Check Cook's Distance and leverage to identify cases that unduly influence the model [1]
+10. **Context is key:** Statistical significance doesn't always mean practical importance - use your judgment [1]
+
+---
+
+# Part 9: Practice Exercises
+
+## Exercise 1: Complete Assumption Check
+
+Using the `mtcars` dataset:
+
+1.  Create a fake regression predicting a random variable from all other variables
+2.  Check all five assumptions (independence, additivity, linearity, normality, homogeneity)
+3.  Create a report summarizing which assumptions are met and which are violated
+
+```{r exercise1, eval=FALSE}
+# Your code here
+data(mtcars)
+
+# Create fake regression
+random_y <- rchisq(nrow(mtcars), 7)
+fake_model <- lm(random_y ~ ., data = mtcars)
+
+# Extract diagnostics
+std_resid <- rstudent(fake_model)
+fitted_vals <- scale(fake_model$fitted.values)
+
+# 1. Independence: Durbin-Watson
+durbinWatsonTest(fake_model)
+
+# 2. Multicollinearity: VIF
+vif(fake_model)
+
+# 3. Linearity: Q-Q plot
+qqnorm(std_resid)
+qqline(std_resid)
+
+# 4. Normality: Shapiro-Wilk
+shapiro.test(std_resid)
+
+# 5. Homoscedasticity: Residual plot
+plot(fitted_vals, std_resid)
+abline(h = 0, col = "red")
+```
+
+## Exercise 2: Identify Assumption Violations
+
+Given the following residual plots, identify which assumption is violated:
+
+```{r exercise2, echo=FALSE, fig.height=8}
+set.seed(seeds[7])
+n <- 100
+x <- seq(-3, 3, length.out = n)
+
+par(mfrow = c(2, 2))
+
+# Plot A: Funnel
+y_a <- rnorm(n, 0, abs(x)/2 + 0.2)
+plot(x, y_a, main = "Plot A", xlab = "Fitted", ylab = "Residuals",
+     pch = 19, col = rgb(0, 0, 0, 0.5))
+abline(h = 0, col = "red", lwd = 2)
+
+# Plot B: Curve
+y_b <- x^2 + rnorm(n, 0, 0.5)
+plot(x, y_b, main = "Plot B", xlab = "Fitted", ylab = "Residuals",
+     pch = 19, col = rgb(0, 0, 0, 0.5))
+abline(h = 0, col = "red", lwd = 2)
+
+# Plot C: Random (good)
+y_c <- rnorm(n, 0, 1)
+plot(x, y_c, main = "Plot C", xlab = "Fitted", ylab = "Residuals",
+     pch = 19, col = rgb(0, 0, 0, 0.5))
+abline(h = 0, col = "red", lwd = 2)
+
+# Plot D: Clusters
+y_d <- c(rnorm(50, -1.5, 0.3), rnorm(50, 1.5, 0.3))
+plot(x, y_d, main = "Plot D", xlab = "Fitted", ylab = "Residuals",
+     pch = 19, col = rgb(0, 0, 0, 0.5))
+abline(h = 0, col = "red", lwd = 2)
+
+par(mfrow = c(1, 1))
+```
+
+**Questions:**
+-   Plot A: Which assumption is violated?
+-   Plot B: Which assumption is violated?
+-   Plot C: Are any assumptions violated?
+-   Plot D: What might this pattern indicate?
+
+**Answers:**
+-   Plot A: **Homoscedasticity** (funnel pattern - variance increases with fitted values)
+-   Plot B: **Linearity** (curved pattern - non-linear relationship)
+-   Plot C: **None** - random scatter indicates assumptions are met
+-   Plot D: **Missing predictor** or **two distinct groups** not accounted for in the model
+
+## Exercise 3: Interpret VIF Values
+
+Given the following VIF values, which variables should you be concerned about?
+
+```{r exercise3, echo=FALSE}
+vif_exercise <- data.frame(
+  Variable = c("Age", "Income", "Education", "Experience", "Salary"),
+  VIF = c(2.3, 15.7, 3.1, 14.2, 18.9)
+)
+
+vif_exercise %>%
+  kable(caption = "VIF Values for Exercise 3") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+**Question:** Which variables have problematic multicollinearity? What would you do?
+
+**Answer:** Income (VIF = 15.7), Experience (VIF = 14.2), and Salary (VIF = 18.9) all exceed the threshold of 10, indicating serious multicollinearity [2]. These variables likely measure similar constructs (e.g., Income and Salary are probably highly correlated). **Solution:** Remove one or two of these variables, or combine them into a single "economic status" composite variable.
+
+---
+
+# Glossary
+
+**Additivity:** The assumption that predictors contribute independently to the outcome; violated when multicollinearity is present [2].
+
+**Central Limit Theorem:** States that in large samples (N > 30), the sampling distribution tends to be normal regardless of the population distribution [6].
+
+**Durbin-Watson test:** Tests for autocorrelation in residuals; values near 2 indicate independence [1].
+
+**Fake regression:** A regression model created solely for diagnostic purposes, not to test hypotheses [1].
+
+**Homogeneity of variance:** Equal variances across categorical groups; tested with Levene's test [7].
+
+**Homoscedasticity:** Equal variance of residuals across the range of predicted values [8].
+
+**Independence:** The assumption that observations (or residuals) are not correlated with each other [1].
+
+**Kurtosis:** Measure of the "peakedness" of a distribution; excess kurtosis = 0 for normal distributions [5].
+
+**Levene's test:** Statistical test for homogeneity of variance across groups [7].
+
+**Linearity:** The assumption that relationships between variables are linear (straight lines) rather than curved [3].
+
+**Multicollinearity:** High correlation between predictor variables (r > .80 or .90); makes coefficients unstable [2].
+
+**Normality:** The assumption that the sampling distribution (not necessarily raw data) is normally distributed [6].
+
+**Q-Q plot:** Quantile-quantile plot comparing observed data to theoretical normal distribution [5].
+
+**Residual:** The difference between observed and predicted values; also called "error" [4].
+
+**Shapiro-Wilk test:** Statistical test for normality; significant p-values indicate non-normality [5].
+
+**Skewness:** Measure of asymmetry in a distribution; 0 = symmetric, positive = right skew, negative = left skew [5].
+
+**Standardized residual:** Residual converted to z-score (mean = 0, SD = 1) for easier interpretation [4].
+
+**Variance Inflation Factor (VIF):** Measure of multicollinearity; VIF > 10 indicates serious problems [2].
+
+---
+
+# References
+
+[1] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London: SAGE Publications, 2012.
+
+[2] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London, UK: SAGE Publications, 2012, pp. 274-276. [Multicollinearity and additivity]
+
+[3] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London, UK: SAGE Publications, 2012, pp. 293-295. [Linearity assumption and residual plots]
+
+[4] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London, UK: SAGE Publications, 2012, pp. 269-271. [Standardized residuals and error distributions]
+
+[5] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London, UK: SAGE Publications, 2012, pp. 179-182. [Q-Q plots and assessing normality]
+
+[6] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London, UK: SAGE Publications, 2012, pp. 168-169. [Central Limit Theorem and normality assumption]
+
+[7] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London, UK: SAGE Publications, 2012, pp. 185-188. [Homogeneity of variance and Levene's test]
+
+[8] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London, UK: SAGE Publications, 2012, pp. 272-273, 293. [Homoscedasticity and residual plots]
+
+---
+
+# Session Information
+
+```{r session-info}
+sessionInfo()
+```
+
+---
+
+<div style="text-align: center; padding: 20px; background-color: #f0f0f0; border-radius: 10px; margin-top: 30px;">
+**End of Week 07: R for Data Analytics Tutorial**
+
+*ANLY 500 - Analytics I*
+
+*Harrisburg University*
+</div>

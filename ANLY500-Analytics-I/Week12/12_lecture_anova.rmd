@@ -1,0 +1,248 @@
+---
+title: "ANOVA: Analysis of Variance"
+author: "Ziyuan Huang"
+date: "Last Updated: `r Sys.Date()`"
+output: 
+  slidy_presentation:
+    incremental: true 
+---
+
+## Comparing Means
+
+- In the last section, we learned how to compare **two means** using t-tests.
+    - *Example*: Is the average height of Group A different from Group B?
+- But what if we have **more than two groups**?
+    - *Example*: Comparing the effectiveness of three different drugs (Placebo, Low Dose, High Dose).
+- We can't just run multiple t-tests.
+    - *Why?* Because it increases the chance of making a mistake (Type I Error).
+
+## Why not just do lots of t-Tests?
+
+- Imagine you have 3 groups. To compare them all, you'd need 3 t-tests:
+    - Group 1 vs Group 2
+    - Group 1 vs Group 3
+    - Group 2 vs Group 3
+- **The Problem**: Every time you run a test, there is a 5% chance ($\alpha = 0.05$) of finding a difference that doesn't actually exist (Type I Error).
+- If you run multiple tests on the same data, these risks add up.
+    - This is called the **Familywise Error Rate**.
+    - For 3 groups (3 tests), the risk isn't 5%, it's actually about **14%**!
+    - For 5 groups (10 tests), the risk jumps to **40%**!
+    
+```{r, echo = FALSE, out.width="75%", fig.align='center'}
+knitr::include_graphics("pictures/1.png")
+```
+
+## Enter ANOVA (Analysis of Variance)
+
+- **ANOVA** is the solution. It compares **several means at the same time** while keeping the error rate at 5%.
+- It is an **Omnibus Test**:
+    - It tests for an *overall* difference between groups.
+    - It tells us: "Hey, there is a difference somewhere among these groups."
+    - It does **not** tell us specifically which groups are different (e.g., Group 1 vs Group 3).
+- **Key Concept**: ANOVA breaks down the total variation in the data into two parts:
+    1.  **Systematic Variance**: Variance caused by our experiment (the "Signal").
+    2.  **Unsystematic Variance**: Variance caused by random factors (the "Noise").
+
+## The Logic of the F-Ratio
+
+- ANOVA calculates a statistic called the **F-ratio**.
+- $$ F = \frac{\text{Model (Systematic Variance)}}{\text{Residual (Unsystematic Variance)}} $$
+- $$ F = \frac{\text{Good Variance}}{\text{Bad Variance}} $$
+- **Logic**:
+    - If the experiment worked, the "Good Variance" (differences caused by your groups) should be much larger than the "Bad Variance" (random noise).
+    - If $F > 1$, the experimental effect is bigger than noise.
+    - The larger the F, the more likely the difference is real.
+
+## ANOVA as Regression
+
+- **Surprise!** ANOVA is actually a special type of **Linear Regression**.
+- In regression, we predict an outcome ($Y$) based on predictors ($X$).
+- In ANOVA:
+    - Outcome ($Y$) = Continuous variable (e.g., Libido).
+    - Predictor ($X$) = Categorical variable (e.g., Drug Dose).
+- We are essentially asking: "Does knowing which group a person is in help us predict their score better than just guessing the average?"
+
+## The Example: Viagra and Libido
+
+- Let's look at an example from Andy Field's book.
+- **Research Question**: Does Viagra affect libido?
+- **Groups** (Independent Variable):
+    1.  Placebo (Sugar Pill)
+    2.  Low Dose Viagra
+    3.  High Dose Viagra
+- **Outcome** (Dependent Variable): Libido Score (Objective measure).
+
+## The Data
+
+```{r message=FALSE}
+library(rio)
+master <- import("data/viagra.sav")
+str(master)
+master$dose <- factor(master$dose, 
+                      levels = c(1,2,3),
+                      labels = c("Placebo", "Low Dose", "High Dose"))
+```
+
+## Step 1: Total Sum of Squares ($SS_T$)
+
+- First, we calculate the **Total Variation** in the data.
+- This is how much the data points differ from the **Grand Mean** (the average of everyone).
+- $$ SS_T = \text{Total "Stuff" to be explained} $$
+
+```{r, echo = FALSE, out.width="100%", fig.align='center'}
+knitr::include_graphics("pictures/5.png")
+```
+
+- Degrees of Freedom ($df_T$) = $N - 1 = 15 - 1 = 14$.
+
+## Step 2: Model Sum of Squares ($SS_M$)
+
+- This is the **Good Variance**.
+- How much do the **Group Means** differ from the **Grand Mean**?
+- If the groups are very different, this number will be big.
+- This represents the effect of our experiment (the drug).
+
+```{r, echo = FALSE, out.width="100%", fig.align='center'}
+knitr::include_graphics("pictures/7.png")
+```
+
+- Degrees of Freedom ($df_M$) = $k - 1$ (where $k$ is number of groups) = $3 - 1 = 2$.
+
+## Step 3: Residual Sum of Squares ($SS_R$)
+
+- This is the **Bad Variance** (Error).
+- How much do individual scores differ from their **own Group Mean**?
+- This is variation we *cannot* explain with our experiment (individual differences).
+
+```{r, echo = FALSE, out.width="100%", fig.align='center'}
+knitr::include_graphics("pictures/9.png")
+```
+
+## Calculating the F-Ratio
+
+1.  **Mean Squares (MS)**: We divide the Sum of Squares (SS) by their degrees of freedom (df) to get the "average" variance.
+    - $MS_M = SS_M / df_M$
+    - $MS_R = SS_R / df_R$
+2.  **F-Ratio**:
+    - $$ F = \frac{MS_M}{MS_R} $$
+
+```{r, echo = FALSE, out.width="100%", fig.align='center'}
+knitr::include_graphics("pictures/15.png")
+```
+
+## Assumptions of ANOVA
+
+Before running ANOVA, we must check if our data is suitable:
+
+1.  **Normality**: Data should be roughly normally distributed within groups.
+2.  **Homogeneity of Variance**: The spread (variance) of scores should be roughly the same in each group.
+    - We test this with **Levene's Test**.
+    - We want Levene's test to be **non-significant** ($p > .05$), meaning variances are equal.
+3.  **Independence**: Scores are independent (one person's score doesn't influence another's).
+
+## Running ANOVA in R (`ezANOVA`)
+
+- We use the `ez` package, which makes ANOVA easy.
+- **Important**: You need a participant ID column (`wid`).
+
+```{r echo=TRUE, warning=FALSE}
+library(ez)
+
+## Create a participant ID if you don't have one
+master$partno <- 1:nrow(master)
+options(scipen = 20)
+
+ezANOVA(data = master,
+        dv = libido,
+        between = dose,
+        wid = partno,
+        type = 3, 
+        detailed = T)
+```
+
+## Interpreting the Output
+
+1.  **Levene's Test**:
+    ```{r echo = T, message=FALSE, warning=FALSE}
+    ezANOVA(data = master, dv = libido, between = dose, wid = partno, type = 3, detailed = T)$`Levene's Test for Homogeneity of Variance`
+    ```
+    - $p = .89$ (greater than .05). **Good!** Assumptions met.
+
+2.  **ANOVA Results**:
+    ```{r echo=FALSE, message=FALSE, warning=FALSE}
+    ezANOVA(data = master, dv = libido, between = dose, wid = partno, type = 3, detailed = T)$ANOVA
+    ```
+    - $F(2, 12) = 5.12$, $p = .025$.
+    - **Conclusion**: Since $p < .05$, there is a significant difference in libido between the groups. The drug had an effect!
+
+## Post Hoc Tests: Where is the difference?
+
+- The ANOVA told us *something* happened, but not *what*.
+    - Is High Dose > Placebo?
+    - Is Low Dose > Placebo?
+    - Is High Dose > Low Dose?
+- We use **Post Hoc Tests** (like "after the fact" tests) to compare pairs of groups.
+- We must correct for the "Familywise Error" we talked about earlier.
+- **Bonferroni Correction**: A strict correction that adjusts the p-value to be safe.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+pairwise.t.test(master$libido,
+                master$dose,
+                p.adjust.method = "bonferroni", 
+                paired = F, 
+                var.equal = T)
+```
+
+## Effect Size: How big is the difference?
+
+- Statistical significance ($p < .05$) only tells us the effect is likely real.
+- **Effect Size** tells us how **large** or meaningful the effect is.
+- Common measures:
+    - **$\eta^2$ (Eta Squared)**: % of variance explained by the variable.
+    - **$\omega^2$ (Omega Squared)**: A less biased estimate (better for small samples).
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(MOTE)
+# Calculate Omega Squared
+effect <- omega.F(dfm = 2, dfe = 12, Fvalue = 5.12, n = 15, a = .05)
+effect$omega
+```
+- $\omega^2 = 0.35$. This is a **Large Effect**! (Small = .01, Medium = .06, Large = .14).
+
+## Trend Analysis
+
+- If our groups have a logical order (Placebo < Low < High), we can check for trends.
+- **Linear Trend**: Does libido go up as dose goes up?
+- **Quadratic Trend**: Does it go up then down (curved)?
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+master$dose2 <- master$dose
+contrasts(master$dose2) <- contr.poly(3) 
+output <- aov(libido ~ dose2, data = master)
+summary.lm(output)
+```
+- **Linear Trend** is significant ($p < .01$). As Viagra dose increases, libido increases.
+
+## Visualization
+
+- Always plot your data!
+
+```{r echo=TRUE, fig.height=4, fig.width=8, message=FALSE, warning=FALSE}
+library(ggplot2)
+cleanup <- theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                panel.background = element_blank(), axis.line = element_line(color = "black"))
+
+ggplot(master, aes(dose, libido)) +
+  cleanup +
+  stat_summary(fun.y = mean, geom = "bar", fill = "White", color = "Black") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = .2) +
+  xlab("Dosage") + ylab("Libido")
+```
+
+## Summary
+
+- **ANOVA** compares 3+ means while controlling error rates.
+- **F-Ratio** = Good Variance / Bad Variance.
+- **Assumptions**: Normality & Homogeneity (Levene's Test).
+- **Post Hoc**: Use Bonferroni to find specific group differences.
+- **Effect Size**: Use Omega Squared ($\omega^2$) to see how important the result is.

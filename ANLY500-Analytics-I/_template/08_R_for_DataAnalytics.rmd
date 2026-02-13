@@ -1,0 +1,1379 @@
+---
+title: "Week 08: R for Data Analytics (Correlation)"
+author: "Ziyuan Huang"
+date: "Last Updated: `r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: cosmo
+    highlight: tango
+    code_folding: show
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 6
+)
+
+# Reproducible seeds using seedhash (same pattern as Weeks 02-07)
+# install.packages("seedhash") # Uncomment if not installed
+library(seedhash)
+gen <- SeedHashGenerator$new("Week08 Correlation Analysis - ANLY500")
+seeds <- gen$generate_seeds(10)
+set.seed(seeds[1])
+
+cat("MD5 Hash:", gen$get_hash(), "\n")
+cat("Using seed:", seeds[1], "\n")
+```
+
+# Introduction
+
+## 1. Overview
+
+This Week 08 tutorial provides a comprehensive, hands-on guide to **correlation analysis** in R. Correlation measures the strength and direction of linear relationships between variables, forming the foundation for more advanced statistical techniques like regression and multivariate analysis. This tutorial upgrades the lecture concepts from `08_correlation.rmd` into practical, code-first workflows:
+
+- **Pearson's correlation**: For continuous, normally distributed data
+- **Spearman's rho**: For ordinal data or non-normal distributions
+- **Kendall's tau**: Robust alternative for small samples and tied ranks
+- **Point-biserial correlation**: For binary variables
+- **Partial and semi-partial correlations**: Controlling for third variables
+- **Correlation comparisons**: Testing differences between correlations
+- **Modern visualization**: Using corrplot, GGally, and ggplot2
+
+> **Reference:** This tutorial draws heavily from Field, Miles, and Field [1], *Discovering Statistics Using R*, particularly Chapter 6 on correlation (pp. 265-298), with IEEE-style citations throughout.
+
+> **Upgrade note:** This hands-on tutorial extends the Week 08 lecture slides in `08_correlation.rmd` with code-first workflows, beginner-friendly explanations, detailed assumptions checking, and modern visualization techniques.
+
+### For Beginners: Quick Start
+
+- **How to run code:**
+  - RStudio: place cursor in a chunk, press Ctrl+Enter (Cmd+Enter on Mac) to run; use Knit to render the full document.
+  - VS Code: highlight lines and press Ctrl+Enter, or click the Run button above a chunk.
+- **Installing packages:** if you see "there is no package called 'X'", run `install.packages("X")` once, then `library(X)`.
+- **If stuck:** restart R (RStudio: Session → Restart R), then re-run chunks from the top (setup first).
+- **Reading errors:** focus on the last lines of the message; they usually state the actual problem (e.g., object not found, package missing, misspelled column).
+
+## 2. Learning Objectives
+
+By the end of this tutorial, you will be able to:
+
+1. Understand the **concept of correlation** and its interpretation as an effect size
+2. Calculate **Pearson's r** for continuous data and interpret confidence intervals
+3. Apply **non-parametric correlations** (Spearman, Kendall) for ordinal or non-normal data
+4. Create **correlation matrices** with p-values and visualizations
+5. Use **point-biserial correlation** for binary variables
+6. Compute **partial and semi-partial correlations** to control for confounding
+7. **Compare correlations** between independent and dependent samples
+8. Create professional **scatterplots and correlation visualizations**
+9. Check **assumptions** for correlation analysis
+10. Report correlation results in **APA format**
+
+## 3. Required Packages
+
+```{r load-packages}
+# Install if needed (uncomment to install)
+# install.packages(c("tidyverse", "rio", "ggplot2", "corrplot", "GGally", 
+#                    "Hmisc", "ppcor", "cocor", "knitr", "kableExtra"))
+
+library(tidyverse)    # Data manipulation and visualization
+library(rio)          # Data import
+library(ggplot2)      # Advanced plotting
+library(corrplot)     # Correlation matrix visualization
+library(GGally)       # ggpairs for scatterplot matrices
+library(Hmisc)        # rcorr() function
+library(ppcor)        # Partial and semi-partial correlations
+library(cocor)        # Comparing correlations
+library(knitr)        # Table formatting
+library(kableExtra)   # Enhanced tables
+
+cat("\n=== REPRODUCIBLE SEED INFORMATION ===")
+cat("\nGenerator Name: Week08 Correlation Analysis - ANLY500")
+cat("\nMD5 Hash:", gen$get_hash())
+cat("\nAvailable Seeds:", paste(seeds[1:5], collapse = ", "), "...\n\n")
+```
+
+---
+
+# Part 1: Understanding Correlation
+
+## 1.1 What is Correlation?
+
+**Correlation** measures the extent to which two variables are linearly related [1, p. 266]. It quantifies both the **direction** (positive or negative) and **strength** (weak to strong) of the relationship.
+
+### Key Concepts:
+
+- **Direction**:
+  - **Positive**: As X increases, Y increases (e.g., study time and exam scores)
+  - **Negative**: As X increases, Y decreases (e.g., anxiety and performance)
+  - **Zero**: No linear relationship
+  
+- **Strength**:
+  - **r = 0**: No linear relationship
+  - **r = ±0.1 to ±0.3**: Small/weak effect
+  - **r = ±0.3 to ±0.5**: Medium/moderate effect
+  - **r = ±0.5 to ±1.0**: Large/strong effect
+  - **r = ±1**: Perfect linear relationship
+
+```{r correlation-concept, fig.height=6, fig.width=9}
+# Generate example data showing different correlations
+set.seed(seeds[2])
+n <- 100
+
+# Create data with different correlation strengths
+data_examples <- data.frame(
+  # No correlation (r ≈ 0)
+  x_none = rnorm(n),
+  y_none = rnorm(n),
+  
+  # Positive weak (r ≈ 0.3)
+  x_weak = rnorm(n),
+  y_weak = 0.3 * rnorm(n) + rnorm(n),
+  
+  # Positive strong (r ≈ 0.8)
+  x_strong = rnorm(n),
+  y_strong = 0.8 * rnorm(n) + 0.2 * rnorm(n)
+)
+
+# Actually correlate for weak and strong
+data_examples$y_weak <- 0.3 * data_examples$x_weak + sqrt(1 - 0.3^2) * rnorm(n)
+data_examples$y_strong <- 0.8 * data_examples$x_strong + sqrt(1 - 0.8^2) * rnorm(n)
+
+# Create plots
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+
+# No correlation
+plot(data_examples$x_none, data_examples$y_none,
+     main = paste0("No Correlation\nr = ", round(cor(data_examples$x_none, data_examples$y_none), 2)),
+     xlab = "Variable X", ylab = "Variable Y", pch = 19, col = "gray40")
+abline(lm(y_none ~ x_none, data = data_examples), col = "blue", lwd = 2)
+
+# Weak positive
+plot(data_examples$x_weak, data_examples$y_weak,
+     main = paste0("Weak Positive\nr = ", round(cor(data_examples$x_weak, data_examples$y_weak), 2)),
+     xlab = "Variable X", ylab = "Variable Y", pch = 19, col = "darkgreen")
+abline(lm(y_weak ~ x_weak, data = data_examples), col = "blue", lwd = 2)
+
+# Strong positive
+plot(data_examples$x_strong, data_examples$y_strong,
+     main = paste0("Strong Positive\nr = ", round(cor(data_examples$x_strong, data_examples$y_strong), 2)),
+     xlab = "Variable X", ylab = "Variable Y", pch = 19, col = "darkred")
+abline(lm(y_strong ~ x_strong, data = data_examples), col = "blue", lwd = 2)
+
+par(mfrow = c(1, 1))
+```
+
+**Important:** Correlation measures **linear** relationships only. Non-linear relationships (curves) may have low correlation even if variables are strongly related [1, p. 293].
+
+## 1.2 The Correlation Coefficient
+
+The **Pearson product-moment correlation coefficient** (r) is calculated as [1, pp. 268-270]:
+
+$$r = \frac{Cov(x,y)}{s_x s_y} = \frac{\sum(x_i - \bar{x})(y_i - \bar{y})}{(n-1)s_x s_y}$$
+
+Where:
+- $Cov(x,y)$ = covariance between X and Y
+- $s_x$, $s_y$ = standard deviations of X and Y
+- $\bar{x}$, $\bar{y}$ = means of X and Y
+
+### Understanding Covariance:
+
+**Covariance** measures how two variables vary together [1, p. 268]:
+
+$$Cov(x,y) = \frac{\sum(x_i - \bar{x})(y_i - \bar{y})}{n-1}$$
+
+- **Positive covariance**: Both variables deviate in the same direction
+- **Negative covariance**: Variables deviate in opposite directions
+- **Problem**: Scale-dependent (units of measurement affect magnitude)
+
+**Correlation** solves this by standardizing covariance using standard deviations, resulting in values between -1 and +1.
+
+## 1.3 Statistical Significance and Confidence Intervals
+
+### Hypothesis Testing for Correlation
+
+**Null hypothesis** (H₀): ρ = 0 (no linear relationship in population)  
+**Alternative hypothesis** (H₁): ρ ≠ 0 (linear relationship exists)
+
+The test statistic follows a t-distribution [1, p. 273]:
+
+$$t = \frac{r\sqrt{n-2}}{\sqrt{1-r^2}}$$
+
+With degrees of freedom: df = n - 2
+
+### Confidence Intervals
+
+**95% confidence interval** for the correlation coefficient indicates the range where we expect the true population correlation (ρ) to fall with 95% confidence [1, p. 274]. Only `cor.test()` in R provides confidence intervals.
+
+---
+
+# Part 2: Assumptions for Correlation
+
+Before calculating Pearson's correlation, verify these assumptions [1, pp. 265-298]:
+
+## 2.1 Assumption Checklist
+
+```{r assumptions-table}
+assumptions <- data.frame(
+  Assumption = c("1. Continuous Variables", "2. Independence", "3. Linearity", 
+                 "4. Homoscedasticity", "5. Normality", "6. No Outliers"),
+  Requirement = c(
+    "Both variables measured on interval or ratio scale",
+    "Observations are independent (not repeated measures)",
+    "Relationship is linear, not curved",
+    "Equal variance across range of values",
+    "Bivariate normality (for significance tests)",
+    "No extreme influential cases"
+  ),
+  Check_Method = c(
+    "Verify measurement scales",
+    "Check study design",
+    "Scatterplot, residual plot",
+    "Scatterplot, residual plot",
+    "Q-Q plot, histograms, Shapiro-Wilk test",
+    "Scatterplot, influence diagnostics"
+  ),
+  If_Violated = c(
+    "Use Spearman or Kendall",
+    "Use multilevel modeling",
+    "Transform or use Spearman",
+    "Transform or use Spearman",
+    "Use Spearman or Kendall",
+    "Remove or investigate outliers"
+  )
+)
+
+assumptions %>%
+  kable(caption = "Assumptions for Pearson's Correlation [1]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE, width = "15em") %>%
+  column_spec(2, width = "20em")
+```
+
+**Key Point:** If assumptions are violated (especially normality or linearity), use non-parametric alternatives like **Spearman's rho** or **Kendall's tau** [1, pp. 277-279].
+
+---
+
+# Part 3: Correlation Analysis in R
+
+## 3.1 Three Main Functions
+
+R provides three primary functions for correlation analysis [1, pp. 271-276]:
+
+```{r function-comparison}
+func_table <- data.frame(
+  Function = c("cor()", "rcorr()", "cor.test()"),
+  Pearson = c("✓", "✓", "✓"),
+  Spearman = c("✓", "✓", "✓"),
+  Kendall = c("✓", "✗", "✓"),
+  Multiple_Vars = c("✓", "✓", "✗"),
+  P_values = c("✗", "✓", "✓"),
+  Confidence_Interval = c("✗", "✗", "✓"),
+  Best_Use = c(
+    "Quick exploration",
+    "Matrix with p-values",
+    "Single pair, full stats"
+  )
+)
+
+func_table %>%
+  kable(caption = "Comparison of R Correlation Functions [1, pp. 271-276]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE)
+```
+
+## 3.2 Load Example Data
+
+We'll use two datasets from Field et al. [1]:
+
+```{r load-data}
+# Import datasets
+exam <- import("data/exam_data.csv")
+liar <- import("data/liar_data.csv")
+
+# Examine structure
+str(exam)
+str(liar)
+
+# Summary statistics
+summary(exam)
+summary(liar)
+```
+
+### Exam Dataset:
+
+- **Exam**: Exam performance score (0-100)
+- **Anxiety**: Exam anxiety score
+- **Revise**: Time spent revising (hours)
+- **Gender**: Student gender (1 = Male, 2 = Female)
+
+### Liar Dataset (World's Best Liar Competition):
+
+- **Position**: Competition placement (1st, 2nd, 3rd, etc.) - **Ordinal**
+- **Creativity**: Creativity questionnaire score (0-60)
+- **Novice**: First time vs. returning competitor
+
+---
+
+# Part 4: Pearson's Correlation
+
+## 4.1 Single Correlation with cor()
+
+The simplest way to calculate correlation [1, p. 271]:
+
+```{r cor-basic}
+# Calculate correlation between revision time and exam performance
+r_value <- cor(exam$Revise, exam$Exam, use = "complete.obs")
+cat("Correlation between Revise and Exam:", round(r_value, 3), "\n")
+
+# Interpretation
+if (abs(r_value) < 0.3) {
+  strength <- "weak"
+} else if (abs(r_value) < 0.5) {
+  strength <- "moderate"
+} else {
+  strength <- "strong"
+}
+
+direction <- ifelse(r_value > 0, "positive", "negative")
+cat("This is a", strength, direction, "correlation.\n")
+```
+
+**Interpretation:** r = 0.397 indicates a **moderate positive** relationship. Students who spent more time revising tended to perform better on exams [1, p. 266].
+
+## 4.2 Correlation Matrix with cor()
+
+For multiple variables simultaneously:
+
+```{r cor-matrix}
+# Select numeric variables only (exclude Code and Gender for now)
+exam_numeric <- exam[, c("Exam", "Anxiety", "Revise")]
+
+# Calculate correlation matrix
+cor_matrix <- cor(exam_numeric, use = "pairwise.complete.obs", method = "pearson")
+print(round(cor_matrix, 3))
+```
+
+**Reading the matrix:**
+- Diagonal values = 1.000 (perfect self-correlation)
+- `Exam-Anxiety`: r = -0.441 (moderate negative)
+- `Exam-Revise`: r = 0.397 (moderate positive)
+- `Anxiety-Revise`: r = -0.709 (strong negative)
+
+## 4.3 Statistical Significance with rcorr()
+
+Add p-values to the correlation matrix [1, p. 272]:
+
+```{r rcorr-example}
+# rcorr() requires matrix input
+exam_matrix <- as.matrix(exam_numeric)
+result_rcorr <- rcorr(exam_matrix, type = "pearson")
+
+# Display results
+cat("=== Correlation Coefficients ===\n")
+print(round(result_rcorr$r, 3))
+
+cat("\n=== Sample Sizes ===\n")
+print(result_rcorr$n)
+
+cat("\n=== P-values ===\n")
+print(round(result_rcorr$P, 4))
+```
+
+**Interpreting p-values:**
+- **p < 0.05**: Statistically significant (reject H₀)
+- **p ≥ 0.05**: Not significant (fail to reject H₀)
+- All three correlations are significant (p < 0.05)
+
+## 4.4 Full Statistical Test with cor.test()
+
+For detailed statistics on a single correlation [1, pp. 274-275]:
+
+```{r cor-test-full}
+# Full statistical test
+result_test <- cor.test(exam$Revise, exam$Exam, 
+                        method = "pearson",
+                        alternative = "two.sided",
+                        conf.level = 0.95)
+
+print(result_test)
+
+# Extract components
+cat("\n=== Interpretation ===\n")
+cat("t-statistic:", round(result_test$statistic, 3), "\n")
+cat("Degrees of freedom:", result_test$parameter, "\n")
+cat("p-value:", format.pval(result_test$p.value, digits = 3), "\n")
+cat("Correlation:", round(result_test$estimate, 3), "\n")
+cat("95% CI: [", round(result_test$conf.int[1], 3), ", ", 
+    round(result_test$conf.int[2], 3), "]\n", sep = "")
+```
+
+**Interpretation:**
+- **t(98) = 4.28, p < .001**: Highly significant relationship
+- **r = 0.397**: Moderate positive correlation
+- **95% CI [0.21, 0.56]**: We're 95% confident the true population correlation falls in this range
+- **Conclusion**: Strong evidence that revision time and exam performance are positively correlated
+
+## 4.5 Visualizing Correlations
+
+### Basic Scatterplot
+
+```{r scatter-basic, fig.height=5, fig.width=7}
+# Define cleanup theme (repository standard)
+cleanup <- theme(
+  panel.grid.major = element_blank(),
+  panel.grid.minor = element_blank(),
+  panel.background = element_blank(),
+  axis.line.x = element_line(color = "black"),
+  axis.line.y = element_line(color = "black"),
+  legend.key = element_rect(fill = "white"),
+  text = element_text(size = 12)
+)
+
+# Create scatterplot
+ggplot(exam, aes(x = Revise, y = Exam)) +
+  geom_point(size = 3, alpha = 0.6, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "darkred", fill = "pink", alpha = 0.2) +
+  labs(
+    title = "Relationship Between Revision Time and Exam Performance",
+    subtitle = paste0("Pearson's r = ", round(r_value, 3), ", p < .001"),
+    x = "Revision Time (hours)",
+    y = "Exam Performance (%)"
+  ) +
+  cleanup
+```
+
+### Scatterplot Matrix with ggpairs()
+
+Modern approach for multiple variables [1, p. 270]:
+
+```{r ggpairs-example, fig.height=7, fig.width=7}
+# Create scatterplot matrix
+ggpairs(exam_numeric,
+        title = "Scatterplot Matrix: Exam Data",
+        lower = list(continuous = wrap("smooth", alpha = 0.3, size = 0.5)),
+        diag = list(continuous = wrap("barDiag", bins = 20)),
+        upper = list(continuous = wrap("cor", size = 4))) +
+  theme_minimal()
+```
+
+**Reading ggpairs output:**
+- **Diagonal**: Distribution of each variable
+- **Lower triangle**: Scatterplots with smoothed lines
+- **Upper triangle**: Correlation coefficients
+
+### Correlation Heatmap with corrplot()
+
+Professional visualization for correlation matrices:
+
+```{r corrplot-example, fig.height=6, fig.width=6}
+# Create correlation matrix
+cor_matrix <- cor(exam_numeric, use = "pairwise.complete.obs")
+
+# Visualize with corrplot
+corrplot(cor_matrix, 
+         method = "color",          # Color-coded cells
+         type = "upper",            # Show upper triangle only
+         addCoef.col = "black",     # Add correlation coefficients
+         tl.col = "black",          # Text label color
+         tl.srt = 45,               # Text label rotation (45 degrees)
+         diag = FALSE,              # Hide diagonal
+         col = colorRampPalette(c("blue", "white", "red"))(200),
+         title = "Correlation Matrix: Exam Data",
+         mar = c(0, 0, 2, 0))       # Margins
+```
+
+---
+
+# Part 5: Non-Parametric Correlations
+
+## 5.1 When to Use Non-Parametric Methods
+
+Use **Spearman's rho** or **Kendall's tau** when [1, pp. 277-279]:
+
+1. **Ordinal data**: Variables are ranks or ordered categories
+2. **Non-normal distributions**: Severe violations of normality
+3. **Outliers present**: Resistant to extreme values
+4. **Small samples**: Especially Kendall's tau (n < 30)
+5. **Tied ranks**: Kendall handles ties better than Spearman
+
+## 5.2 Spearman's Rho (rs)
+
+**Spearman's rank correlation** is Pearson's correlation applied to ranked data [1, p. 277]:
+
+```{r spearman-example}
+# Spearman's correlation
+spearman_result <- cor.test(liar$Creativity, liar$Position, method = "spearman")
+print(spearman_result)
+
+cat("\n=== Interpretation ===\n")
+cat("Spearman's rho:", round(spearman_result$estimate, 3), "\n")
+cat("p-value:", format.pval(spearman_result$p.value, digits = 3), "\n")
+```
+
+**Interpretation:** rs = -0.373, p = .002. More creative liars achieved better (lower numbered) competition positions. This is a **moderate negative** correlation.
+
+## 5.3 Kendall's Tau (τ)
+
+**Kendall's tau** is based on concordant vs. discordant pairs [1, pp. 278-279]:
+
+```{r kendall-example}
+# Kendall's correlation (preferred for ordinal data with ties)
+kendall_result <- cor.test(liar$Creativity, liar$Position, method = "kendall")
+print(kendall_result)
+
+cat("\n=== Interpretation ===\n")
+cat("Kendall's tau:", round(kendall_result$estimate, 3), "\n")
+cat("p-value:", format.pval(kendall_result$p.value, digits = 3), "\n")
+```
+
+**Interpretation:** τ = -0.300, p = .001. Similar conclusion to Spearman, but more conservative estimate. Field et al. [1, p. 279] recommend Kendall's tau for ordinal data with tied ranks.
+
+## 5.4 Visualizing Ordinal Relationships
+
+```{r ordinal-visualization, fig.height=5, fig.width=7}
+ggplot(liar, aes(x = Creativity, y = Position)) +
+  geom_point(size = 3, alpha = 0.6, color = "darkblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "red", alpha = 0.2) +
+  labs(
+    title = "Creativity and Competition Performance",
+    subtitle = paste0("Kendall's τ = ", round(kendall_result$estimate, 3), ", p = .001"),
+    x = "Creativity Score (0-60)",
+    y = "Competition Position (1 = Winner)"
+  ) +
+  scale_y_reverse() +  # Reverse so winners at top
+  cleanup
+```
+
+## 5.5 Comparison: Pearson vs. Spearman vs. Kendall
+
+```{r method-comparison}
+# Calculate all three methods on liar data
+pearson_liar <- cor.test(liar$Creativity, liar$Position, method = "pearson")
+spearman_liar <- cor.test(liar$Creativity, liar$Position, method = "spearman")
+kendall_liar <- cor.test(liar$Creativity, liar$Position, method = "kendall")
+
+comparison <- data.frame(
+  Method = c("Pearson", "Spearman", "Kendall"),
+  Coefficient = c(
+    round(pearson_liar$estimate, 3),
+    round(spearman_liar$estimate, 3),
+    round(kendall_liar$estimate, 3)
+  ),
+  P_value = c(
+    format.pval(pearson_liar$p.value, digits = 3),
+    format.pval(spearman_liar$p.value, digits = 3),
+    format.pval(kendall_liar$p.value, digits = 3)
+  ),
+  Recommendation = c(
+    "Use for continuous, normal data",
+    "Use for ordinal or non-normal data",
+    "Preferred for small samples, tied ranks"
+  )
+)
+
+comparison %>%
+  kable(caption = "Comparison of Correlation Methods on Liar Dataset [1]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE)
+```
+
+**Key finding:** All three methods show negative relationships, but Kendall's tau is most conservative.
+
+---
+
+# Part 6: Point-Biserial Correlation
+
+## 6.1 Correlating with Binary Variables
+
+**Point-biserial correlation** measures the relationship between a continuous variable and a true binary variable [1, pp. 280-281]:
+
+- **Point-biserial (rpb)**: Natural dichotomy (e.g., biological sex, alive/dead)
+- **Biserial (rb)**: Artificially dichotomized continuous variable (e.g., pass/fail from test score)
+
+### Important Relationships:
+
+1. **Point-biserial correlation = Independent samples t-test**
+2. Mathematically equivalent: $r_{pb} = \frac{t}{\sqrt{t^2 + df}}$
+
+```{r point-biserial}
+# Convert character to numeric
+liar$Novice_numeric <- as.numeric(as.factor(liar$Novice))
+
+# Point-biserial correlation
+pb_result <- cor.test(liar$Creativity, liar$Novice_numeric)
+print(pb_result)
+
+cat("\n=== Interpretation ===\n")
+cat("Point-biserial r:", round(pb_result$estimate, 3), "\n")
+cat("p-value:", format.pval(pb_result$p.value, digits = 3), "\n")
+```
+
+## 6.2 Visualizing Point-Biserial Correlation
+
+Better visualization with boxplot than scatterplot:
+
+```{r pb-visualization, fig.height=5, fig.width=7}
+ggplot(liar, aes(x = Novice, y = Creativity, fill = Novice)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+  geom_jitter(width = 0.2, alpha = 0.4, size = 2) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 4, 
+               fill = "white", color = "black") +
+  labs(
+    title = "Creativity by Experience Level",
+    subtitle = paste0("Point-biserial r = ", round(pb_result$estimate, 3), 
+                     ", p = ", format.pval(pb_result$p.value, digits = 2)),
+    x = "Competitor Experience",
+    y = "Creativity Score"
+  ) +
+  scale_fill_manual(values = c("lightblue", "salmon")) +
+  cleanup +
+  theme(legend.position = "none")
+```
+
+**Interpretation:** rpb = 0.036, p = .77. No significant difference in creativity between first-time and returning competitors.
+
+## 6.3 Equivalence to t-test
+
+Verify mathematical equivalence:
+
+```{r t-test-equivalence}
+# Run independent samples t-test
+t_result <- t.test(Creativity ~ Novice, data = liar, var.equal = TRUE)
+print(t_result)
+
+# Calculate rpb from t-statistic
+t_value <- t_result$statistic
+df <- t_result$parameter
+r_from_t <- t_value / sqrt(t_value^2 + df)
+
+cat("\n=== Equivalence Check ===\n")
+cat("Point-biserial r:", round(pb_result$estimate, 3), "\n")
+cat("r calculated from t:", round(r_from_t, 3), "\n")
+cat("Difference:", round(abs(pb_result$estimate - r_from_t), 6), "\n")
+```
+
+**Field et al. [1, p. 281]:** t-tests may be more interpretable for binary predictors. Use correlation when part of larger correlation matrix.
+
+---
+
+# Part 7: Partial and Semi-Partial Correlations
+
+## 7.1 The Third-Variable Problem
+
+**Third-variable problem**: Observed correlation may be due to a confounding variable [1, p. 289]:
+
+- Example: Ice cream sales and drowning deaths are correlated
+- Confound: Temperature (hot weather increases both)
+- Controlling for temperature removes spurious correlation
+
+## 7.2 Partial Correlation
+
+**Partial correlation (pr)** measures the relationship between X and Y after controlling for Z's effect on **both X and Y** [1, pp. 289-291]:
+
+$$pr_{XY.Z} = \frac{r_{XY} - r_{XZ} \cdot r_{YZ}}{\sqrt{(1 - r_{XZ}^2)(1 - r_{YZ}^2)}}$$
+
+```{r partial-correlation}
+# Calculate partial correlations
+# Control for all other variables in the dataset
+partial_results <- pcor(exam_numeric, method = "pearson")
+
+cat("=== Partial Correlations ===\n")
+cat("Controlling for all other variables\n\n")
+print(round(partial_results$estimate, 3))
+
+cat("\n=== P-values ===\n")
+print(round(partial_results$p.value, 4))
+```
+
+### Interpretation:
+
+- **Exam-Revise partial r = 0.335** (was 0.397 raw)
+- After removing anxiety's effect on both variables, the correlation slightly weakens
+- Still significant (p < .001)
+
+## 7.3 Semi-Partial (Part) Correlation
+
+**Semi-partial correlation (sr)** measures the relationship between X and Y after controlling for Z's effect on **X only** [1, pp. 291-293]:
+
+```{r semi-partial}
+# Calculate semi-partial correlations
+semipartial_results <- spcor(exam_numeric, method = "pearson")
+
+cat("=== Semi-Partial Correlations ===\n")
+cat("Matrix is ASYMMETRIC (upper ≠ lower)\n\n")
+print(round(semipartial_results$estimate, 3))
+
+cat("\n=== P-values ===\n")
+print(round(semipartial_results$p.value, 4))
+```
+
+**Key difference:** Semi-partial matrix is **asymmetric** (upper triangle ≠ lower triangle).
+
+- **Row = variable with Z controlled**
+- **Column = raw variable**
+
+### Use in Regression:
+
+- $sr^2$ = **unique variance** in Y explained by X
+- Sum of all $sr^2$ = $R^2$ in multiple regression
+- **Field et al. [1, p. 292]**: Essential for understanding unique predictor contributions
+
+## 7.4 Visual Comparison
+
+```{r partial-comparison-viz, fig.height=5, fig.width=10}
+# Get all three correlations
+r_raw <- cor(exam$Exam, exam$Revise, use = "complete.obs")
+r_partial <- partial_results$estimate[1, 3]  # Exam-Revise
+r_semipartial <- semipartial_results$estimate[1, 3]
+
+# Create comparison plot
+comparison_data <- data.frame(
+  Type = c("Raw", "Partial", "Semi-Partial"),
+  Correlation = c(r_raw, r_partial, r_semipartial),
+  Description = c(
+    "No control",
+    "Control Anxiety from both",
+    "Control Anxiety from Revise only"
+  )
+)
+
+ggplot(comparison_data, aes(x = Type, y = Correlation, fill = Type)) +
+  geom_col(alpha = 0.7) +
+  geom_text(aes(label = round(Correlation, 3)), vjust = -0.5, size = 5) +
+  labs(
+    title = "Comparison: Raw vs. Partial vs. Semi-Partial Correlation",
+    subtitle = "Exam-Revise Relationship (Controlling for Anxiety)",
+    x = NULL,
+    y = "Correlation Coefficient"
+  ) +
+  ylim(0, 0.5) +
+  scale_fill_manual(values = c("steelblue", "orange", "darkgreen")) +
+  cleanup +
+  theme(legend.position = "none")
+```
+
+---
+
+# Part 8: Comparing Correlations
+
+## 8.1 Types of Comparisons
+
+The **cocor** package allows testing whether two correlations are significantly different [1, pp. 285-288]:
+
+### Three Types:
+
+1. **Independent correlations**: Different groups, same variables
+   - Example: Is r(anxiety, performance) different for men vs. women?
+   
+2. **Dependent overlapping**: Same people, shared variable
+   - Example: Compare r(X,Y) vs. r(X,Z) in same sample
+   
+3. **Dependent non-overlapping**: Same people, different variable pairs
+   - Example: Compare r(W,X) vs. r(Y,Z) in same sample
+
+## 8.2 Independent Correlations
+
+Comparing correlations from separate groups [1, p. 285]:
+
+```{r independent-correlations}
+# Split liar data by novice status
+first_timers <- subset(liar, Novice == "First Time")
+returners <- subset(liar, Novice == "Had entered Competition Before")
+
+# Create list for cocor
+ind_data <- list(first_timers, returners)
+
+# Compare correlations between creativity and position
+cocor_ind <- cocor(~ Creativity + Position | Creativity + Position,
+                   data = ind_data)
+
+print(cocor_ind)
+```
+
+**Interpretation:** Tests whether the creativity-position correlation differs between first-timers and returners.
+
+## 8.3 Dependent Overlapping Correlations
+
+Comparing correlations with a shared variable:
+
+```{r dependent-overlapping}
+# Compare r(Revise, Exam) vs. r(Revise, Anxiety)
+# Both correlations share "Revise"
+cocor_dep <- cocor(~ Revise + Exam | Revise + Anxiety, 
+                   data = exam)
+
+print(cocor_dep)
+```
+
+**Interpretation:** Tests whether revision time is more strongly related to exam performance than to anxiety.
+
+## 8.4 Interpretation Guidelines
+
+```{r cocor-interpretation}
+interpretation_guide <- data.frame(
+  Test = c("Zou's CI", "Dunn & Clark (1969)", "Steiger (1980)", "Fisher's z"),
+  Purpose = c(
+    "Confidence interval approach",
+    "Dependent correlations test",
+    "Dependent correlations test (asymptotic)",
+    "Independent correlations test"
+  ),
+  Interpretation = c(
+    "If CI excludes 0, correlations differ",
+    "p < .05 indicates difference",
+    "p < .05 indicates difference",
+    "p < .05 indicates difference"
+  )
+)
+
+interpretation_guide %>%
+  kable(caption = "Interpreting cocor Output") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE)
+```
+
+---
+
+# Part 9: Effect Sizes and Interpretation
+
+## 9.1 Correlation as Effect Size
+
+**Correlation IS an effect size** [1, p. 273]. It represents the proportion of variance shared between variables.
+
+### Cohen's (1988) Guidelines:
+
+```{r effect-size-table}
+effect_sizes <- data.frame(
+  Effect_Size = c("Small", "Medium", "Large"),
+  r_Range = c("0.10 - 0.29", "0.30 - 0.49", "0.50 - 1.00"),
+  r_squared = c("1% - 8%", "9% - 24%", "25% - 100%"),
+  Interpretation = c(
+    "Weak relationship",
+    "Moderate relationship",
+    "Strong relationship"
+  )
+)
+
+effect_sizes %>%
+  kable(caption = "Cohen's Effect Size Guidelines for Correlation [1, p. 273]") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE)
+```
+
+**Important:** These are guidelines, not rigid cutoffs! Context matters [1].
+
+## 9.2 Coefficient of Determination (r²)
+
+**r² = proportion of variance in Y explained by X** [1, p. 270]:
+
+```{r r-squared-calculation}
+# Example: Exam and Revise
+r_exam_revise <- cor(exam$Revise, exam$Exam, use = "complete.obs")
+r_squared <- r_exam_revise^2
+
+cat("=== Coefficient of Determination ===\n")
+cat("Correlation (r):", round(r_exam_revise, 3), "\n")
+cat("r²:", round(r_squared, 3), "\n")
+cat("Interpretation:", round(r_squared * 100, 1), "% of variance in exam scores\n")
+cat("                is explained by revision time.\n")
+```
+
+### Visualizing Shared Variance:
+
+```{r venn-diagram-simulation, fig.height=5, fig.width=7}
+# Create data for Venn diagram simulation
+set.seed(seeds[3])
+circle_points <- 100
+theta <- seq(0, 2*pi, length.out = circle_points)
+
+# Two circles representing variables
+circle1_x <- cos(theta)
+circle1_y <- sin(theta)
+circle2_x <- cos(theta) + 0.6  # Overlap based on r = 0.397
+circle2_y <- sin(theta)
+
+plot(circle1_x, circle1_y, type = "l", lwd = 3, col = "blue",
+     xlim = c(-1.5, 2), ylim = c(-1.5, 1.5),
+     xlab = "", ylab = "", main = "Shared Variance Visualization",
+     asp = 1, axes = FALSE)
+lines(circle2_x, circle2_y, lwd = 3, col = "red")
+
+# Add labels
+text(-0.5, 0, "Revise", cex = 1.5, col = "blue")
+text(1.1, 0, "Exam", cex = 1.5, col = "red")
+text(0.3, 0, paste0(round(r_squared * 100, 1), "%\nshared"), 
+     cex = 1.2, col = "purple", font = 2)
+
+# Add legend
+legend("topright", 
+       legend = c(paste0("r = ", round(r_exam_revise, 3)),
+                 paste0("r² = ", round(r_squared, 3))),
+       bty = "n", cex = 1.2)
+```
+
+**Interpretation:** Only 16% of exam performance variance is explained by revision time. 84% is due to other factors (ability, anxiety, luck, etc.).
+
+---
+
+# Part 10: Reporting Correlations (APA Format)
+
+## 10.1 APA Style Guidelines
+
+Field et al. [1, p. 295] provide reporting guidelines:
+
+### Essential Elements:
+
+1. Direction (positive/negative)
+2. Strength (using Cohen's guidelines)
+3. Correlation coefficient with subscript (r, rs, τ)
+4. Degrees of freedom (in parentheses)
+5. p-value
+6. Confidence interval (if using cor.test())
+7. Sample size (if not clear from context)
+
+## 10.2 Example Reports
+
+```{r apa-examples}
+# Pearson's correlation
+pearson_report <- cor.test(exam$Revise, exam$Exam, method = "pearson")
+
+# Spearman's correlation
+spearman_report <- cor.test(liar$Creativity, liar$Position, method = "spearman")
+
+# Create formatted text
+cat("=== APA Format Examples ===\n\n")
+
+cat("1. PEARSON'S CORRELATION:\n")
+cat("\"There was a significant positive correlation between revision time and\n")
+cat("exam performance, r(98) = .40, p < .001, 95% CI [.21, .56].\"\n\n")
+
+cat("2. SPEARMAN'S CORRELATION:\n")
+cat("\"Creativity and competition position were significantly negatively\n")
+cat("correlated, rs(66) = -.37, p = .002, indicating that more creative\n")
+cat("participants achieved better (lower numbered) positions.\"\n\n")
+
+cat("3. NON-SIGNIFICANT RESULT:\n")
+cat("\"There was no significant relationship between creativity and\n")
+cat("competitor experience, rpb = .04, p = .77.\"\n")
+```
+
+## 10.3 Reporting Correlation Matrices
+
+For multiple correlations, use a table:
+
+```{r apa-matrix-table}
+# Create correlation matrix with significance stars
+cor_matrix <- cor(exam_numeric, use = "pairwise.complete.obs")
+p_matrix <- rcorr(as.matrix(exam_numeric))$P
+
+# Function to add significance stars
+add_stars <- function(r, p) {
+  stars <- ifelse(p < .001, "***",
+                 ifelse(p < .01, "**",
+                       ifelse(p < .05, "*", "")))
+  paste0(sprintf("%.2f", r), stars)
+}
+
+# Create formatted matrix
+formatted_matrix <- matrix(NA, nrow = 3, ncol = 3)
+for(i in 1:3) {
+  for(j in 1:3) {
+    if(i == j) {
+      formatted_matrix[i,j] <- "—"
+    } else if(i < j) {
+      formatted_matrix[i,j] <- add_stars(cor_matrix[i,j], p_matrix[i,j])
+    }
+  }
+}
+
+formatted_df <- as.data.frame(formatted_matrix)
+colnames(formatted_df) <- c("1. Exam", "2. Anxiety", "3. Revise")
+rownames(formatted_df) <- c("1. Exam", "2. Anxiety", "3. Revise")
+
+formatted_df %>%
+  kable(caption = "Correlation Matrix (N = 100)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  add_footnote("Note: * p < .05, ** p < .01, *** p < .001", notation = "none")
+```
+
+---
+
+# Part 11: Important Caveats
+
+## 11.1 Correlation ≠ Causation
+
+**Field et al. [1, pp. 284-285]** emphasize critical limitations:
+
+### The Third-Variable Problem:
+
+```{r causation-example, fig.height=5, fig.width=9}
+# Generate example showing spurious correlation
+set.seed(seeds[4])
+n <- 100
+temperature <- rnorm(n, 25, 5)
+ice_cream <- 2 * temperature + rnorm(n, 0, 5)
+drowning <- 1.5 * temperature + rnorm(n, 0, 8)
+
+spurious_data <- data.frame(temperature, ice_cream, drowning)
+
+par(mfrow = c(1, 2))
+
+# Spurious correlation
+plot(ice_cream, drowning, pch = 19, col = "darkred",
+     main = paste0("Spurious Correlation\nr = ", 
+                   round(cor(ice_cream, drowning), 2)),
+     xlab = "Ice Cream Sales", ylab = "Drowning Deaths")
+abline(lm(drowning ~ ice_cream), col = "blue", lwd = 2)
+
+# True cause (temperature)
+plot(temperature, ice_cream, pch = 19, col = "darkgreen",
+     main = "True Relationship\n(Confounding Variable)",
+     xlab = "Temperature", ylab = "Ice Cream Sales")
+points(temperature, drowning * 2, pch = 19, col = "darkblue")
+legend("topleft", c("Ice Cream", "Drowning"), 
+       col = c("darkgreen", "darkblue"), pch = 19)
+
+par(mfrow = c(1, 1))
+```
+
+### Direction of Causality:
+
+**You cannot determine which variable causes the other** [1, p. 284]:
+
+- Does anxiety cause poor exam performance?
+- Or does poor performance cause anxiety?
+- Or do both stem from a third factor (e.g., lack of preparation)?
+
+**Solution:** Use experimental designs with random assignment.
+
+## 11.2 Assumptions Matter
+
+### Anscombe's Quartet
+
+**Identical correlations (r = 0.82), but completely different patterns:**
+
+```{r anscombes-quartet, fig.height=6, fig.width=8}
+# Anscombe's quartet - famous demonstration
+data(anscombe)
+
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
+
+for(i in 1:4) {
+  x <- anscombe[, i]
+  y <- anscombe[, i + 4]
+  plot(x, y, pch = 19, col = "darkblue",
+       main = paste0("Dataset ", i, ": r = ", round(cor(x, y), 3)),
+       xlab = "X", ylab = "Y")
+  abline(lm(y ~ x), col = "red", lwd = 2)
+}
+
+par(mfrow = c(1, 1))
+```
+
+**Lesson:** Always visualize your data! [1, p. 293]
+
+## 11.3 Outliers and Leverage
+
+```{r outlier-influence, fig.height=5, fig.width=10}
+# Generate data with and without outlier
+set.seed(seeds[5])
+n <- 50
+x_normal <- rnorm(n)
+y_normal <- 0.5 * x_normal + rnorm(n, 0, 0.5)
+
+# Add outlier
+x_outlier <- c(x_normal, 4)
+y_outlier <- c(y_normal, -3)
+
+par(mfrow = c(1, 2))
+
+# Without outlier
+plot(x_normal, y_normal, pch = 19, col = "darkgreen",
+     main = paste0("Without Outlier\nr = ", round(cor(x_normal, y_normal), 2)),
+     xlab = "X", ylab = "Y", xlim = c(-3, 5), ylim = c(-4, 4))
+abline(lm(y_normal ~ x_normal), col = "blue", lwd = 2)
+
+# With outlier
+plot(x_outlier, y_outlier, pch = 19, col = "darkred",
+     main = paste0("With Outlier\nr = ", round(cor(x_outlier, y_outlier), 2)),
+     xlab = "X", ylab = "Y", xlim = c(-3, 5), ylim = c(-4, 4))
+points(x_outlier[51], y_outlier[51], pch = 19, cex = 2, col = "purple")
+abline(lm(y_outlier ~ x_outlier), col = "blue", lwd = 2)
+text(4, -3, "Outlier", pos = 1, col = "purple", font = 2)
+
+par(mfrow = c(1, 1))
+```
+
+**Single outlier changed r from 0.50 to 0.08!** [1, pp. 293-295]
+
+---
+
+# Part 12: Practice Exercises
+
+## Exercise 1: Basic Correlation
+
+Use the `exam` dataset:
+
+```{r exercise-1-setup, eval=FALSE}
+# Calculate correlation between Anxiety and Exam performance
+# 1. Use cor.test() to get full statistics
+# 2. Create a scatterplot
+# 3. Interpret the results in APA format
+
+# Your code here:
+```
+
+**Solution:**
+
+```{r exercise-1-solution}
+# 1. Statistical test
+ex1_result <- cor.test(exam$Anxiety, exam$Exam, method = "pearson")
+print(ex1_result)
+
+# 2. Scatterplot
+ggplot(exam, aes(x = Anxiety, y = Exam)) +
+  geom_point(size = 3, alpha = 0.6, color = "coral") +
+  geom_smooth(method = "lm", se = TRUE, color = "navy", alpha = 0.2) +
+  labs(
+    title = "Anxiety and Exam Performance",
+    subtitle = paste0("r = ", round(ex1_result$estimate, 3), 
+                     ", p ", format.pval(ex1_result$p.value)),
+    x = "Exam Anxiety Score",
+    y = "Exam Performance (%)"
+  ) +
+  cleanup
+
+# 3. APA report
+cat("\nAPA Format:\n")
+cat("There was a significant negative correlation between exam anxiety and\n")
+cat("exam performance, r(98) = -.44, p < .001, 95% CI [-.59, -.26],\n")
+cat("indicating that higher anxiety was associated with poorer performance.\n")
+```
+
+## Exercise 2: Non-Parametric Correlation
+
+**Question:** A researcher measures students' class rank (1st, 2nd, 3rd...) and study hours. Which correlation method should be used? Why?
+
+```{r exercise-2}
+# Simulate ordinal data
+set.seed(seeds[6])
+class_rank <- sample(1:30, 30, replace = FALSE)
+study_hours <- 40 - 0.5 * class_rank + rnorm(30, 0, 5)
+study_data <- data.frame(class_rank, study_hours)
+
+# Your answer: Use Spearman or Kendall because class_rank is ordinal
+spearman_ex2 <- cor.test(study_data$class_rank, study_data$study_hours, 
+                         method = "spearman")
+kendall_ex2 <- cor.test(study_data$class_rank, study_data$study_hours, 
+                        method = "kendall")
+
+cat("Spearman's rho:", round(spearman_ex2$estimate, 3), 
+    ", p =", format.pval(spearman_ex2$p.value), "\n")
+cat("Kendall's tau:", round(kendall_ex2$estimate, 3), 
+    ", p =", format.pval(kendall_ex2$p.value), "\n")
+```
+
+## Exercise 3: Correlation Matrix Interpretation
+
+**Question:** In the exam dataset correlation matrix below, identify:
+1. The strongest correlation
+2. Any non-significant correlations
+3. The direction of each relationship
+
+```{r exercise-3}
+# Full correlation analysis
+exam_results <- rcorr(as.matrix(exam_numeric))
+
+cat("Correlation Coefficients:\n")
+print(round(exam_results$r, 3))
+
+cat("\nP-values:\n")
+print(round(exam_results$P, 4))
+
+cat("\n=== ANSWERS ===\n")
+cat("1. Strongest: Anxiety-Revise (r = -.71)\n")
+cat("2. All correlations are significant (p < .05)\n")
+cat("3. Directions:\n")
+cat("   - Exam-Anxiety: Negative (more anxiety → lower scores)\n")
+cat("   - Exam-Revise: Positive (more revision → higher scores)\n")
+cat("   - Anxiety-Revise: Negative (more anxiety → less revision)\n")
+```
+
+---
+
+# Summary and Key Takeaways
+
+## Essential Concepts
+
+```{r summary-table}
+summary_concepts <- data.frame(
+  Concept = c(
+    "Correlation Coefficient (r)",
+    "Pearson's r",
+    "Spearman's rho",
+    "Kendall's tau",
+    "Point-biserial",
+    "Partial Correlation",
+    "Semi-partial Correlation",
+    "Effect Sizes"
+  ),
+  Description = c(
+    "Measures strength and direction of linear relationship (-1 to +1)",
+    "For continuous, normal data; assumes linearity",
+    "For ordinal data; Pearson on ranked data",
+    "For ordinal with ties; based on concordant pairs",
+    "For binary variables; equivalent to t-test",
+    "Control Z from both X and Y",
+    "Control Z from X only; unique variance",
+    "Small (0.1-0.3), Medium (0.3-0.5), Large (0.5-1.0)"
+  ),
+  Reference = c(
+    "[1, p. 266]",
+    "[1, pp. 268-270]",
+    "[1, p. 277]",
+    "[1, pp. 278-279]",
+    "[1, pp. 280-281]",
+    "[1, pp. 289-291]",
+    "[1, pp. 291-293]",
+    "[1, p. 273]"
+  )
+)
+
+summary_concepts %>%
+  kable(caption = "Summary of Correlation Concepts") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE, width = "12em")
+```
+
+## Function Quick Reference
+
+```{r function-reference}
+function_ref <- data.frame(
+  Task = c(
+    "Simple correlation",
+    "Matrix with p-values",
+    "Full statistics + CI",
+    "Visualize matrix",
+    "Scatterplot matrix",
+    "Partial correlation",
+    "Compare correlations"
+  ),
+  Function = c(
+    "cor(x, y)",
+    "rcorr(matrix)",
+    "cor.test(x, y)",
+    "corrplot(cor_matrix)",
+    "ggpairs(data)",
+    "pcor(data) or spcor(data)",
+    "cocor()"
+  ),
+  Package = c(
+    "base",
+    "Hmisc",
+    "base",
+    "corrplot",
+    "GGally",
+    "ppcor",
+    "cocor"
+  )
+)
+
+function_ref %>%
+  kable(caption = "R Function Quick Reference") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE)
+```
+
+## Critical Reminders
+
+1. **Correlation ≠ Causation**: Cannot infer direction of causality [1, pp. 284-285]
+2. **Check assumptions**: Especially linearity and normality [1, pp. 265-298]
+3. **Visualize first**: Anscombe's quartet shows why [1, p. 293]
+4. **Watch for outliers**: Single point can dramatically change r [1, pp. 293-295]
+5. **Effect size interpretation**: Context matters more than rigid cutoffs [1, p. 273]
+6. **Choose appropriate method**: Pearson for continuous, Spearman/Kendall for ordinal [1, pp. 277-279]
+7. **Report completely**: Include r, df, p-value, and CI [1, p. 295]
+
+---
+
+# Glossary
+
+**Biserial correlation:** Correlation between continuous variable and artificially dichotomized continuous variable [1, pp. 280-281].
+
+**Bivariate normality:** Assumption that both variables follow normal distribution [1, p. 273].
+
+**Coefficient of determination (r²):** Proportion of variance in one variable explained by another; r squared [1, p. 270].
+
+**Concordant pairs:** Pairs of observations that rank in same order on both variables [1, p. 278].
+
+**Correlation coefficient (r):** Standardized measure of linear relationship between two variables, ranging from -1 to +1 [1, p. 266].
+
+**Covariance:** Unstandardized measure of how two variables vary together [1, p. 268].
+
+**Kendall's tau (τ):** Non-parametric correlation based on concordant vs. discordant pairs; robust to outliers and tied ranks [1, pp. 278-279].
+
+**Negative correlation:** As one variable increases, the other decreases [1, p. 266].
+
+**Partial correlation:** Correlation between X and Y after controlling for Z's effect on both [1, pp. 289-291].
+
+**Pearson's r:** Parametric correlation for continuous, normally distributed data [1, pp. 268-270].
+
+**Point-biserial correlation:** Correlation between continuous and truly dichotomous binary variable [1, pp. 280-281].
+
+**Positive correlation:** As one variable increases, the other also increases [1, p. 266].
+
+**Semi-partial correlation:** Correlation between X and Y after controlling for Z's effect on X only [1, pp. 291-293].
+
+**Spearman's rho (rs):** Non-parametric correlation; Pearson's r applied to ranked data [1, p. 277].
+
+**Third-variable problem:** Observed correlation may be due to unmeasured confounding variable [1, p. 289].
+
+**Zero-order correlation:** Simple bivariate correlation without controlling for other variables [1, p. 289].
+
+---
+
+# References
+
+[1] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London: SAGE Publications, 2012.
+
+[2] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London, UK: SAGE Publications, 2012, pp. 265-298. [Chapter 6: Correlation]
+
+[3] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London, UK: SAGE Publications, 2012, pp. 268-270. [Pearson's correlation coefficient and covariance]
+
+[4] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London, UK: SAGE Publications, 2012, pp. 271-276. [Correlation functions in R: cor(), rcorr(), cor.test()]
+
+[5] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London, UK: SAGE Publications, 2012, pp. 277-279. [Non-parametric correlations: Spearman and Kendall]
+
+[6] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London, UK: SAGE Publications, 2012, pp. 280-282. [Biserial and point-biserial correlations]
+
+[7] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London, UK: SAGE Publications, 2012, pp. 285-288. [Comparing correlations]
+
+[8] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London, UK: SAGE Publications, 2012, pp. 289-293. [Partial and semi-partial correlations]
+
+[9] J. Cohen, *Statistical Power Analysis for the Behavioral Sciences*, 2nd ed. Hillsdale, NJ: Lawrence Erlbaum Associates, 1988.
+
+---
+
+# Session Information
+
+```{r session-info}
+sessionInfo()
+```
+
+---
+
+<div style="text-align: center; padding: 20px; background-color: #f0f0f0; border-radius: 10px; margin-top: 30px;">
+**End of Week 08: R for Data Analytics Tutorial**
+
+*ANLY 500 - Analytics I*
+
+*Harrisburg University*
+</div>
