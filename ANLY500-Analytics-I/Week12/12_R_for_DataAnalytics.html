@@ -2887,9 +2887,35 @@ error (the Familywise Error Rate) is:</p>
 risk isn’t 5% anymore—it’s nearly 14%:</p>
 <p><span class="math display">\[ 1 - (0.95)^3 = 1 - 0.857 \approx 0.143
 \quad (14.3\%) \]</span></p>
-<p><strong>ANOVA (Analysis of Variance)</strong> solves this by
-comparing all means simultaneously in a single “Omnibus” test. It relies
-on the <strong>F-Ratio</strong> [1].</p>
+<div id="real-world-analogy-the-h1b-lottery" class="section level3">
+<h3>Real World Analogy: The H1B Lottery</h3>
+<p>Let’s look at a real-world example of how probabilities accumulate:
+The H1B Visa Lottery.</p>
+<p>In 2024 (for the FY 2025 cap), the selection rate was approximately
+<strong>25.6%</strong>. This means in any single year, you have a
+roughly 74.4% chance of <em>not</em> getting selected.</p>
+<p>If you apply 3 times (e.g., over your 3-year OPT period), what is the
+chance you get selected <strong>at least once</strong>? It is
+<em>not</em> simply <span class="math inline">\(25.6\% \times 3 =
+76.8\%\)</span>.</p>
+<p>Using the same probability logic as above:</p>
+<ol style="list-style-type: decimal">
+<li>Probability of failing 1 time: <span class="math inline">\(1 - 0.256
+= 0.744\)</span></li>
+<li>Probability of failing 3 times in a row: <span class="math inline">\((0.744)^3 \approx 0.412\)</span></li>
+<li>Probability of succeeding at least once: <span class="math inline">\(1 - 0.412 = 0.588\)</span></li>
+</ol>
+<p>So, even with 3 attempts, your overall success rate is about
+<strong>58.8%</strong>.</p>
+<p>This is the inverse of the FWER problem. In FWER, we want to
+<em>avoid</em> making an error (a “false success”), but the more tests
+we run, the more likely we are to make one. In the lottery, we
+<em>want</em> a success, and the more tries we make, the more likely we
+are to get one—but it never reaches 100%.</p>
+<p><strong>ANOVA (Analysis of Variance)</strong> solves the FWER problem
+by comparing all means simultaneously in a single “Omnibus” test. It
+relies on the <strong>F-Ratio</strong> [1].</p>
+</div>
 <div id="learning-objectives" class="section level3">
 <h3>Learning Objectives</h3>
 <ol style="list-style-type: decimal">

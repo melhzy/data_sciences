@@ -50,7 +50,33 @@ If you run `r m` tests ($m=`r m`$), your risk isn't `r alpha * 100`% anymore—i
 
 $$ 1 - (`r prob_no_error`)^`r m` = 1 - `r round(prob_all_correct, 3)` \approx `r round(fwer, 3)` \quad (`r round(fwer * 100, 1)`\%) $$
 
-**ANOVA (Analysis of Variance)** solves this by comparing all means simultaneously in a single "Omnibus" test. It relies on the **F-Ratio** [1].
+### Real World Analogy: The H1B Lottery
+
+Let's look at a real-world example of how probabilities accumulate: The H1B Visa Lottery.
+
+In 2024 (for the FY 2025 cap), the selection rate was approximately **25.6%**. This means in any single year, you have a roughly 74.4% chance of *not* getting selected.
+
+If you apply 3 times (e.g., over your 3-year OPT period), what is the chance you get selected **at least once**? It is *not* simply $25.6\% \times 3 = 76.8\%$.
+
+```{r h1b-calc, include=FALSE}
+h1b_rate <- 0.256
+n_tries <- 3
+prob_fail_once <- 1 - h1b_rate
+prob_fail_all <- prob_fail_once^n_tries
+prob_success_at_least_once <- 1 - prob_fail_all
+```
+
+Using the same probability logic as above:
+
+1.  Probability of failing 1 time: $1 - `r h1b_rate` = `r prob_fail_once`$
+2.  Probability of failing `r n_tries` times in a row: $(`r prob_fail_once`)^`r n_tries` \approx `r round(prob_fail_all, 3)`$
+3.  Probability of succeeding at least once: $1 - `r round(prob_fail_all, 3)` = `r round(prob_success_at_least_once, 3)`$
+
+So, even with 3 attempts, your overall success rate is about **`r round(prob_success_at_least_once * 100, 1)`%**.
+
+This is the inverse of the FWER problem. In FWER, we want to *avoid* making an error (a "false success"), but the more tests we run, the more likely we are to make one. In the lottery, we *want* a success, and the more tries we make, the more likely we are to get one—but it never reaches 100%.
+
+**ANOVA (Analysis of Variance)** solves the FWER problem by comparing all means simultaneously in a single "Omnibus" test. It relies on the **F-Ratio** [1].
 
 ### Learning Objectives
 
