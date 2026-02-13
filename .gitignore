@@ -13,3 +13,6 @@
 # OS
 .DS_Store
 Thumbs.db
+
+# Ignored Archives
+ANLY500-Analytics-I/archive/
