@@ -30,17 +30,25 @@ set.seed(4591)
 
 Welcome to Week 12! Previously, we learned how to compare two groups using t-tests. But what happens when we have three, four, or ten groups?
 
-If we simply ran multiple t-tests for every pair of groups, we would run into the **Familywise Error Rate** problem. Every test carries a 5% risk of a False Positive (Type I Error, $\alpha = 0.05$).
+```{r fwer-calc, include=FALSE}
+alpha <- 0.05
+m <- 3
+prob_no_error <- 1 - alpha
+prob_all_correct <- prob_no_error^m
+fwer <- 1 - prob_all_correct
+```
 
-Mathematically, the probability of **not** making a Type I error in a single test is $1 - 0.05 = 0.95$. If we run $m$ independent tests, the probability of not making *any* error across all of them is $(0.95)^m$.
+If we simply ran multiple t-tests for every pair of groups, we would run into the **Familywise Error Rate** problem. Every test carries a `r alpha * 100`% risk of a False Positive (Type I Error, $\alpha = `r alpha`$).
+
+Mathematically, the probability of **not** making a Type I error in a single test is $1 - `r alpha` = `r prob_no_error`$. If we run $m$ independent tests, the probability of not making *any* error across all of them is $(`r prob_no_error`)^m$.
 
 Therefore, the probability of making **at least one** error (the Familywise Error Rate) is:
 
-$$ P(\text{Familywise Error}) = 1 - (0.95)^m $$
+$$ P(\text{Familywise Error}) = 1 - (`r prob_no_error`)^m $$
 
-If you run 3 tests ($m=3$), your risk isn't 5% anymore—it's nearly 15%:
+If you run `r m` tests ($m=`r m`$), your risk isn't `r alpha * 100`% anymore—it's nearly `r round(fwer * 100)`%:
 
-$$ 1 - (0.95)^3 = 1 - 0.857 \approx 0.143 \quad (14.3\%) $$
+$$ 1 - (`r prob_no_error`)^`r m` = 1 - `r round(prob_all_correct, 3)` \approx `r round(fwer, 3)` \quad (`r round(fwer * 100, 1)`\%) $$
 
 **ANOVA (Analysis of Variance)** solves this by comparing all means simultaneously in a single "Omnibus" test. It relies on the **F-Ratio** [1].
 
