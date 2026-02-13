@@ -3140,7 +3140,8 @@ contrasts(master$dose_trend) &lt;- contr.poly(3)
 
 # Run Analysis of Variance (aov is base R function)
 trend_model &lt;- aov(libido ~ dose_trend, data = master)
-summary.lm(trend_model)</code></pre>
+trend_summary &lt;- summary.lm(trend_model)
+trend_summary</code></pre>
 <pre><code>## 
 ## Call:
 ## aov(formula = libido ~ dose_trend, data = master)
@@ -3160,10 +3161,13 @@ summary.lm(trend_model)</code></pre>
 ## Residual standard error: 1.402 on 12 degrees of freedom
 ## Multiple R-squared:  0.4604, Adjusted R-squared:  0.3704 
 ## F-statistic: 5.119 on 2 and 12 DF,  p-value: 0.02469</code></pre>
+<pre class="r"><code># Extract P-values for dynamic reporting
+p_linear &lt;- trend_summary$coefficients[&quot;dose_trend.L&quot;, &quot;Pr(&gt;|t|)&quot;]
+p_quad &lt;- trend_summary$coefficients[&quot;dose_trend.Q&quot;, &quot;Pr(&gt;|t|)&quot;]</code></pre>
 <ul>
 <li><strong>Linear Trend (L):</strong> Significant (<span class="math inline">\(p = 0.008\)</span>). As dose increases, libido
 increases linearly.</li>
-<li><strong>Quadratic Trend (Q):</strong> Not significant (<span class="math inline">\(p = 0.49\)</span>). There is no curve.</li>
+<li><strong>Quadratic Trend (Q):</strong> Not Significant (<span class="math inline">\(p = 0.612\)</span>). There is no curve.</li>
 </ul>
 <hr />
 </div>

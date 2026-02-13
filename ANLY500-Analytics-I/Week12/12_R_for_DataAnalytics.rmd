@@ -283,11 +283,16 @@ contrasts(master$dose_trend) <- contr.poly(3)
 
 # Run Analysis of Variance (aov is base R function)
 trend_model <- aov(libido ~ dose_trend, data = master)
-summary.lm(trend_model)
+trend_summary <- summary.lm(trend_model)
+trend_summary
+
+# Extract P-values for dynamic reporting
+p_linear <- trend_summary$coefficients["dose_trend.L", "Pr(>|t|)"]
+p_quad <- trend_summary$coefficients["dose_trend.Q", "Pr(>|t|)"]
 ```
 
-*   **Linear Trend (L):** Significant ($p = 0.008$). As dose increases, libido increases linearly.
-*   **Quadratic Trend (Q):** Not significant ($p = 0.49$). There is no curve.
+*   **Linear Trend (L):** `r ifelse(p_linear < 0.05, "Significant", "Not Significant")` ($p = `r round(p_linear, 3)`$). As dose increases, libido increases linearly.
+*   **Quadratic Trend (Q):** `r ifelse(p_quad < 0.05, "Significant", "Not Significant")` ($p = `r round(p_quad, 3)`$). There is no curve.
 
 ---
 
