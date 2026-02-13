@@ -3040,12 +3040,11 @@ print(anova_model)</code></pre>
 <h3>1. Assumption Check: Levene’s Test</h3>
 <p>Before looking at the main result, we must check if the groups have
 equal variances (Homogeneity of Variance).</p>
-<pre class="r"><code>anova_model$`Levene&#39;s Test for Homogeneity of Variance`</code></pre>
-<div data-pagedtable="false">
-<script data-pagedtable-source type="application/json">
-{"columns":[{"label":["DFn"],"name":[1],"type":["int"],"align":["right"]},{"label":["DFd"],"name":[2],"type":["int"],"align":["right"]},{"label":["SSn"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["SSd"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["F"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["p"],"name":[6],"type":["dbl"],"align":["right"]},{"label":["p<.05"],"name":[7],"type":["chr"],"align":["left"]}],"data":[{"1":"2","2":"12","3":"0.1333333","4":"6.8","5":"0.1176471","6":"0.8900225","7":""}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+<pre class="r"><code>levene_results &lt;- anova_model$`Levene&#39;s Test for Homogeneity of Variance`
+print(levene_results)</code></pre>
+<pre><code>##   DFn DFd       SSn SSd         F         p p&lt;.05
+## 1   2  12 0.1333333 6.8 0.1176471 0.8900225</code></pre>
+<pre class="r"><code>levene_p &lt;- levene_results$p</code></pre>
 <ul>
 <li><strong>Result:</strong> <span class="math inline">\(p =
 0.89\)</span>.</li>
@@ -3057,15 +3056,22 @@ different. We have met the assumption of homogeneity.</li>
 <div id="the-f-test-main-effect" class="section level3">
 <h3>2. The F-Test (Main Effect)</h3>
 <p>Now we look at the ANOVA table.</p>
-<pre class="r"><code>anova_model$ANOVA</code></pre>
-<div data-pagedtable="false">
-<script data-pagedtable-source type="application/json">
-{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["Effect"],"name":[1],"type":["chr"],"align":["left"]},{"label":["DFn"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["DFd"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["SSn"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["SSd"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["F"],"name":[6],"type":["dbl"],"align":["right"]},{"label":["p"],"name":[7],"type":["dbl"],"align":["right"]},{"label":["p<.05"],"name":[8],"type":["chr"],"align":["left"]},{"label":["ges"],"name":[9],"type":["dbl"],"align":["right"]}],"data":[{"1":"(Intercept)","2":"1","3":"12","4":"180.26667","5":"23.6","6":"91.661017","7":"0.0000005720565","8":"*","9":"0.8842381","_rn_":"1"},{"1":"dose","2":"2","3":"12","4":"20.13333","5":"23.6","6":"5.118644","7":"0.0246942895382","8":"*","9":"0.4603659","_rn_":"2"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+<pre class="r"><code>anova_table &lt;- anova_model$ANOVA
+print(anova_table)</code></pre>
+<pre><code>##        Effect DFn DFd       SSn  SSd         F               p p&lt;.05       ges
+## 1 (Intercept)   1  12 180.26667 23.6 91.661017 0.0000005720565     * 0.8842381
+## 2        dose   2  12  20.13333 23.6  5.118644 0.0246942895382     * 0.4603659</code></pre>
+<pre class="r"><code># Extract values for reporting
+# ezANOVA detailed=TRUE includes Intercept, so we filter for &quot;dose&quot;
+dose_row &lt;- anova_table[anova_table$Effect == &quot;dose&quot;, ]
+
+df_model &lt;- as.numeric(dose_row$DFn)
+df_error &lt;- as.numeric(dose_row$DFd)
+f_value &lt;- as.numeric(dose_row$F)
+p_value &lt;- as.numeric(dose_row$p)</code></pre>
 <ul>
 <li><strong>Result:</strong> <span class="math inline">\(F(2, 12) =
-5.12, p = .025\)</span>.</li>
+5.12, p = 0.025\)</span>.</li>
 <li><strong>Interpretation:</strong> Since <span class="math inline">\(p
 &lt; .05\)</span>, there is a significant difference in libido somewhere
 among the three groups. The model (signal) explains significantly more
@@ -3082,11 +3088,12 @@ differ (e.g., High Dose vs. Placebo), we run <strong>Post Hoc
 Tests</strong>.</p>
 <p>We use the <strong>Bonferroni correction</strong> to adjust our
 p-values and keep the Familywise Error Rate at 5%.</p>
-<pre class="r"><code>pairwise.t.test(master$libido,
-                master$dose,
-                p.adjust.method = &quot;bonferroni&quot;, 
-                paired = FALSE, 
-                var.equal = TRUE)</code></pre>
+<pre class="r"><code>posthoc &lt;- pairwise.t.test(master$libido,
+                         master$dose,
+                         p.adjust.method = &quot;bonferroni&quot;, 
+                         paired = FALSE, 
+                         var.equal = TRUE)
+print(posthoc)</code></pre>
 <pre><code>## 
 ##  Pairwise comparisons using t tests with pooled SD 
 ## 
@@ -3097,11 +3104,15 @@ p-values and keep the Familywise Error Rate at 5%.</p>
 ## High Dose 0.025   0.196   
 ## 
 ## P value adjustment method: bonferroni</code></pre>
+<pre class="r"><code># Extract p-values (The matrix has rows: Low Dose, High Dose; cols: Placebo, Low Dose)
+p_high_vs_placebo &lt;- posthoc$p.value[&quot;High Dose&quot;, &quot;Placebo&quot;]
+p_low_vs_placebo &lt;- posthoc$p.value[&quot;Low Dose&quot;, &quot;Placebo&quot;]
+p_high_vs_low &lt;- posthoc$p.value[&quot;High Dose&quot;, &quot;Low Dose&quot;]</code></pre>
 <p><strong>Interpretation:</strong> * <strong>High Dose
-vs. Placebo:</strong> <span class="math inline">\(p = 0.021\)</span>
-(Significant!) * <strong>Low Dose vs. Placebo:</strong> <span class="math inline">\(p = 1.000\)</span> (Not significant) *
+vs. Placebo:</strong> <span class="math inline">\(p = 0.025\)</span>
+(Significant!) * <strong>Low Dose vs. Placebo:</strong> <span class="math inline">\(p = 0.845\)</span> (Not significant) *
 <strong>High Dose vs. Low Dose:</strong> <span class="math inline">\(p =
-0.147\)</span> (Not significant)</p>
+0.196\)</span> (Not significant)</p>
 <p>Conclusion: High Dose Viagra significantly increases libido compared
 to Placebo, but Low Dose does not.</p>
 <hr />
@@ -3111,20 +3122,19 @@ to Placebo, but Low Dose does not.</p>
 <p>Statistical significance (<span class="math inline">\(p &lt;
 .05\)</span>) depends on sample size. To know how <em>large</em> the
 effect is, we calculate <strong>Omega Squared (<span class="math inline">\(\omega^2\)</span>)</strong>.</p>
-<pre class="r"><code># Calculate Omega Squared
-# dfm = degrees of freedom for model (from ANOVA table: 2)
-# dfe = degrees of freedom for error (from ANOVA table: 12)
-# Fvalue = F statistic (from ANOVA table: 5.12)
-effect &lt;- omega.F(dfm = 2, dfe = 12, Fvalue = 5.12, n = 15, a = .05)
+<pre class="r"><code># Calculate Omega Squared using dynamic values extracted earlier
+# df_model = `r df_model`
+# df_error = `r df_error`
+# f_value = `r f_value`
+effect &lt;- omega.F(dfm = df_model, dfe = df_error, Fvalue = f_value, n = nrow(master)/3, a = .05)
 
-effect$omega</code></pre>
-<pre><code>## [1] 0.3545611</code></pre>
+omega_sq &lt;- effect$omega</code></pre>
 <ul>
 <li><strong>Result:</strong> <span class="math inline">\(\omega^2 =
-0.35\)</span>.</li>
+0.62\)</span>.</li>
 <li><strong>Interpretation:</strong> This is a <strong>Large
 Effect</strong> (Rule of thumb: .01 = Small, .06 = Medium, .14 = Large).
-The drug explains about 35% of the variance in libido.</li>
+The drug explains about 62% of the variance in libido.</li>
 </ul>
 <hr />
 </div>
@@ -3232,12 +3242,12 @@ between the lowest High Dose scores and the Placebo scores.</li>
 <li><strong>Explored the data</strong> using visualizations to
 understand Total (SST), Model (SSM), and Residual (SSR) variance.</li>
 <li><strong>Ran ANOVA</strong> and confirmed the model was significant
-(<span class="math inline">\(F(2,12) = 5.12\)</span>).</li>
+(<span class="math inline">\(F(2, 12) = 5.12\)</span>).</li>
 <li><strong>Checked Assumptions</strong> (Levene’s Test was
 non-significant, so assumptions met).</li>
 <li><strong>Found Specific Differences</strong> using Bonferroni Post
 Hoc tests (High Dose &gt; Placebo).</li>
-<li><strong>Calculated Effect Size</strong> (<span class="math inline">\(\omega^2 = 0.35\)</span>, large effect).</li>
+<li><strong>Calculated Effect Size</strong> (<span class="math inline">\(\omega^2 = 0.62\)</span>, large effect).</li>
 </ol>
 <div id="references" class="section level3">
 <h3>References</h3>

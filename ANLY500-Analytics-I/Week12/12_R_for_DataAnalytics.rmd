@@ -209,22 +209,35 @@ print(anova_model)
 Before looking at the main result, we must check if the groups have equal variances (Homogeneity of Variance).
 
 ```{r levenes}
-anova_model$`Levene's Test for Homogeneity of Variance`
+levene_results <- anova_model$`Levene's Test for Homogeneity of Variance`
+print(levene_results)
+
+levene_p <- levene_results$p
 ```
 
-*   **Result:** $p = 0.89$.
-*   **Interpretation:** Since $p > .05$, the variances are *not* significantly different. We have met the assumption of homogeneity.
+*   **Result:** $p = `r round(levene_p, 2)`$.
+*   **Interpretation:** Since $p `r ifelse(levene_p > 0.05, ">", "<")` .05$, the variances are *`r ifelse(levene_p > 0.05, "not", "")`* significantly different. We have `r ifelse(levene_p > 0.05, "met", "violated")` the assumption of homogeneity.
 
 ### 2. The F-Test (Main Effect)
 
 Now we look at the ANOVA table.
 
 ```{r anova-table}
-anova_model$ANOVA
+anova_table <- anova_model$ANOVA
+print(anova_table)
+
+# Extract values for reporting
+# ezANOVA detailed=TRUE includes Intercept, so we filter for "dose"
+dose_row <- anova_table[anova_table$Effect == "dose", ]
+
+df_model <- as.numeric(dose_row$DFn)
+df_error <- as.numeric(dose_row$DFd)
+f_value <- as.numeric(dose_row$F)
+p_value <- as.numeric(dose_row$p)
 ```
 
-*   **Result:** $F(2, 12) = 5.12, p = .025$.
-*   **Interpretation:** Since $p < .05$, there is a significant difference in libido somewhere among the three groups. The model (signal) explains significantly more variance than the residuals (noise).
+*   **Result:** $F(`r df_model`, `r df_error`) = `r round(f_value, 2)`, p = `r round(p_value, 3)`$.
+*   **Interpretation:** Since $p `r ifelse(p_value < 0.05, "<", ">")` .05$, there `r ifelse(p_value < 0.05, "is", "is not")` a significant difference in libido somewhere among the three groups. The model (signal) explains significantly `r ifelse(p_value < 0.05, "more", "less")` variance than the residuals (noise).
 
 ---
 
@@ -235,19 +248,25 @@ The ANOVA is an "Omnibus" test—it tells us *that* there is a difference, but n
 We use the **Bonferroni correction** to adjust our p-values and keep the Familywise Error Rate at 5%.
 
 ```{r posthoc}
-pairwise.t.test(master$libido,
-                master$dose,
-                p.adjust.method = "bonferroni", 
-                paired = FALSE, 
-                var.equal = TRUE)
+posthoc <- pairwise.t.test(master$libido,
+                         master$dose,
+                         p.adjust.method = "bonferroni", 
+                         paired = FALSE, 
+                         var.equal = TRUE)
+print(posthoc)
+
+# Extract p-values (The matrix has rows: Low Dose, High Dose; cols: Placebo, Low Dose)
+p_high_vs_placebo <- posthoc$p.value["High Dose", "Placebo"]
+p_low_vs_placebo <- posthoc$p.value["Low Dose", "Placebo"]
+p_high_vs_low <- posthoc$p.value["High Dose", "Low Dose"]
 ```
 
 **Interpretation:**
-*   **High Dose vs. Placebo:** $p = 0.021$ (Significant!)
-*   **Low Dose vs. Placebo:** $p = 1.000$ (Not significant)
-*   **High Dose vs. Low Dose:** $p = 0.147$ (Not significant)
+*   **High Dose vs. Placebo:** $p = `r round(p_high_vs_placebo, 3)`$ (`r ifelse(p_high_vs_placebo < 0.05, "Significant!", "Not significant")`)
+*   **Low Dose vs. Placebo:** $p = `r round(p_low_vs_placebo, 3)`$ (`r ifelse(p_low_vs_placebo < 0.05, "Significant!", "Not significant")`)
+*   **High Dose vs. Low Dose:** $p = `r round(p_high_vs_low, 3)`$ (`r ifelse(p_high_vs_low < 0.05, "Significant!", "Not significant")`)
 
-Conclusion: High Dose Viagra significantly increases libido compared to Placebo, but Low Dose does not.
+Conclusion: High Dose Viagra `r ifelse(p_high_vs_placebo < 0.05, "significantly increases", "does not significantly change")` libido compared to Placebo, but Low Dose does not.
 
 ---
 
@@ -256,17 +275,17 @@ Conclusion: High Dose Viagra significantly increases libido compared to Placebo,
 Statistical significance ($p < .05$) depends on sample size. To know how *large* the effect is, we calculate **Omega Squared ($\omega^2$)**.
 
 ```{r effect-size}
-# Calculate Omega Squared
-# dfm = degrees of freedom for model (from ANOVA table: 2)
-# dfe = degrees of freedom for error (from ANOVA table: 12)
-# Fvalue = F statistic (from ANOVA table: 5.12)
-effect <- omega.F(dfm = 2, dfe = 12, Fvalue = 5.12, n = 15, a = .05)
+# Calculate Omega Squared using dynamic values extracted earlier
+# df_model = `r df_model`
+# df_error = `r df_error`
+# f_value = `r f_value`
+effect <- omega.F(dfm = df_model, dfe = df_error, Fvalue = f_value, n = nrow(master)/3, a = .05)
 
-effect$omega
+omega_sq <- effect$omega
 ```
 
-*   **Result:** $\omega^2 = 0.35$.
-*   **Interpretation:** This is a **Large Effect** (Rule of thumb: .01 = Small, .06 = Medium, .14 = Large). The drug explains about 35% of the variance in libido.
+*   **Result:** $\omega^2 = `r round(omega_sq, 2)`$.
+*   **Interpretation:** This is a **`r ifelse(omega_sq >= 0.14, "Large", ifelse(omega_sq >= 0.06, "Medium", "Small"))` Effect** (Rule of thumb: .01 = Small, .06 = Medium, .14 = Large). The drug explains about `r round(omega_sq * 100, 0)`% of the variance in libido.
 
 ---
 
@@ -345,10 +364,10 @@ This plot tells the whole story of our analysis:
 In this lab, we performed a complete One-Way ANOVA workflow:
 
 1.  **Explored the data** using visualizations to understand Total (SST), Model (SSM), and Residual (SSR) variance.
-2.  **Ran ANOVA** and confirmed the model was significant ($F(2,12) = 5.12$).
-3.  **Checked Assumptions** (Levene's Test was non-significant, so assumptions met).
+2.  **Ran ANOVA** and confirmed the model was significant ($F(`r df_model`, `r df_error`) = `r round(f_value, 2)`$).
+3.  **Checked Assumptions** (Levene's Test was `r ifelse(levene_p > 0.05, "non-significant", "significant")`, so assumptions `r ifelse(levene_p > 0.05, "met", "violated")`).
 4.  **Found Specific Differences** using Bonferroni Post Hoc tests (High Dose > Placebo).
-5.  **Calculated Effect Size** ($\omega^2 = 0.35$, large effect).
+5.  **Calculated Effect Size** ($\omega^2 = `r round(omega_sq, 2)`$, `r ifelse(omega_sq >= 0.14, "large", ifelse(omega_sq >= 0.06, "medium", "small"))` effect).
 
 ### References
 
