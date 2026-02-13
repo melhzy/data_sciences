@@ -27,6 +27,15 @@ output:
     - This is called the **Familywise Error Rate**.
     - For 3 groups (3 tests), the risk isn't 5%, it's actually about **14%**!
     - For 5 groups (10 tests), the risk jumps to **40%**!
+
+### Real World Analogy: The H1B Lottery
+
+- Think of it like entering a lottery (e.g., H1B Visa).
+- If your chance of **losing** is 75% in one try...
+- If you try 3 times, your chance of **winning at least once** goes up significantly (to ~58%).
+- In science, "winning" a test by mistake is bad (a False Positive).
+- The more tests we run, the more likely we are to make a mistake.
+- **ANOVA** solves this by running just **one** test for everyone.
     
 ```{r, echo = FALSE, out.width="75%", fig.align='center'}
 knitr::include_graphics("pictures/1.png")
