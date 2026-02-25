@@ -158,7 +158,7 @@ install.packages("seedhash")  # For reproducible analysis
 <div align="center">
 
 **ANLY 500 - Analytics I**  
-*Georgetown University*
+*Harrisburg University*
 
 Last Updated: November 13, 2025
 
