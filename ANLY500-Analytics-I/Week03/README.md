@@ -117,7 +117,7 @@ install.packages("seedhash")  # For reproducible analysis
 <div align="center">
 
 **ANLY 500 - Analytics I**  
-*Georgetown University*
+*Harrisburg University*
 
 Last Updated: `r format(Sys.Date(), '%B %d, %Y')`
 
