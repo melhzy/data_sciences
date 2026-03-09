@@ -557,9 +557,19 @@
                 btn.classList.remove('active');
             });
             document.querySelector('.tab-' + cls).classList.add('active');
+            // update URL hash so the tab is bookmarkable / shareable
+            history.replaceState(null, '', '#' + cls);
             // scroll to top of page
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+
+        // On load, read the hash and activate the correct tab
+        (function () {
+            var hash = window.location.hash.replace('#', '');
+            if (hash === '500' || hash === '530') {
+                switchClass(hash);
+            }
+        })();
     </script>
 </body>
 </html>
