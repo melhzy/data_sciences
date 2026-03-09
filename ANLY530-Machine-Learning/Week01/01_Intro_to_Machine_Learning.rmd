@@ -252,6 +252,52 @@ kable(perspectives,
   column_spec(1, bold = TRUE)
 ```
 
+## 3.1 Visualising the Perspectives
+
+Let's visualize two of these perspectives to see how they "think" differently about the exact same data finding.
+
+```{r learning-perspectives-viz, fig.width=12, fig.height=5, fig.cap="Similarity-Based vs. Error-Based Learning. Two different ways to solve the exact same classification problem."}
+set.seed(seeds[7])
+# Generate some data: two classes (red and blue)
+df_persp <- tibble(
+  x1 = c(rnorm(20, 2, 0.5), rnorm(20, 4, 0.5)),
+  x2 = c(rnorm(20, 2, 0.5), rnorm(20, 4, 0.5)),
+  class = factor(rep(c("Class A", "Class B"), each = 20))
+)
+
+# New unknown data point we want to predict
+new_point <- tibble(x1 = 3, x2 = 2.8)
+
+# Find 3 closest points for the Similarity-Based plot
+distances <- sqrt((df_persp$x1 - new_point$x1)^2 + (df_persp$x2 - new_point$x2)^2)
+closest_idx <- order(distances)[1:3]
+closest_points <- df_persp[closest_idx, ]
+
+# 1. Similarity-based (k-Nearest Neighbors)
+p_sim <- ggplot(df_persp, aes(x1, x2, color = class)) +
+  geom_point(size = 3, alpha = 0.5) +
+  geom_point(data = new_point, aes(x1, x2), color = "black", shape = 8, size = 5, inherit.aes = FALSE) +
+  geom_segment(data = closest_points, aes(x = x1, y = x2, xend = new_point$x1, yend = new_point$x2), 
+               color = "purple", linetype="dashed", linewidth = 0.8) +
+  annotate("text", x = 3, y = 2.4, label = "Unknown Data Point", fontface="italic", color="black") +
+  scale_color_manual(values = c("Class A"="#d62728", "Class B"="#1f77b4")) +
+  labs(title="1. Similarity-Based Perspective", subtitle="'You are what your nearest neighbors are' (e.g. k-NN)\nAlgorithm finds the 3 closest points and takes a majority vote.", x="Feature 1", y="Feature 2") +
+  theme_minimal(base_size = 14) + theme(legend.position="none", plot.title=element_text(face="bold"))
+
+# 2. Error-based (Linear boundary / Logistic Regression)
+p_err <- ggplot(df_persp, aes(x1, x2, color = class)) +
+  geom_point(size = 3, alpha = 0.5) +
+  geom_point(data = new_point, aes(x1, x2), color = "black", shape = 8, size = 5, inherit.aes = FALSE) +
+  geom_abline(intercept = 6.4, slope = -1.1, color = "#2ca02c", linewidth = 1.5) +
+  annotate("text", x = 2.5, y = 4.8, label = "Learned\nBoundary", color = "#2ca02c", fontface="bold") +
+  annotate("text", x = 3, y = 2.4, label = "Unknown Data Point", fontface="italic", color="black") +
+  scale_color_manual(values = c("Class A"="#d62728", "Class B"="#1f77b4")) +
+  labs(title="2. Error-Based Perspective", subtitle="'Draw a line that minimizes errors on the training data'\nAlgorithm checks which side of the line the new point lands on.", x="Feature 1", y="Feature 2") +
+  theme_minimal(base_size = 14) + theme(legend.position="bottom", plot.title=element_text(face="bold"), legend.title=element_blank())
+
+gridExtra::grid.arrange(p_sim, p_err, ncol=2)
+```
+
 ---
 
 # Part 4: Core Machine Learning Challenges
@@ -324,6 +370,42 @@ ggplot(split_data, aes(x = ID, y = 1, fill = Set)) +
   labs(title="The Train / Test Split Concept", subtitle="We hold out a portion of our data to test the model's true performance.", fill="") +
   theme(axis.text=element_blank(), axis.ticks=element_blank(), panel.grid=element_blank(),
         plot.title=element_text(face="bold", size=14), legend.position="bottom", legend.text=element_text(size=12))
+```
+
+## 4.3 Cross-Validation (K-Fold)
+
+A simple Train/Test split relies heavily on chance: what if all the difficult or unusual data points end up in the test set? Your model would look artificially bad! 
+
+To solve this, we use **K-Fold Cross-Validation**. Instead of splitting the dataset just once, we divide it into **$K$ equal chunks (folds)**. We then train the model $K$ times. In every iteration, a *different* chunk is kept hidden as the Testing set, while the remaining chunks form the Training set. Finally, we average the $K$ different test scores to get a highly reliable measure of the model's performance.
+
+```{r cross-validation, fig.height=4, fig.width=10, fig.cap="5-Fold Cross Validation Process. Notice how every block of data gets to act as the test set exactly once."}
+# Generate K-fold data structure
+folds_df <- expand.grid(
+  Fold = factor(1:5, levels = 5:1),
+  Iteration = factor(paste("Iteration", 1:5), levels = paste("Iteration", 1:5))
+)
+
+# Assign Train/Test status based on whether Fold == Iteration number
+folds_df$Status <- ifelse(as.numeric(folds_df$Fold) == 6 - as.numeric(folds_df$Iteration), 
+                          "Testing Fold (Held Out)", "Training Fold (Used to learn)")
+
+ggplot(folds_df, aes(x = Iteration, y = Fold, fill = Status)) +
+  geom_tile(color = "white", linewidth=1.5) +
+  geom_text(aes(label = paste("Data Block", 6 - as.numeric(Fold))), color="white", fontface="bold", size=5) +
+  scale_fill_manual(values = c("Testing Fold (Held Out)" = "#ff7f0e", "Training Fold (Used to learn)" = "#1f77b4")) +
+  theme_minimal(base_size = 14) +
+  labs(
+    title = "K-Fold Cross Validation (K = 5)",
+    subtitle = "The model is trained 5 times. Each time, a different block of data is held out to test performance.",
+    x = "", y = "", fill = "Data Role during Iteration:"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(face="bold", size=12),
+    plot.title = element_text(face = "bold"),
+    legend.position = "bottom"
+  )
 ```
 
 ---
