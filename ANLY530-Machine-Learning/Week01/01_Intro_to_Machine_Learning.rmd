@@ -1,0 +1,563 @@
+---
+title: "Week 01: Introduction to Machine Learning"
+author: "Ziyuan Huang"
+date: "Last Updated: `r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: cosmo
+    highlight: tango
+    code_folding: show
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 5
+)
+
+library(seedhash)
+gen <- SeedHashGenerator$new("Week01 Introduction to Machine Learning - ANLY530")
+seeds <- gen$generate_seeds(10)
+set.seed(seeds[1])
+
+cat("MD5 Hash:", gen$get_hash(), "\n")
+cat("Using seed:", seeds[1], "\n")
+```
+
+# Introduction
+
+## 1. Overview
+
+This Week 01 notebook introduces the core concepts of Machine Learning covered in Lecture 1:
+
+- What learning is and what Machine Learning means
+- Taxonomy of ML: supervised vs. unsupervised learning
+- Four learning perspectives (information, similarity, probability, error)
+- ML from a problem perspective: classification, regression, time series, clustering
+- Linear algebra fundamentals used throughout ML (vectors, matrices, eigenvectors)
+
+> **Book reference:** Géron (2019) Chapter 1 — *The Machine Learning Landscape* provides a thorough treatment of ML taxonomy, the ML workflow, and common challenges.
+>
+> **Online access:** The full textbook is available free through Harrisburg University's O'Reilly subscription:
+> [Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow (2nd Ed.)](https://learning.oreilly.com/library/view/hands-on-machine-learning/9798341607972/)
+> Log in with your `@harrisburgu.edu` credentials at [learning.oreilly.com](https://learning.oreilly.com).
+>
+> **Local extracted copy:** `Knowledge/extracted/chapters/01_CHAPTER 1 — The Machine Learning Landscape.md`
+
+## 2. Learning Objectives
+
+By the end of this notebook, you will be able to:
+
+1. Articulate at least two definitions of Machine Learning and identify the key terms in each
+2. Distinguish supervised from unsupervised learning and give a real-world example of each
+3. Map a problem (classification, regression, clustering) to the correct ML category
+4. Perform foundational linear algebra operations in R: vector math, matrix multiplication, determinant, inverse, and eigendecomposition
+
+## 3. Required Packages
+
+```{r load-packages}
+# install.packages(c("tidyverse", "ggplot2", "knitr", "kableExtra", "seedhash"))
+
+library(tidyverse)    # Data manipulation and visualisation
+library(ggplot2)      # Plotting
+library(knitr)        # Table formatting
+library(kableExtra)   # Enhanced tables
+library(seedhash)     # Reproducible seed generation
+
+cat("Seed:", seeds[1], " | Hash:", gen$get_hash(), "\n")
+```
+
+---
+
+# Part 1: What Is Machine Learning?
+
+## 1.1 Two Definitions
+
+The course introduces two complementary definitions:
+
+> *"Learning is optimizing performance (based on some criterion) using example data or past experience."*
+
+> *"Statistical learning refers to a vast set of tools for understanding data… supervised statistical learning involves building a statistical model for predicting, or estimating, an output based on one or more inputs."* (James et al., 2021)
+
+More formally:
+
+> *"A computer program is said to learn from experience **E** with respect to some task **T** and some performance measure **P**, if its performance on T, as measured by P, improves with experience E."* — Tom Mitchell (1997)
+
+> **Key insight (Géron, 2019, Ch. 1):** ML shines when a traditional rule-based solution would require an impractically long list of hand-crafted conditions — such as a spam filter — because an ML system automatically adapts when patterns shift.
+
+```{r mitchell-example}
+# Illustrate Mitchell's T/E/P framework for a spam filter
+framework <- tibble(
+  Component = c("Task (T)", "Experience (E)", "Performance Measure (P)"),
+  Description = c(
+    "Classify incoming emails as spam or not-spam. The program must learn how to sort emails without being explicitly programmed with rules like 'if email contains V1agra, then spam'.",
+    "A dataset of historical emails that have been manually labelled by users as 'spam' or 'not spam' (ham). This is the data the algorithm studies.",
+    "Accuracy: the proportion of incoming emails correctly classified. The algorithm tries to maximize this score."
+  )
+)
+
+kable(framework, caption = "Mitchell's T/E/P Framework — Spam Filter Example") |>
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+**Why it matters:** In traditional programming, you write the rules to process the data and get answers. In machine learning, you provide the data and the answers (E), and the algorithm figures out the rules (T) in order to maximize performance (P).
+
+---
+
+# Part 2: Types of Machine Learning
+
+Machine Learning systems can be classified according to the amount and type of supervision they get during training. The two most common categories are **Supervised** and **Unsupervised** learning. 
+
+## 2.1 Supervised vs. Unsupervised
+
+### Supervised Learning
+In supervised learning, the algorithm is taught by example. You provide it with input features (e.g. house size, location) **and** the correct answers, called **labels** (e.g. the house price). The algorithm learns the relationship between the inputs and the labels so it can predict the label for new, unseen data.
+* **Goal:** Prediction / Approximation
+* **Examples:** Spam detection, house price prediction, image classification.
+
+### Unsupervised Learning
+In unsupervised learning, the algorithm is given data **without** explicit instructions on what to do with it. There are no labeled answers. The system tries to learn without a teacher, uncovering hidden patterns, structures, or groupings in the data.
+* **Goal:** Description / Discovery
+* **Examples:** Customer segmentation, anomaly detection, topic modeling (grouping news articles).
+
+```{r ml-types-table}
+types <- tibble(
+  Type = c("Supervised Learning", "Unsupervised Learning"),
+  Training_Data = c("Labelled (input + output pairs)", "Unlabelled (inputs only)"),
+  Goal = c(
+    "Learn a mapping f(X) → Y to predict outputs for new inputs. (You supply the answers during training).",
+    "Discover structure, clusters, or density in the data. (No answers provided)."
+  ),
+  Examples = c(
+    "Spam detection (spam/not spam), house price prediction (price $), image classification (cat/dog)",
+    "Customer segmentation (grouping by buying habits), anomaly detection (finding rare events)"
+  )
+)
+
+kable(types, col.names = c("Type", "Training Data", "Goal", "Examples"),
+      caption = "Supervised vs. Unsupervised Learning") |>
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+> **Géron (2019, Ch. 1):** "Supervised learning is about approximation while unsupervised learning is about description."
+
+### Simulated Supervised Example — Linear Regression
+
+Regression is a supervised learning task where you want to predict a *continuous* numerical value. 
+
+Imagine you are trying to predict the **Sales Revenue** of a retail store based on how much they spend on **Advertising**. 
+
+* **Input Feature ($X$):** Advertising Spend
+* **Target Label ($Y$):** Sales Revenue
+
+Because we provide the algorithm with pairs of $(X, Y)$, it can learn to draw a line of best fit through the points. This is linear regression. Once trained, if we tell the model we plan to spend $8,000 on ads next week, it can trace up to the red line and predict our expected revenue.
+
+```{r supervised-example, fig.cap="Supervised Learning: The algorithm learns to map the input X to the target Y."}
+set.seed(seeds[2])
+
+# Simulate a simple supervised learning scenario
+n <- 80
+x <- runif(n, 0, 10) # Advertising spend (in thousands)
+y <- 2.5 * x + 5 + rnorm(n, sd = 3) # Sales Revenue (in thousands)
+
+df_sup <- tibble(x = x, y = y)
+model  <- lm(y ~ x, data = df_sup)
+
+ggplot(df_sup, aes(x, y)) +
+  geom_point(colour = "#4C72B0", alpha = 0.7, size = 3) +
+  geom_smooth(method = "lm", colour = "#DD4444", se = TRUE, fill = "#DD4444", alpha = 0.2) +
+  labs(
+    title = "Supervised Learning — Linear Regression",
+    subtitle = sprintf("Learned Rule: Expected Sales = %.2f + %.2f * Ad Spend",
+                       coef(model)[1], coef(model)[2]),
+    x = "Input Feature X (e.g. Ad Spend in $K)", 
+    y = "Target Label Y (e.g. Sales in $K)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+### Simulated Unsupervised Example — K-Means Clustering
+
+Clustering is an unsupervised learning task. 
+
+Imagine you have a database of customers, recording their **Income** and **Spending Score**. But you don't know who is who. You want to group them into distinct categories so your marketing team can target them differently. 
+
+* **Input Features ($X$):** Income and Spending Score
+* **Labels ($Y$):** None! 
+
+The K-Means algorithm look at the density and distance between points and groups them based on their proximity. We ask it to find 3 groups (clusters), and it assigns a color to each group.
+
+```{r unsupervised-example, fig.cap="Unsupervised Learning: The algorithm finds distinct subgroups (clusters) in the unlabelled data."}
+set.seed(seeds[3])
+
+# Three unlabelled clusters
+df_usup <- bind_rows(
+  tibble(x = rnorm(40, 2, 0.6),  y = rnorm(40, 2, 0.6)), # Low Income, Low Spend
+  tibble(x = rnorm(40, 6, 0.6),  y = rnorm(40, 5, 0.6)), # High Income, Average Spend
+  tibble(x = rnorm(40, 4, 0.6),  y = rnorm(40, 9, 0.6))  # Average Income, High Spend
+)
+
+# Run K-Means Clustering and ask for 3 centers
+km   <- kmeans(df_usup, centers = 3, nstart = 20)
+df_usup$cluster <- factor(km$cluster)
+
+ggplot(df_usup, aes(x, y, colour = cluster)) +
+  geom_point(size = 3, alpha = 0.8) +
+  stat_ellipse(level = 0.85, linetype = "dashed", linewidth = 1) +
+  scale_color_brewer(palette = "Set1", labels=c("Budget Shoppers", "Luxury Buyers", "Standard Shoppers")) +
+  labs(
+    title = "Unsupervised Learning — K-Means Clustering (k = 3)",
+    subtitle = "The algorithm finds internal structure and groups similar data points together.",
+    x = "Feature 1 (e.g. Income)",
+    y = "Feature 2 (e.g. Spending Score)",
+    colour = "Discovered\nClusters"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "right", plot.title = element_text(face = "bold"))
+```
+
+---
+
+# Part 3: Four Learning Perspectives
+
+The lecture frames learning algorithms along four conceptual axes:
+
+```{r learning-perspectives-table}
+perspectives <- tibble(
+  Perspective = c("Information-based", "Similarity-based",
+                  "Probability-based", "Error-based"),
+  Core_Idea = c(
+    "Use information to guide decisions; minimise entropy or misclassification",
+    "Group or predict based on closeness in some feature space",
+    "Estimate the probability of class membership rather than assigning hard labels",
+    "Build a model, measure its error against known answers, and iteratively reduce that error"
+  ),
+  Canonical_Algorithm = c("Decision Tree", "k-Nearest Neighbours / Regression",
+                           "Naïve Bayes", "Neural Networks / Gradient Descent")
+)
+
+kable(perspectives,
+      col.names = c("Perspective", "Core Idea", "Canonical Algorithm"),
+      caption = "Four Perspectives on Machine Learning") |>
+  kable_styling(bootstrap_options = c("striped", "hover")) |>
+  column_spec(1, bold = TRUE)
+```
+
+---
+
+# Part 4: ML from a Problem Perspective
+
+## 4.1 Problem Categories
+
+Once you know whether your problem is supervised or unsupervised, you must specify the **exact output type** the algorithm needs to produce. 
+
+```{r problem-categories}
+problems <- tibble(
+  Category = c("Classification", "Regression", "Time Series", "Clustering", "Dimensionality Reduction"),
+  Type = c("Supervised", "Supervised", "Supervised", "Unsupervised", "Unsupervised"),
+  Goal = c("Assign a category or class", "Predict a numerical quantity", "Predict future values in a sequence", "Group similar items together", "Simplify data by combining features"),
+  Output = c("Discrete class label (e.g. 'Cat', 'Dog', 'Spam')", "Continuous numeric value (e.g. $250,500)", "Continuous numeric value at time t", "Group ID (1, 2, 3...)", "New abstract features (Component 1, Component 2)"),
+  Algorithm_Example = c("Logistic Regression, Random Forest", "Linear Regression, XGBoost", "ARIMA, LSTMs", "K-Means, DBSCAN", "PCA, t-SNE")
+)
+
+kable(problems,
+      col.names = c("Problem Category", "Learning Type", "Core Goal", "What it Outputs", "Common Algorithms"),
+      caption = "Machine Learning Problem Categories Explained") |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) |>
+  column_spec(1, bold = TRUE, color = "white", background = "#4b6584") |>
+  row_spec(1:3, background = "#f1f8ff") |>
+  row_spec(4:5, background = "#fff8f1")
+```
+
+## 4.2 Demo — Classification vs. Regression
+
+Here is a side-by-side visual comparison of the two main types of Supervised Learning.
+
+**Scenario:** We are predicting student outcomes based on their study habits.
+
+1. **Classification (Left):** We have historical data on students' exam scores and whether they Passed or Failed. We want to draw a boundary so that if a new student scores a 65, we can classify them as 'Pass' or 'Fail'. The outcome is a distinct category.
+2. **Regression (Right):** We have historical data on how many hours students studied and their final GPA. We want to predict the exact numerical GPA for a new student based on their study hours. The outcome is continuous.
+
+```{r classification-vs-regression, fig.width=10, fig.height=5, fig.cap="Comparing Classification (predicting categories) with Regression (predicting quantities)."}
+set.seed(seeds[4])
+
+# --- Classification: predict class from a threshold ---
+df_clf <- tibble(
+  score    = runif(100, 0, 100),
+  pass     = factor(ifelse(score + rnorm(100, 0, 8) > 50, "Pass", "Fail"))
+)
+
+p1 <- ggplot(df_clf, aes(score, fill = pass)) +
+  geom_histogram(bins = 20, alpha = 0.8, color = "white", position = "identity") +
+  geom_vline(xintercept = 50, linetype = "dashed", color = "black", linewidth = 1.2) +
+  annotate("text", x = 40, y = 8, label = "Decision\nBoundary", angle = 90, vjust=0) +
+  scale_fill_manual(values = c("Pass" = "#2ca02c", "Fail" = "#d62728")) +
+  labs(title = "Classification Task", subtitle = "Predicting a discrete category (Pass/Fail)", 
+       x = "Exam Score", y = "Number of Students", fill = "Prediction:") +
+  theme_minimal(base_size = 14) +
+  theme(plot.title = element_text(face = "bold", color = "#333333"),
+        legend.position = "bottom")
+
+# --- Regression: predict continuous GPA ---
+df_reg <- tibble(
+  study_hours = runif(100, 0, 10),
+  gpa         = 1.5 + 0.25 * study_hours + rnorm(100, 0, 0.4)
+)
+
+p2 <- ggplot(df_reg, aes(study_hours, gpa)) +
+  geom_point(colour = "#1f77b4", alpha = 0.7, size = 3) +
+  geom_smooth(method = "lm", colour = "#ff7f0e", linewidth=1.5, fill = "#ff7f0e", alpha=0.2) +
+  annotate("text", x = 2, y = 3.5, label = "Regression Line", color = "#ff7f0e", fontface="bold") +
+  labs(title = "Regression Task", subtitle = "Predicting a continuous quantity (GPA 0.0 - 4.0)", 
+       x = "Study Hours per Week", y = "Predicted Expected GPA") +
+  theme_minimal(base_size = 14) +
+  theme(plot.title = element_text(face = "bold", color = "#333333"))
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+---
+
+# Part 5: Linear Algebra for Machine Learning
+
+> Linear algebra is the mathematical language of ML. Vectors represent data points and model weights; matrices encode transformations and datasets; eigendecomposition underlies PCA and many optimisation algorithms.
+>
+> Book reference: Géron (2019) uses linear algebra throughout — see especially Ch. 4 (gradient descent), Ch. 8 (PCA).
+
+## 5.1 Vectors
+
+A **vector** is an ordered list of numbers. By convention, vectors are column vectors.
+
+$$\mathbf{v} = \begin{pmatrix} v_1 \\ v_2 \\ \vdots \\ v_n \end{pmatrix}$$
+
+**Vector length (L2 norm):**
+
+$$\|\mathbf{v}\| = \sqrt{\sum_{i=1}^{n} v_i^2}$$
+
+```{r vectors}
+v <- c(3, 4)          # 2-D column vector
+u <- c(1, 2)
+
+# Vector length
+v_length <- sqrt(sum(v^2))
+cat("v =", v, "\n")
+cat("||v|| =", v_length, " (should be 5)\n\n")
+
+# Vector addition
+v_plus_u <- v + u
+cat("v + u =", v_plus_u, "\n")
+
+# Scalar multiplication
+cat("3 * v =", 3 * v, "\n")
+
+# Dot product
+dot <- sum(v * u)
+cat("v · u =", dot, "\n")
+```
+
+## 5.2 Matrices
+
+A **matrix** is a rectangular array of numbers. For ML, the data matrix $X$ is $n \times p$ (n observations, p features).
+
+**Matrix addition** requires identical dimensions. **Matrix multiplication** $AB$ requires cols(A) = rows(B).
+
+```{r matrices}
+A <- matrix(c(1, 2, 3, 4), nrow = 2, ncol = 2, byrow = TRUE)
+B <- matrix(c(5, 6, 7, 8), nrow = 2, ncol = 2, byrow = TRUE)
+
+cat("A:\n"); print(A)
+cat("\nB:\n"); print(B)
+
+# Addition (same dimensions)
+cat("\nA + B:\n"); print(A + B)
+
+# Multiplication (2×2 × 2×2 → 2×2)
+cat("\nA %*% B:\n"); print(A %*% B)
+
+# Transpose
+cat("\nt(A):\n"); print(t(A))
+```
+
+## 5.3 Matrix Determinant and Inverse
+
+The **determinant** of a $2 \times 2$ matrix:
+
+$$\det\begin{pmatrix} a & b \\ c & d \end{pmatrix} = ad - bc$$
+
+The **inverse** $A^{-1}$ satisfies $A A^{-1} = I$. It exists only when $\det(A) \neq 0$.
+
+$$A^{-1} = \frac{1}{\det(A)} \begin{pmatrix} d & -b \\ -c & a \end{pmatrix}$$
+
+```{r determinant-inverse}
+A <- matrix(c(2, 1, 1, 2), nrow = 2, byrow = TRUE)
+cat("A:\n"); print(A)
+
+# Determinant
+d <- det(A)
+cat("\ndet(A) =", d, "\n")
+
+# Inverse
+A_inv <- solve(A)
+cat("\nA^(-1):\n"); print(round(A_inv, 4))
+
+# Verify: A %*% A^(-1) should be the identity matrix
+cat("\nA %*% A^(-1) (should be I):\n"); print(round(A %*% A_inv, 10))
+```
+
+## 5.4 Solving a System of Linear Equations
+
+Given $A\mathbf{x} = \mathbf{b}$, the solution is $\mathbf{x} = A^{-1}\mathbf{b}$ (when $A$ is invertible):
+
+$$\begin{cases} 2x + y = 5 \\ x + 2y = 4 \end{cases}$$
+
+```{r linear-system}
+A <- matrix(c(2, 1, 1, 2), nrow = 2, byrow = TRUE)
+b <- c(5, 4)
+
+# Solution via matrix inverse
+x <- solve(A, b)
+cat("Solution: x =", x[1], ", y =", x[2], "\n")
+
+# Verify
+cat("Check A %*% x:", A %*% x, "(should be", b, ")\n")
+```
+
+## 5.5 Eigenvectors and Eigenvalues
+
+For a square matrix $A$, if $A\mathbf{v} = \lambda\mathbf{v}$, then $\lambda$ is an **eigenvalue** and $\mathbf{v}$ is its corresponding **eigenvector**.
+
+The eigenvalues are found by solving $\det(A - \lambda I) = 0$ (the **characteristic equation**).
+
+**Why this matters for ML:** PCA (Principal Component Analysis) is entirely built on eigendecomposition — the principal components are the eigenvectors of the covariance matrix, ordered by their eigenvalues. See Géron (2019) Ch. 8.
+
+```{r eigenvalues}
+# Match the lecture example
+A <- matrix(c(2, 1, 1, 2), nrow = 2, byrow = TRUE)
+cat("A:\n"); print(A)
+
+ea <- eigen(A)
+cat("\nEigenvalues (λ):\n"); print(ea$values)
+cat("\nEigenvectors (columns):\n"); print(round(ea$vectors, 6))
+
+# Verify: A * v = λ * v  for the first eigenpair
+lambda1 <- ea$values[1]
+v1      <- ea$vectors[, 1]
+cat("\nVerify A*v1 = lambda1*v1:\n")
+cat("  A*v1 =", round(A %*% v1, 6), "\n")
+cat("  lambda1*v1 =", round(lambda1 * v1, 6), "\n")
+```
+
+### Visualising Eigenvectors
+
+```{r eigenvector-plot}
+A  <- matrix(c(2, 1, 1, 2), nrow = 2, byrow = TRUE)
+ea <- eigen(A)
+v1 <- ea$vectors[, 1] * ea$values[1]   # scaled by eigenvalue
+v2 <- ea$vectors[, 2] * ea$values[2]
+
+ggplot() +
+  # Grid of transformed points
+  expand_limits(x = c(-3, 3), y = c(-3, 3)) +
+  # Eigenvector 1
+  geom_segment(aes(x = 0, y = 0, xend = v1[1], yend = v1[2]),
+               arrow = arrow(length = unit(0.3, "cm")),
+               colour = "#d62728", linewidth = 1.2) +
+  annotate("text", x = v1[1] + 0.2, y = v1[2] + 0.15,
+           label = paste0("lambda[1] == ", as.integer(ea$values[1])),
+           parse = TRUE, colour = "#d62728", size = 5, fontface="bold") +
+  # Eigenvector 2
+  geom_segment(aes(x = 0, y = 0, xend = v2[1], yend = v2[2]),
+               arrow = arrow(length = unit(0.3, "cm")),
+               colour = "#1f77b4", linewidth = 1.2) +
+  annotate("text", x = v2[1] - 0.45, y = v2[2] - 0.15,
+           label = paste0("lambda[2] == ", as.integer(ea$values[2])),
+           parse = TRUE, colour = "#1f77b4", size = 5, fontface="bold") +
+  geom_hline(yintercept = 0, colour = "grey50") +
+  geom_vline(xintercept = 0, colour = "grey50") +
+  coord_equal() +
+  labs(
+    title = "Visualizing Eigenvectors of a Matrix",
+    subtitle = "Eigenvectors show the 'principal directions' of a matrix transformation.\nThe eigenvalues (lambda) show how much the matrix stretches data in that direction.\nRed is pulled 3x, Blue is pulled 1x.",
+    x = "X axis", y = "Y Axis"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(plot.subtitle = element_text(color = "#555555", face = "italic"))
+```
+
+### Python Equivalent (from lecture slide 23)
+
+The lecture also shows the NumPy equivalent. For reference:
+
+```python
+import numpy as np
+A = np.array([[2, 1], [1, 2]])
+eigenvalues, eigenvectors = np.linalg.eig(A)
+print(eigenvalues)    # [3. 1.]
+print(eigenvectors)   # [[ 0.707 -0.707]
+                      #  [ 0.707  0.707]]
+```
+
+---
+
+# Summary
+
+```{r summary-table}
+summary_tbl <- tibble(
+  Topic = c(
+    "Definition of Learning",
+    "Supervised Learning",
+    "Unsupervised Learning",
+    "Information-based",
+    "Similarity-based",
+    "Probability-based",
+    "Error-based",
+    "Classification",
+    "Regression",
+    "Clustering",
+    "Vector",
+    "Matrix multiplication",
+    "Eigendecomposition"
+  ),
+  Key_Takeaway = c(
+    "Optimise performance on a task T using experience E, measured by metric P (Mitchell, 1997)",
+    "Learn f(X) → Y from labelled examples; goal is approximation",
+    "Find structure in unlabelled data; goal is description",
+    "Minimise entropy/error — e.g., Decision Trees",
+    "Predict by proximity in feature space — e.g., KNN",
+    "Estimate class probabilities — e.g., Naïve Bayes",
+    "Iteratively reduce prediction error — e.g., Neural Networks",
+    "Discrete output; supervised; accuracy / confusion matrix",
+    "Continuous output; supervised; MSE / R²",
+    "Group discovery; unsupervised; inertia / silhouette",
+    "Ordered list of numbers; length = L2 norm",
+    "Requires cols(A) = rows(B); result is (rows(A) × cols(B))",
+    "Av = λv; eigenvectors define PCA principal components"
+  )
+)
+
+kable(summary_tbl, col.names = c("Topic", "Key Takeaway"),
+      caption = "Week 01 — Concept Summary") |>
+  kable_styling(bootstrap_options = c("striped", "hover")) |>
+  column_spec(1, bold = TRUE, width = "22%")
+```
+
+---
+
+# References
+
+- Géron, A. (2019). *Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow* (2nd ed.). O'Reilly Media.
+  - Chapter 1: The Machine Learning Landscape
+  - Chapter 8: Dimensionality Reduction (PCA and eigendecomposition)
+  - Local knowledge base: `Knowledge/extracted/chapters/01_CHAPTER 1 — The Machine Learning Landscape.md`
+- Mitchell, T. (1997). *Machine Learning*. McGraw-Hill.
+- Samuel, A. L. (1959). Some studies in machine learning using the game of checkers. *IBM Journal of Research and Development, 3*(3), 210–229.
+- James, G., Witten, D., Hastie, T., & Tibshirani, R. (2021). *An Introduction to Statistical Learning* (2nd ed.). Springer.
