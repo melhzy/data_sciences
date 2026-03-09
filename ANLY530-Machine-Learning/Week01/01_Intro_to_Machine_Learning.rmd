@@ -520,6 +520,74 @@ dot <- sum(v * u)
 cat("v · u =", dot, "\n")
 ```
 
+### Visualising Vectors
+
+Instead of thinking of a vector as just a list of numbers, think of it as an **arrow** in space. The arrow starts at the origin (0, 0) and points to the coordinates $(v_1, v_2)$.
+
+* The **direction** of the arrow tells you *where* the vector points.
+* The **length** of the arrow is the magnitude (L2 norm).
+* When you **add** two vectors, you chain the second arrow tip-to-tail onto the first.
+* The **dot product** $\mathbf{v} \cdot \mathbf{u}$ measures alignment. It is zero when the vectors are perpendicular, positive when they point in similar directions, and negative when they oppose. This is the basis for **cosine similarity** used in NLP and recommendation systems.
+
+```{r vector-plot, fig.width=8, fig.height=6, fig.cap="Vectors as arrows: v, u, their sum, and the angle between them."}
+v   <- c(3, 4)
+u   <- c(1, 2)
+sum_vu <- v + u
+
+# Compute angle between v and u
+angle_deg <- round(acos(sum(v * u) / (sqrt(sum(v^2)) * sqrt(sum(u^2)))) * 180 / pi, 1)
+
+# Build a long data frame for geom_segment
+vec_df <- data.frame(
+  x    = c(0,    0,    0),
+  y    = c(0,    0,    0),
+  xend = c(v[1], u[1], sum_vu[1]),
+  yend = c(v[2], u[2], sum_vu[2]),
+  vec  = c("v = (3, 4)", "u = (1, 2)", "v + u = (4, 6)")
+)
+
+# Dashed parallelogram helper lines
+par_df <- data.frame(
+  x    = c(v[1], u[1]),
+  y    = c(v[2], u[2]),
+  xend = c(sum_vu[1], sum_vu[1]),
+  yend = c(sum_vu[2], sum_vu[2])
+)
+
+ggplot() +
+  # Dashed parallelogram lines
+  geom_segment(data = par_df, aes(x=x, y=y, xend=xend, yend=yend),
+               linetype="dashed", color="grey60", linewidth=0.8) +
+  # Main vectors
+  geom_segment(data = vec_df,
+               aes(x=x, y=y, xend=xend, yend=yend, color=vec),
+               arrow = arrow(length = unit(0.35, "cm"), type="closed"),
+               linewidth = 1.8) +
+  # Labels at arrow tips
+  annotate("label", x=3.2, y=4.3, label="v = (3, 4)",    color="#d62728", fontface="bold", size=4.5, fill="#fff0f0") +
+  annotate("label", x=0.8, y=2.2, label="u = (1, 2)",    color="#1f77b4", fontface="bold", size=4.5, fill="#f0f4ff") +
+  annotate("label", x=4.5, y=6.1, label="v + u = (4, 6)",color="#2ca02c", fontface="bold", size=4.5, fill="#f0fff0") +
+  annotate("text",  x=2.5, y=0.3,
+           label=paste0("Dot product v\u00b7u = ", sum(v*u), 
+                        "  |  Angle between v & u = ", angle_deg, "\u00b0"),
+           color="#555555", fontface="italic", size=4.5) +
+  # Axes
+  geom_hline(yintercept=0, colour="grey50") +
+  geom_vline(xintercept=0, colour="grey50") +
+  scale_color_manual(values=c("v = (3, 4)"="#d62728", "u = (1, 2)"="#1f77b4", "v + u = (4, 6)"="#2ca02c")) +
+  coord_equal(xlim=c(-0.5, 5.5), ylim=c(-0.5, 7)) +
+  labs(
+    title    = "Vectors as Arrows in 2D Space",
+    subtitle = "Vector addition chains arrows tip-to-tail (parallelogram rule).\nThe dot product measures how much two vectors 'agree' in direction.",
+    x = "X axis", y = "Y axis"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position="none", plot.title=element_text(face="bold"),
+        plot.subtitle=element_text(color="#555555"))
+```
+
+---
+
 ## 6.2 Matrices
 
 A **matrix** is a rectangular array of numbers. For ML, the data matrix $X$ is $n \times p$ (n observations, p features).
@@ -542,6 +610,66 @@ cat("\nA %*% B:\n"); print(A %*% B)
 # Transpose
 cat("\nt(A):\n"); print(t(A))
 ```
+
+### Visualising a Matrix as a Transformation
+
+This is perhaps the most powerful geometric intuition in all of linear algebra:
+
+> **A matrix is a recipe for transforming space.**
+
+When you multiply a matrix by a set of points, you are **stretching, rotating, shearing, or squishing** those points. Think of the matrix as a special pair of glasses that changes how you see the coordinate system.
+
+The animation below shows a regular grid of points (the *before* state) and where those same points land after being multiplied by matrix $A = \begin{pmatrix} 2 & 1 \\ 0.5 & 1.5 \end{pmatrix}$ (the *after* state).
+
+```{r matrix-transform, fig.width=11, fig.height=5, fig.cap="Left: original coordinate grid. Right: grid after applying a matrix transformation. Arrows show where selected reference points moved."}
+# Matrix to apply
+M <- matrix(c(2, 0.5, 1, 1.5), nrow=2)  # column-major
+
+# Create a regular grid of points
+grid_pts <- expand.grid(x = seq(-2, 2, by=0.5), y = seq(-2, 2, by=0.5))
+
+# Apply transformation: each point (x, y) -> M %*% c(x, y)
+transformed <- t(M %*% t(as.matrix(grid_pts)))
+grid_pts_t  <- data.frame(x = transformed[,1], y = transformed[,2])
+
+# Basis vectors before and after
+basis_before <- data.frame(
+  x=c(0,0), y=c(0,0), xend=c(1,0), yend=c(0,1),
+  label=c("e1 = (1,0)", "e2 = (0,1)")
+)
+basis_after <- data.frame(
+  x=c(0,0), y=c(0,0),
+  xend = c(M[1,1], M[1,2]),
+  yend = c(M[2,1], M[2,2]),
+  label=c("M·e1", "M·e2")
+)
+
+p_before <- ggplot(grid_pts, aes(x, y)) +
+  geom_point(color="#1f77b4", alpha=0.5, size=1.5) +
+  geom_segment(data=basis_before, aes(x=x,y=y,xend=xend,yend=yend,color=label),
+               arrow=arrow(length=unit(0.3,"cm")), linewidth=2) +
+  scale_color_manual(values=c("e1 = (1,0)"="#d62728", "e2 = (0,1)"="#2ca02c")) +
+  geom_hline(yintercept=0, colour="grey60") + geom_vline(xintercept=0, colour="grey60") +
+  coord_equal(xlim=c(-3,3), ylim=c(-3,3)) +
+  labs(title="BEFORE: Original Grid", subtitle="The standard coordinate space", x="", y="", color="Basis Vector:") +
+  theme_minimal(base_size=13) + theme(plot.title=element_text(face="bold"), legend.position="bottom")
+
+p_after <- ggplot(grid_pts_t, aes(x, y)) +
+  geom_point(color="#ff7f0e", alpha=0.5, size=1.5) +
+  geom_segment(data=basis_after, aes(x=x,y=y,xend=xend,yend=yend,color=label),
+               arrow=arrow(length=unit(0.3,"cm")), linewidth=2) +
+  scale_color_manual(values=c("M·e1"="#d62728", "M·e2"="#2ca02c")) +
+  geom_hline(yintercept=0, colour="grey60") + geom_vline(xintercept=0, colour="grey60") +
+  coord_equal(xlim=c(-5,5), ylim=c(-4,4)) +
+  labs(title="AFTER: Transformed Grid", subtitle="The same points after applying matrix M", x="", y="", color="Transformed Basis:") +
+  theme_minimal(base_size=13) + theme(plot.title=element_text(face="bold"), legend.position="bottom")
+
+gridExtra::grid.arrange(p_before, p_after, ncol=2)
+```
+
+> **Why this matters for ML:** A neural network layer with a weight matrix $W$ is literally doing this — it's stretching and rotating your data into a new space where patterns become easier to detect. Understanding that "matrix multiplication = space transformation" is the key insight.
+
+---
 
 ## 6.3 Matrix Determinant and Inverse
 
@@ -586,6 +714,48 @@ cat("Solution: x =", x[1], ", y =", x[2], "\n")
 # Verify
 cat("Check A %*% x:", A %*% x, "(should be", b, ")\n")
 ```
+
+### Visualising the Solution Geometrically
+
+Each linear equation in a $2 \times 2$ system describes a **straight line** on a 2D plot. Solving the system means finding the single point where **both lines cross simultaneously** — the $(x, y)$ pair that satisfies both equations at once.
+
+This is directly analogous to how ML models find optimal parameters: they are looking for the one point in parameter space that best satisfies all training constraints at the same time.
+
+```{r linear-system-plot, fig.width=7, fig.height=6, fig.cap="Geometric interpretation: each equation is a line; the solution is where they intersect."}
+# System: 2x + y = 5  and  x + 2y = 4  => solution (x=2, y=1)
+x_vals <- seq(-1, 4, length.out=200)
+line1  <- 5 - 2 * x_vals   # y = 5 - 2x
+line2  <- (4 - x_vals) / 2 # y = (4 - x) / 2
+
+lines_df <- data.frame(
+  x = rep(x_vals, 2),
+  y = c(line1, line2),
+  eq = rep(c("Equation 1:  2x + y = 5", "Equation 2:  x + 2y = 4"), each=200)
+)
+
+ggplot(lines_df, aes(x, y, color=eq)) +
+  geom_line(linewidth=1.8) +
+  geom_point(aes(x=2, y=1), color="black", size=5, shape=21, fill="gold", stroke=2,
+             inherit.aes=FALSE) +
+  annotate("label", x=2.3, y=1.4,
+           label="Solution\n(x = 2, y = 1)",
+           color="black", fontface="bold", size=4.5, fill="lightyellow") +
+  annotate("text", x=0.2, y=4.4, label="2x + y = 5", color="#d62728", fontface="bold", size=4.5) +
+  annotate("text", x=3.2, y=0.2, label="x + 2y = 4", color="#1f77b4", fontface="bold", size=4.5) +
+  scale_color_manual(values=c("Equation 1:  2x + y = 5"="#d62728", "Equation 2:  x + 2y = 4"="#1f77b4")) +
+  geom_hline(yintercept=0, color="grey70") + geom_vline(xintercept=0, color="grey70") +
+  coord_cartesian(xlim=c(-0.5, 4), ylim=c(-0.5, 5.5)) +
+  labs(
+    title    = "Geometric Interpretation of a Linear System",
+    subtitle = "Each equation is a line. The intersection point IS the solution.",
+    x = "x", y = "y", color=""
+  ) +
+  theme_minimal(base_size=14) +
+  theme(legend.position="bottom", plot.title=element_text(face="bold"),
+        plot.subtitle=element_text(color="#555555"))
+```
+
+---
 
 ## 6.5 Eigenvectors and Eigenvalues
 
