@@ -563,13 +563,19 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // On load, read the hash and activate the correct tab
-        (function () {
+        function activateFromHash() {
             var hash = window.location.hash.replace('#', '');
             if (hash === '500' || hash === '530') {
                 switchClass(hash);
             }
-        })();
+        }
+
+        // Re-activate when browser back/forward changes the hash
+        window.addEventListener('hashchange', activateFromHash);
+        // Activate on initial page load (DOM is ready since script is end of body)
+        document.addEventListener('DOMContentLoaded', activateFromHash);
+        // Fallback: also run immediately in case DOMContentLoaded already fired
+        activateFromHash();
     </script>
 </body>
 </html>
