@@ -289,7 +289,7 @@ p_err <- ggplot(df_persp, aes(x1, x2, color = class)) +
   geom_point(size = 3, alpha = 0.5) +
   geom_point(data = new_point, aes(x1, x2), color = "black", shape = 8, size = 5, inherit.aes = FALSE) +
   geom_abline(intercept = 6.4, slope = -1.1, color = "#2ca02c", linewidth = 1.5) +
-  annotate("text", x = 2.5, y = 4.8, label = "Learned\nBoundary", color = "#2ca02c", fontface="bold") +
+  annotate("text", x = 2.55, y = 4.34, label = "Learned\nBoundary", color = "#2ca02c", fontface="bold") +
   annotate("text", x = 3, y = 2.4, label = "Unknown Data Point", fontface="italic", color="black") +
   scale_color_manual(values = c("Class A"="#d62728", "Class B"="#1f77b4")) +
   labs(title="2. Error-Based Perspective", subtitle="'Draw a line that minimizes errors on the training data'\nAlgorithm checks which side of the line the new point lands on.", x="Feature 1", y="Feature 2") +
