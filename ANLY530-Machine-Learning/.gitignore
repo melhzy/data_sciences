@@ -1,0 +1,29 @@
+# ── Excluded from version control ─────────────────────────────────────────────
+
+# Book knowledge base (large extracted text files + PDF)
+Knowledge/
+
+# Assignment templates (not course deliverables)
+_template/
+
+# ── R / RMarkdown artifacts ────────────────────────────────────────────────────
+*.html
+# But track Week tutorial HTML files for GitHub Pages
+!Week*/*.html
+*_cache/
+*_files/
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# ── Python artifacts ───────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# ── OS / editor noise ──────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
