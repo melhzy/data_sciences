@@ -1,0 +1,429 @@
+---
+title: "Week 12: R for Data Analytics - ANOVA"
+author: "Ziyuan Huang"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: cosmo
+    code_folding: show
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.align = 'center')
+```
+
+```{r machine-info, echo=FALSE, results='asis'}
+cat("**Machine:**", paste0(Sys.info()['nodename'], " - ", Sys.info()['sysname'], " ", Sys.info()['release']), "\n\n")
+```
+
+```{r seedhash, echo=FALSE, results='asis'}
+cat("**Random Seed Set To:** 4591\n\n")
+set.seed(4591)
+```
+
+---
+
+## Introduction
+
+Welcome to Week 12! Previously, we learned how to compare two groups using t-tests. But what happens when we have three, four, or ten groups?
+
+```{r fwer-calc, include=FALSE}
+alpha <- 0.05
+m <- 3
+prob_no_error <- 1 - alpha
+prob_all_correct <- prob_no_error^m
+fwer <- 1 - prob_all_correct
+```
+
+If we simply ran multiple t-tests for every pair of groups, we would run into the **Familywise Error Rate** (FWER) problem. Every test carries a `r alpha * 100`% risk of a False Positive (Type I Error, $\alpha = `r alpha`$).
+
+Mathematically, the probability of **not** making a Type I error in a single test is $1 - `r alpha` = `r prob_no_error`$. If we run $m$ independent tests, the probability of not making *any* error across all of them is $(`r prob_no_error`)^m$.
+
+Therefore, the probability of making **at least one** error (the Familywise Error Rate) is:
+
+$$ P(\text{Familywise Error}) = 1 - (`r prob_no_error`)^m $$
+
+If you run `r m` tests ($m=`r m`$), your risk isn't `r alpha * 100`% anymore—it's nearly `r round(fwer * 100)`%:
+
+$$ 1 - (`r prob_no_error`)^`r m` = 1 - `r round(prob_all_correct, 3)` \approx `r round(fwer, 3)` \quad (`r round(fwer * 100, 1)`\%) $$
+
+### Real World Analogy: The H1B Lottery
+
+Let's look at a real-world example of how probabilities accumulate: The H1B Visa Lottery.
+
+In 2024 (for the FY 2025 cap), the selection rate was approximately **25.6%**. This means in any single year, you have a roughly 74.4% chance of *not* getting selected.
+
+If you apply 3 times (e.g., over your 3-year OPT period), what is the chance you get selected **at least once**? It is *not* simply $25.6\% \times 3 = 76.8\%$.
+
+```{r h1b-calc, include=FALSE}
+h1b_rate <- 0.256
+n_tries <- 3
+prob_fail_once <- 1 - h1b_rate
+prob_fail_all <- prob_fail_once^n_tries
+prob_success_at_least_once <- 1 - prob_fail_all
+```
+
+Using the same probability logic as above:
+
+1.  Probability of failing 1 time: $1 - `r h1b_rate` = `r prob_fail_once`$
+2.  Probability of failing `r n_tries` times in a row: $(`r prob_fail_once`)^`r n_tries` \approx `r round(prob_fail_all, 3)`$
+3.  Probability of succeeding at least once: $1 - `r round(prob_fail_all, 3)` = `r round(prob_success_at_least_once, 3)`$
+
+So, even with 3 attempts, your overall success rate is about **`r round(prob_success_at_least_once * 100, 1)`%**.
+
+This is the inverse of the FWER problem. In FWER, we want to *avoid* making an error (a "false success"), but the more tests we run, the more likely we are to make one. In the lottery, we *want* a success, and the more tries we make, the more likely we are to get one—but it never reaches 100%.
+
+**ANOVA (Analysis of Variance)** solves the FWER problem by comparing all means simultaneously in a single "Omnibus" test. It relies on the **F-Ratio** [1].
+
+### Learning Objectives
+
+1.  Understand the logic of ANOVA through visualization (SST, SSM, SSR).
+2.  Conduct a One-Way ANOVA using the `ez` package.
+3.  Check assumptions (Homogeneity of Variance).
+4.  Perform Post Hoc tests (Bonferroni) to find specific differences.
+5.  Calculate Effect Size ($\omega^2$).
+
+### Required Packages
+
+We will use `rio` for data import, `ez` for simple ANOVA execution, `MOTE` for effect sizes, and `ggplot2` for visualization.
+
+```{r packages}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(tidyverse, rio, ez, MOTE, ggplot2, gridExtra)
+```
+
+---
+
+## Part 1: The Example (Viagra and Libido)
+
+We will use a classic dataset from Andy Field's textbook [1]. The research question is simple: **Does Viagra affect libido?**
+
+*   **Independent Variable (IV):** Dose (Placebo, Low Dose, High Dose)
+*   **Dependent Variable (DV):** Libido Score
+
+### Loading and Cleaning Data
+
+```{r load-data}
+# Import data
+master <- import("data/viagra.sav")
+
+# Convert 'dose' to a factor with labels
+master$dose <- factor(master$dose, 
+                      levels = c(1, 2, 3),
+                      labels = c("Placebo", "Low Dose", "High Dose"))
+
+# Create a participant ID (required for ezANOVA)
+master$partno <- 1:nrow(master)
+
+# Calculate Grand Mean and Group Means for visualization
+grand_mean <- mean(master$libido)
+group_means <- master %>%
+  group_by(dose) %>%
+  summarize(mean_libido = mean(libido))
+
+# Merge group means back into master for plotting
+master <- master %>%
+  left_join(group_means, by = "dose")
+
+head(master)
+```
+
+---
+
+## Part 2: The Logic of ANOVA (Visualized)
+
+To understand ANOVA, we need to understand **Variance**. Variance is just the average distance of data points from the mean. ANOVA splits this variance into two parts: "Good Variance" (explained by our experiment) and "Bad Variance" (unexplained noise).
+
+We calculate three types of "Sum of Squares" (SS) to measure this [1].
+
+### 1. Total Sum of Squares (SST) - The "Total Variation"
+
+First, we ignore the groups. We just ask: "How spread out is the data overall?"
+We measure the distance from **Every Data Point** to the **Grand Mean** (the average of everyone).
+
+$$ SST = \sum (x_i - \bar{x}_{grand})^2 $$
+
+```{r plot-sst, echo=FALSE, fig.height=4, fig.width=8}
+ggplot(master, aes(x = partno, y = libido)) +
+  geom_hline(yintercept = grand_mean, color = "black", size = 1) +
+  geom_segment(aes(xend = partno, yend = grand_mean), color = "red", linetype = "dashed") +
+  geom_point(aes(shape = dose, color = dose), size = 3) +
+  annotate("text", x = 2, y = grand_mean + 0.5, label = "Grand Mean", fontface = "bold") +
+  labs(title = "Total Sum of Squares (SST)", 
+       subtitle = "Distance from Each Point to the Grand Mean",
+       y = "Libido", x = "Participant ID") +
+  theme_minimal()
+```
+
+### 2. Model Sum of Squares (SSM) - The "Good Variance"
+
+Now we use our model (the groups). If our experiment worked, the groups should be different.
+We measure the distance from the **Group Means** to the **Grand Mean**.
+This represents the **Signal**: How much better is our model (using groups) than just guessing the average?
+
+$$ SSM = \sum n_k (\bar{x}_{k} - \bar{x}_{grand})^2 $$
+
+```{r plot-ssm, echo=FALSE, fig.height=4, fig.width=8}
+ggplot(master, aes(x = partno, y = libido)) +
+  geom_hline(yintercept = grand_mean, color = "black", size = 1) +
+  # Draw group means
+  geom_segment(aes(x = partno - 0.4, xend = partno + 0.4, y = mean_libido, yend = mean_libido, color = dose), size = 1.2) +
+  # Draw distance from Group Mean to Grand Mean
+  geom_segment(aes(x = partno, xend = partno, y = mean_libido, yend = grand_mean), color = "blue", size = 1, arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_point(aes(shape = dose, color = dose), size = 3, alpha = 0.3) +
+  labs(title = "Model Sum of Squares (SSM)", 
+       subtitle = "Distance from Group Means to Grand Mean (The Signal)",
+       y = "Libido", x = "Participant ID") +
+  theme_minimal()
+```
+
+### 3. Residual Sum of Squares (SSR) - The "Bad Variance"
+
+Finally, we look at what we couldn't explain. Even within the "High Dose" group, not everyone has the same libido.
+We measure the distance from **Every Data Point** to its **Group Mean**.
+This represents the **Noise** or **Error**.
+
+$$ SSR = \sum (x_{ik} - \bar{x}_{k})^2 $$
+
+```{r plot-ssr, echo=FALSE, fig.height=4, fig.width=8}
+ggplot(master, aes(x = partno, y = libido)) +
+  # Draw group means
+  geom_segment(aes(x = partno - 0.4, xend = partno + 0.4, y = mean_libido, yend = mean_libido, color = dose), size = 1.2) +
+  # Draw distance from Point to Group Mean
+  geom_segment(aes(xend = partno, yend = mean_libido), color = "red", linetype = "dotted") +
+  geom_point(aes(shape = dose, color = dose), size = 3) +
+  labs(title = "Residual Sum of Squares (SSR)", 
+       subtitle = "Distance from Each Point to its Group Mean (The Noise)",
+       y = "Libido", x = "Participant ID") +
+  theme_minimal()
+```
+
+### The F-Ratio Calculation
+
+The F-Ratio is simply the ratio of the "Good Variance" (Signal) to the "Bad Variance" (Noise) [1].
+
+$$ F = \frac{\text{Average SSM (Signal)}}{\text{Average SSR (Noise)}} $$
+
+If $F > 1$, it means the experimental effect is bigger than random noise.
+
+---
+
+## Part 3: Running ANOVA
+
+We use the `ezANOVA` function from the `ez` package. It is popular because it automatically provides assumption checks and formats the output nicely.
+
+**Key Arguments:**
+*   `dv`: Dependent Variable (Outcome)
+*   `between`: Between-subjects predictor (Group)
+*   `wid`: Within-subject ID (Participant ID)
+*   `type`: Sum of Squares type (Type 3 is standard for social sciences)
+
+```{r run-anova}
+options(scipen = 20) # Turn off scientific notation
+
+anova_model <- ezANOVA(data = master,
+                       dv = libido,
+                       between = dose,
+                       wid = partno,
+                       type = 3, 
+                       detailed = TRUE)
+
+print(anova_model)
+```
+
+---
+
+## Part 4: Interpreting Results
+
+### 1. Assumption Check: Levene's Test
+
+Before looking at the main result, we must check if the groups have equal variances (Homogeneity of Variance).
+
+```{r levenes}
+levene_results <- anova_model$`Levene's Test for Homogeneity of Variance`
+print(levene_results)
+
+levene_p <- levene_results$p
+```
+
+*   **Result:** $p = `r round(levene_p, 2)`$.
+*   **Interpretation:** Since $p `r ifelse(levene_p > 0.05, ">", "<")` .05$, the variances are *`r ifelse(levene_p > 0.05, "not", "")`* significantly different. We have `r ifelse(levene_p > 0.05, "met", "violated")` the assumption of homogeneity.
+
+### 2. The F-Test (Main Effect)
+
+Now we look at the ANOVA table.
+
+```{r anova-table}
+anova_table <- anova_model$ANOVA
+print(anova_table)
+
+# Extract values for reporting
+# ezANOVA detailed=TRUE includes Intercept, so we filter for "dose"
+dose_row <- anova_table[anova_table$Effect == "dose", ]
+
+df_model <- as.numeric(dose_row$DFn)
+df_error <- as.numeric(dose_row$DFd)
+f_value <- as.numeric(dose_row$F)
+p_value <- as.numeric(dose_row$p)
+```
+
+*   **Result:** $F(`r df_model`, `r df_error`) = `r round(f_value, 2)`, p = `r round(p_value, 3)`$.
+*   **Interpretation:** Since $p `r ifelse(p_value < 0.05, "<", ">")` .05$, there `r ifelse(p_value < 0.05, "is", "is not")` a significant difference in libido somewhere among the three groups. The model (signal) explains significantly `r ifelse(p_value < 0.05, "more", "less")` variance than the residuals (noise).
+
+---
+
+## Part 5: Post Hoc Tests
+
+The ANOVA is an "Omnibus" test—it tells us *that* there is a difference, but not *where*. To find out which specific groups differ (e.g., High Dose vs. Placebo), we run **Post Hoc Tests**.
+
+We use the **Bonferroni correction** to adjust our p-values and keep the Familywise Error Rate at 5%.
+
+```{r posthoc}
+posthoc <- pairwise.t.test(master$libido,
+                         master$dose,
+                         p.adjust.method = "bonferroni", 
+                         paired = FALSE, 
+                         var.equal = TRUE)
+print(posthoc)
+
+# Extract p-values (The matrix has rows: Low Dose, High Dose; cols: Placebo, Low Dose)
+p_high_vs_placebo <- posthoc$p.value["High Dose", "Placebo"]
+p_low_vs_placebo <- posthoc$p.value["Low Dose", "Placebo"]
+p_high_vs_low <- posthoc$p.value["High Dose", "Low Dose"]
+```
+
+**Interpretation:**
+*   **High Dose vs. Placebo:** $p = `r round(p_high_vs_placebo, 3)`$ (`r ifelse(p_high_vs_placebo < 0.05, "Significant!", "Not significant")`)
+*   **Low Dose vs. Placebo:** $p = `r round(p_low_vs_placebo, 3)`$ (`r ifelse(p_low_vs_placebo < 0.05, "Significant!", "Not significant")`)
+*   **High Dose vs. Low Dose:** $p = `r round(p_high_vs_low, 3)`$ (`r ifelse(p_high_vs_low < 0.05, "Significant!", "Not significant")`)
+
+Conclusion: High Dose Viagra `r ifelse(p_high_vs_placebo < 0.05, "significantly increases", "does not significantly change")` libido compared to Placebo, but Low Dose does not.
+
+---
+
+## Part 6: Effect Size
+
+Statistical significance ($p < .05$) depends on sample size. To know how *large* the effect is, we calculate **Omega Squared ($\omega^2$)**.
+
+```{r effect-size}
+# Calculate Omega Squared using dynamic values extracted earlier
+# df_model = `r df_model`
+# df_error = `r df_error`
+# f_value = `r f_value`
+effect <- omega.F(dfm = df_model, dfe = df_error, Fvalue = f_value, n = nrow(master)/3, a = .05)
+
+omega_sq <- effect$omega
+```
+
+*   **Result:** $\omega^2 = `r round(omega_sq, 2)`$.
+*   **Interpretation:** This is a **`r ifelse(omega_sq >= 0.14, "Large", ifelse(omega_sq >= 0.06, "Medium", "Small"))` Effect** (Rule of thumb: .01 = Small, .06 = Medium, .14 = Large). The drug explains about `r round(omega_sq * 100, 0)`% of the variance in libido.
+
+---
+
+## Part 7: Trend Analysis
+
+When our groups have a natural order (e.g., **Placebo < Low Dose < High Dose**), we can ask a more specific question than just "Are they different?" We can ask: **"What is the shape of the relationship?"**
+
+This is called **Trend Analysis**. We typically test for two main shapes:
+
+1.  **Linear Trend (L)**: A straight line.
+    *   **Logic**: As the dose goes up, libido goes up (or down) consistently.
+    *   **Analogy**: Like climbing a ramp.
+    *   **Hypothesis**: "More drug = More effect."
+2.  **Quadratic Trend (Q)**: A curve (U-shape or Inverted-U).
+    *   **Logic**: The effect goes up for a while, but then might level off or even go down at very high doses.
+    *   **Analogy**: Like throwing a ball—it goes up, peaks, and comes down.
+    *   **Hypothesis**: "There is a 'sweet spot' dose, and too much might be bad (or just not better)."
+
+```{r trend}
+# Create a copy for trend analysis
+master$dose_trend <- master$dose
+
+# Set polynomial contrasts (Linear and Quadratic)
+contrasts(master$dose_trend) <- contr.poly(3) 
+
+# Run Analysis of Variance (aov is base R function)
+trend_model <- aov(libido ~ dose_trend, data = master)
+trend_summary <- summary.lm(trend_model)
+trend_summary
+
+# Extract P-values for dynamic reporting
+p_linear <- trend_summary$coefficients["dose_trend.L", "Pr(>|t|)"]
+p_quad <- trend_summary$coefficients["dose_trend.Q", "Pr(>|t|)"]
+```
+
+### Interpretation of Results
+
+*   **Linear Trend (L):** `r ifelse(p_linear < 0.05, "Significant", "Not Significant")` ($p = `r round(p_linear, 3)`$).
+    *   **Meaning**: Since $p < .05$, we are confident that there is a straight-line relationship.
+    *   **In Plain English**: As we increase the dose of Viagra from Placebo to Low to High, libido scores consistently increase. The line on a graph would go **straight up**.
+
+*   **Quadratic Trend (Q):** `r ifelse(p_quad < 0.05, "Significant", "Not Significant")` ($p = `r round(p_quad, 3)`$).
+    *   **Meaning**: Since $p > .05$, there is no significant curve.
+    *   **In Plain English**: The data does not go up and then down (or down and then up). It's just a steady increase.
+
+**Why does this matter?**
+If the Quadratic Trend *was* significant, it would tell us something important: maybe "High Dose" isn't actually better than "Low Dose" (maybe it causes side effects that lower libido). But here, the Linear Trend wins: **More is Better** (statistically speaking, for this dataset!).
+
+---
+
+## Part 8: Final Visualization
+
+Finally, we will create a publication-quality visualization. Instead of just showing the means (bars), we should show the **distribution** of the data.
+
+*   **Boxplots**: Show the median and spread (quartiles).
+*   **Jittered Points**: Show the actual individual participants (raw data).
+*   **Diamonds**: Show the Group Means.
+
+```{r plot-final, fig.height=5, fig.width=7}
+ggplot(master, aes(x = dose, y = libido, fill = dose)) +
+  # 1. Boxplot with transparency (alpha) so we can see points
+  geom_boxplot(alpha = 0.4, outlier.shape = NA, width = 0.5) +
+  
+  # 2. Add Jittered Points (Individual Participants)
+  # Jitter adds random noise to x-axis so points don't overlap
+  geom_jitter(width = 0.1, size = 3, alpha = 0.7) +
+  
+  # 3. Add Mean Points (White Diamonds)
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 4, 
+               fill = "white", color = "black", stroke = 1.5) +
+  
+  # 4. Make it colorful and clean
+  scale_fill_viridis_d(option = "plasma", begin = 0.3, end = 0.9) +
+  theme_minimal() +
+  labs(x = "Dosage Level", 
+       y = "Libido Score", 
+       title = "Impact of Viagra on Libido",
+       subtitle = "Comparison of Placebo, Low Dose, and High Dose groups",
+       caption = "White diamonds = Group Means; Dots = Individual Participants") +
+  theme(legend.position = "none",
+        plot.title = element_text(size = 16, face = "bold"),
+        axis.title = element_text(size = 12))
+```
+
+### Interpretation (Plain English)
+
+This plot tells the whole story of our analysis:
+
+1.  **The Trend**: Look at the **White Diamonds** (the means). They clearly go up as the dose increases. This matches our "Linear Trend" finding.
+2.  **The Spread**: The colorful boxes show where the middle 50% of the data sits. The "High Dose" box is much higher on the Y-axis than the "Placebo" box.
+3.  **The Difference**: We can visually see why the Post Hoc test found a significant difference between **High Dose** and **Placebo**—there is almost no overlap between the lowest High Dose scores and the Placebo scores.
+
+---
+
+## Summary
+
+In this lab, we performed a complete One-Way ANOVA workflow:
+
+1.  **Explored the data** using visualizations to understand Total (SST), Model (SSM), and Residual (SSR) variance.
+2.  **Ran ANOVA** and confirmed the model was significant ($F(`r df_model`, `r df_error`) = `r round(f_value, 2)`$).
+3.  **Checked Assumptions** (Levene's Test was `r ifelse(levene_p > 0.05, "non-significant", "significant")`, so assumptions `r ifelse(levene_p > 0.05, "met", "violated")`).
+4.  **Found Specific Differences** using Bonferroni Post Hoc tests (High Dose > Placebo).
+5.  **Calculated Effect Size** ($\omega^2 = `r round(omega_sq, 2)`$, `r ifelse(omega_sq >= 0.14, "large", ifelse(omega_sq >= 0.06, "medium", "small"))` effect).
+
+### References
+
+[1] A. Field, J. Miles, and Z. Field, "Comparing Several Means: ANOVA (GLM 1)," in *Discovering Statistics Using R*. London: SAGE Publications, 2012, ch. 10.

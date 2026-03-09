@@ -1,0 +1,360 @@
+---
+title: "Week 11: Comparing Two Means (The t-test)"
+author: "Ziyuan Huang"
+date: "Last Updated: `r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: cosmo
+    highlight: tango
+    code_folding: show
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 5
+)
+```
+
+# Introduction
+
+## 1. Overview
+
+In this tutorial, we explore one of the most fundamental statistical tools: the **t-test**. The t-test is used to determine if there is a significant difference between the means of two groups. 
+
+As described by Field, Miles, and Field [1], the t-statistic can be understood as a **Signal-to-Noise Ratio**:
+
+$$t = \frac{\text{Signal (Systematic Variation)}}{\text{Noise (Unsystematic Variation)}} = \frac{\text{Difference Between Means}}{\text{Standard Error of the Difference}}$$
+
+```{r, echo = FALSE, out.width="80%", fig.align='center', fig.cap="Figure 1: Visualizing the Signal-to-Noise Ratio (from Week 11 Slides). The top distribution represents the effect of the experimental manipulation (Signal), while the overlapping distributions represent the variability within groups (Noise)."}
+knitr::include_graphics("pictures/1.png")
+```
+
+-   **Signal**: The variance explained by our experimental manipulation (e.g., Invisibility Cloak vs. No Cloak).
+-   **Noise**: The unexplained variance or error within our groups.
+
+If the signal is significantly larger than the noise, we reject the null hypothesis.
+
+> **Reference:** This tutorial draws from Field et al. [1], *Discovering Statistics Using R*, particularly the chapters on comparing two means.
+
+## 2. Learning Objectives
+
+By the end of this tutorial, you will be able to:
+
+1.  Understand the logic of **Null Hypothesis Significance Testing (NHST)** for t-tests.
+2.  Perform and interpret an **Independent Samples t-test**.
+3.  Perform and interpret a **Dependent (Paired) Samples t-test**.
+4.  Check assumptions: **Normality** and **Homogeneity of Variance**.
+5.  Calculate and interpret **Effect Sizes** (Cohen's $d$, Pearson's $r$).
+6.  Report results in **APA/IEEE style**.
+
+## 3. Required Packages
+
+We will use the following R packages. If you don't have them installed, uncomment the `install.packages` line.
+
+```{r load-packages}
+# install.packages(c("tidyverse", "rio", "car", "pwr", "MOTE", "Hmisc"))
+
+library(tidyverse) # For data manipulation and plotting
+library(rio)       # For importing data
+library(car)       # For Levene's test (Homogeneity)
+library(pwr)       # For power analysis
+library(MOTE)      # For effect size calculations
+library(Hmisc)     # For plotting error bars
+```
+
+---
+
+# Part 1: Independent Samples t-test
+
+An **independent t-test** compares two means coming from two separate groups of entities (e.g., a treatment group vs. a control group).
+
+## 1.1 The Scenario
+
+We will use the "Invisibility Cloak" dataset from [1]. 
+-   **Scenario**: We want to know if invisible people are more mischievous.
+-   **Groups**: 
+    -   12 participants given an Invisibility Cloak.
+    -   12 participants given No Cloak.
+-   **Outcome**: Number of mischievous acts performed in a week.
+
+## 1.2 Data Import
+
+```{r import-data}
+# Import the data
+longdata <- import("data/invisible.csv")
+
+# Inspect the structure
+str(longdata)
+head(longdata)
+
+# Convert Cloak to a factor (categorical variable)
+longdata$Cloak <- as.factor(longdata$Cloak)
+```
+
+## 1.3 Data Screening & Assumptions
+
+Before running the test, we must check the assumptions [1]:
+
+1.  **Normality**: The sampling distribution of the difference between means should be normal. For small samples ($N < 30$), we check if the data itself is normal.
+2.  **Homogeneity of Variance**: The variance in both groups should be roughly equal.
+
+### Visualizing the Data
+
+Before running formal tests, it's crucial to visualize the data. We use **Boxplots** with **Jittered Points**.
+
+-   **Boxplot**: Shows the median (thick line), Interquartile Range (box), and potential outliers (whiskers).
+-   **Jitter Points**: Show the individual raw data points. This is vital for small sample sizes ($N=12$) where a boxplot alone might be misleading.
+
+```{r data-viz-box}
+# Define a clean theme for all plots
+cleanup <- theme(
+  panel.grid.major = element_blank(), 
+  panel.grid.minor = element_blank(), 
+  panel.background = element_blank(), 
+  axis.line = element_line(color = "black"),
+  text = element_text(size = 14)
+)
+
+ggplot(longdata, aes(x = Cloak, y = Mischief, fill = Cloak)) +
+  cleanup +
+  geom_boxplot(alpha = 0.3, outlier.shape = NA) + # Transparent boxplot
+  geom_jitter(width = 0.1, size = 2) +            # Add raw data points
+  labs(
+    title = "Distribution of Mischief Scores",
+    subtitle = "Boxplot with Jittered Data Points",
+    x = "Condition",
+    y = "Mischief Score"
+  ) +
+  scale_fill_brewer(palette = "Pastel1") +
+  theme(legend.position = "none")
+```
+
+### Checking Normality
+
+We check normality both visually (Histograms/Density) and statistically (Shapiro-Wilk).
+
+> **Note**: As Field et al. [1] note, for the t-test, we formally assume that the *sampling distribution* of the difference between means is normal. However, because we cannot access the sampling distribution directly, we check the normality of the residuals or the data itself as a proxy.
+
+#### Visual Check (Density Plots)
+A bell curve indicates normal distribution.
+
+```{r normality-viz}
+ggplot(longdata, aes(x = Mischief, fill = Cloak)) +
+  cleanup +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~Cloak) +
+  labs(
+    title = "Density Plot of Mischief Scores",
+    x = "Mischief Score",
+    y = "Density"
+  )
+```
+
+#### Statistical Check (Shapiro-Wilk)
+
+We can use the **Shapiro-Wilk test**.
+-   $p > .05$: Data is likely normal (Assumption Met).
+-   $p < .05$: Data deviates from normality (Assumption Violated).
+
+```{r normality}
+# Check normality for each group
+tapply(longdata$Mischief, longdata$Cloak, shapiro.test)
+```
+*Interpretation*: Both groups have $p > .05$ (0.96 and 0.98), so the assumption of normality is met.
+
+### Checking Homogeneity of Variance
+
+We use **Levene's Test**.
+-   $p > .05$: Variances are equal (Assumption Met).
+-   $p < .05$: Variances are unequal (Assumption Violated).
+
+> **Field's Insight**: If sample sizes are equal (as they are here, $N=12$ in both groups), the t-test is fairly robust to violations of homogeneity of variance. Field [1] suggests that when group sizes are equal, this assumption is less critical. However, if group sizes are unequal, violations can seriously bias the results.
+
+```{r homogeneity}
+levene_test <- leveneTest(Mischief ~ Cloak, data = longdata)
+levene_test
+```
+*Interpretation*: The p-value is `r round(levene_test$"Pr(>F)"[1], 2)` (> .05), so we assume equal variances.
+
+## 1.4 The Analysis
+
+We run the t-test using `t.test(outcome ~ predictor, data = data, var.equal = TRUE)`.
+
+```{r indep-ttest}
+indep_model <- t.test(Mischief ~ Cloak, 
+                      data = longdata, 
+                      var.equal = TRUE) # Set FALSE if Levene's test was significant
+indep_model
+```
+
+### Interpretation
+-   **t**: 1.71
+-   **df**: 22
+-   **p-value**: 0.101
+
+**Conclusion**: Since $p > .05$, the difference is not statistically significant. We fail to reject the null hypothesis.
+
+## 1.5 Effect Size
+
+Even though the result wasn't significant, we calculate the effect size to understand the magnitude of the difference.
+
+-   **Cohen's d**: Standardized difference ($0.2 = \text{Small}, 0.5 = \text{Medium}, 0.8 = \text{Large}$).
+-   **Pearson's r**: Strength of relationship ($0.1 = \text{Small}, 0.3 = \text{Medium}, 0.5 = \text{Large}$).
+
+Formula for $r$ [1]:
+$$r = \sqrt{\frac{t^2}{t^2 + df}}$$
+
+```{r effect-size-indep}
+# Calculate descriptive statistics first
+stats <- longdata %>%
+  group_by(Cloak) %>%
+  dplyr::summarize(
+    Mean = mean(Mischief),
+    SD = sd(Mischief),
+    N = n()
+  )
+print(stats)
+
+# Calculate Cohen's d using MOTE
+effect_indep <- d.ind.t(
+  m1 = stats$Mean[1], m2 = stats$Mean[2],
+  sd1 = stats$SD[1], sd2 = stats$SD[2],
+  n1 = stats$N[1], n2 = stats$N[2],
+  a = .05
+)
+
+effect_indep$d
+
+# Calculate Pearson's r
+t_val <- indep_model$statistic
+df_val <- indep_model$parameter
+r_val <- sqrt(t_val^2 / (t_val^2 + df_val))
+r_val
+```
+*Interpretation*: $d = 0.70$ suggests a medium-to-large effect, despite the non-significant p-value. This suggests **low statistical power** (sample size was too small).
+
+---
+
+# Part 2: Dependent (Paired) Samples t-test
+
+A **dependent t-test** compares two means from the **same** participants (Repeated Measures) or matched pairs.
+
+## 2.1 The Scenario
+
+Imagine a new study design [1]:
+-   We track the **same** 12 participants.
+-   Week 1: No Cloak.
+-   Week 2: Invisibility Cloak.
+-   We compare their mischief scores between the two weeks.
+
+*Note: In the current dataset structure, we treat the 'Cloak' and 'No Cloak' groups as if they were paired for this example.*
+
+## 2.2 The Analysis
+
+We use `paired = TRUE`. Note that for a paired test, the vectors must be of the same length and sorted by participant.
+
+```{r dep-ttest}
+# Extract vectors for the two conditions
+cloak_scores <- longdata$Mischief[longdata$Cloak == "Cloak"]
+no_cloak_scores <- longdata$Mischief[longdata$Cloak == "No Cloak"]
+
+dep_model <- t.test(cloak_scores, no_cloak_scores, paired = TRUE)
+dep_model
+```
+
+### Interpretation
+-   **t**: 3.80
+-   **p-value**: 0.003
+
+**Conclusion**: Since $p < .05$, the difference **is** statistically significant. By removing the variation between people (using a paired design), we increased the Signal-to-Noise ratio.
+
+## 2.3 Effect Size (Dependent)
+
+For paired designs, we must be careful with Cohen's $d$.
+-   $d_z$: Based on the standard deviation of the *difference scores*.
+-   $d_{av}$: Based on the average standard deviation of the two groups (often preferred for comparison with independent designs).
+
+```{r effect-size-dep}
+# Using MOTE for d_av (Average SD)
+effect_dep <- d.dep.t.avg(
+  m1 = stats$Mean[1], m2 = stats$Mean[2],
+  sd1 = stats$SD[1], sd2 = stats$SD[2],
+  n = stats$N[1], a = .05
+)
+effect_dep$d
+```
+
+---
+
+# Part 3: Visualization
+
+## 3.1 Bar Chart with Error Bars
+
+This is the standard way to present t-test results in publications.
+
+-   **Height of Bar**: Represents the Mean.
+-   **Error Bar**: Represents the 95% Confidence Interval (CI). If the error bars of two groups do not overlap, the difference is usually significant.
+
+```{r visualization}
+ggplot(longdata, aes(x = Cloak, y = Mischief, fill = Cloak)) +
+  cleanup +
+  stat_summary(fun = "mean", geom = "bar", color = "black", alpha = 0.7) +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2) +
+  labs(
+    title = "Mean Mischief Acts by Condition",
+    subtitle = "Error Bars represent 95% Confidence Intervals",
+    x = "Experimental Condition",
+    y = "Number of Mischief Acts"
+  ) +
+  scale_fill_brewer(palette = "Pastel1") +
+  theme(legend.position = "none")
+```
+
+## 3.2 Paired Differences Plot (For Dependent t-test)
+
+For a paired t-test, it's often more informative to see how *each individual* changed. We can use a slope graph.
+
+```{r viz-paired}
+# Create a temporary ID variable since our dataset doesn't have one
+longdata$ID <- rep(1:12, 2)
+
+ggplot(longdata, aes(x = Cloak, y = Mischief, group = ID)) +
+  cleanup +
+  geom_point(size = 3, aes(color = Cloak)) +
+  geom_line(color = "gray") +
+  labs(
+    title = "Individual Changes in Mischief",
+    subtitle = "Slope graph showing each participant's change",
+    x = "Condition",
+    y = "Mischief Score"
+  ) +
+  theme(legend.position = "none")
+```
+*Interpretation*: If most lines slope upwards (or downwards) in the same direction, it suggests a consistent effect across participants.
+
+---
+
+# Summary & Reporting
+
+## Reporting Results
+
+When reporting t-test results, include the mean difference, t-statistic, degrees of freedom, p-value, and effect size [1].
+
+**Independent t-test Example:**
+> "On average, participants with an invisibility cloak ($M = 5.00, SD = 1.65$) performed more mischievous acts than those without a cloak ($M = 3.75, SD = 1.91$). This difference was not significant, $t(22) = 1.71, p = .101, d = 0.70$."
+
+**Dependent t-test Example:**
+> "There was a significant difference in mischief acts between the cloak and no cloak conditions, $t(11) = 3.80, p = .003$."
+
+## References
+
+[1] A. Field, J. Miles, and Z. Field, *Discovering Statistics Using R*. London: SAGE Publications, 2012.

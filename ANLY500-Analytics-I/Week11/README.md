@@ -4,8 +4,8 @@ This module focuses on one of the most fundamental statistical tools: the **t-te
 
 ## 📚 Lecture Materials
 
-- **[View Tutorial (HTML)](11_R_for_DataAnalytics.html)** - *Comprehensive Step-by-Step Guide*
-- **[View Lecture Slides (HTML)](11_ttests.html)** - *Use arrow keys to navigate*
+- **[View Tutorial (HTML)](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week11/11_R_for_DataAnalytics.html)** - *Comprehensive Step-by-Step Guide*
+- **[View Lecture Slides (HTML)](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week11/11_ttests.html)** - *Use arrow keys to navigate*
 - **[Source Tutorial RMarkdown](11_R_for_DataAnalytics.rmd)**
 - **[Source Slides RMarkdown](11_ttests.rmd)**
 

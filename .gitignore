@@ -16,3 +16,4 @@ Thumbs.db
 
 # Ignored Archives
 ANLY500-Analytics-I/archive/
+**/archive/
