@@ -20,7 +20,30 @@ By the end of the course, you will have a portfolio of ML projects to show emplo
 
 ---
 
-## 📚 Weekly Tutorials
+## �️ Course Navigation
+
+Quick links to every week. Click **📄 Tutorial** to open the live HTML, or **📂 Folder** to browse source files on GitHub.
+
+| Week | Topic | Tutorial | Source |
+|------|-------|----------|--------|
+| 01 | Introduction to Machine Learning | [📄 Tutorial](https://melhzy.github.io/data_sciences/ANLY530-Machine-Learning/Week01/01_Intro_to_Machine_Learning.html) | [📂 Folder](Week01/) |
+| 02 | Python & R for Machine Learning | 🔜 Coming Soon | [📂 Folder](Week02/) |
+| 03 | Decision Trees | 🔜 Coming Soon | [📂 Folder](Week03/) |
+| 04 | Random Forests & Ensemble Methods | 🔜 Coming Soon | [📂 Folder](Week04/) |
+| 05 | Regression | 🔜 Coming Soon | [📂 Folder](Week05/) |
+| 06 | Support Vector Machines | 🔜 Coming Soon | [📂 Folder](Week06/) |
+| 07 | Probabilistic Learning & Classification Metrics | 🔜 Coming Soon | [📂 Folder](Week07/) |
+| 08 | Unsupervised Learning | 🔜 Coming Soon | [📂 Folder](Week08/) |
+| 09 | Preprocessing & Feature Selection | 🔜 Coming Soon | [📂 Folder](Week09/) |
+| 10 | Feature Engineering & Dimensionality Reduction | 🔜 Coming Soon | [📂 Folder](Week10/) |
+| 11 | Model Evaluation & Selection | 🔜 Coming Soon | [📂 Folder](Week11/) |
+| 12 | Advanced Ensemble Methods | 🔜 Coming Soon | [📂 Folder](Week12/) |
+| 13 | Introduction to Neural Networks | 🔜 Coming Soon | [📂 Folder](Week13/) |
+| 14 | Final Project Wrap-Up & Review | 🔜 Coming Soon | [📂 Folder](Week14/) |
+
+---
+
+## �📚 Weekly Tutorials
 
 ### [Week 01: Introduction to Machine Learning](Week01/)
 
