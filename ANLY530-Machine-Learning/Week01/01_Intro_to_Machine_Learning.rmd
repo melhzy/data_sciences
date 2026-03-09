@@ -254,9 +254,83 @@ kable(perspectives,
 
 ---
 
-# Part 4: ML from a Problem Perspective
+# Part 4: Core Machine Learning Challenges
 
-## 4.1 Problem Categories
+Before looking at specific equations and problem types, we must understand the core challenge of Machine Learning: building models that **generalize** well to new data.
+
+## 4.1 Underfitting vs. Overfitting
+
+The central tension in Machine Learning is between Underfitting and Overfitting.
+
+* **Underfitting (Too simple):** The model is too simple to learn the underlying structure of the data. It performs poorly on the training data. (Like trying to fit a straight line through a U-shaped curve).
+* **Good Fit (Just right):** The model captures the underlying pattern but ignores the random noise.
+* **Overfitting (Too complex):** The model memorizes the training data perfectly, including all the random noise and outliers. It performs great on training data, but terribly on new data.
+
+```{r overfitting-underfitting, fig.width=12, fig.height=4, fig.cap="The Goldilocks Problem of Machine Learning: Underfitting, Overfitting, and the Good Fit."}
+set.seed(seeds[5])
+
+# Generate a noisy Sine wave true pattern
+x_curve <- seq(0, 10, length.out=50)
+y_true <- sin(x_curve)
+y_noisy <- y_true + rnorm(50, sd=0.4)
+df_fit <- tibble(x=x_curve, y=y_noisy, y_true=y_true)
+
+# 1. Underfit (Linear)
+p_under <- ggplot(df_fit, aes(x, y)) +
+  geom_point(alpha=0.6, color="grey30") +
+  geom_smooth(method="lm", se=FALSE, color="#d62728", linewidth=1.5) +
+  labs(title="1. Underfitting", subtitle="Model is too simple (High Bias)", x="", y="") +
+  theme_minimal() + theme(plot.title=element_text(face="bold"))
+
+# 2. Good Fit (Polynomial deg 3)
+p_good <- ggplot(df_fit, aes(x, y)) +
+  geom_point(alpha=0.6, color="grey30") +
+  geom_smooth(method="lm", formula=y ~ poly(x, 3), se=FALSE, color="#2ca02c", linewidth=1.5) +
+  labs(title="2. Good Fit", subtitle="Model captures the true trend", x="", y="") +
+  theme_minimal() + theme(plot.title=element_text(face="bold"))
+
+# 3. Overfit (Polynomial deg 25 / Spline with high df)
+p_over <- ggplot(df_fit, aes(x, y)) +
+  geom_point(alpha=0.6, color="grey30") +
+  geom_smooth(method="lm", formula=y ~ splines::ns(x, 25), se=FALSE, color="#1f77b4", linewidth=1.5) +
+  labs(title="3. Overfitting", subtitle="Model memorizes the noise (High Variance)", x="", y="") +
+  theme_minimal() + theme(plot.title=element_text(face="bold"))
+
+gridExtra::grid.arrange(p_under, p_good, p_over, ncol=3)
+```
+
+## 4.2 Training vs. Testing Data
+
+Because overfitting is such a severe problem, we **never evaluate a model on the data it was trained on**. 
+
+If a student memorizes the exact answers to a practice test, getting 100% on the practice test doesn't mean they will do well on the final exam.
+
+Therefore, we split our data:
+1. **Training Set (e.g. 80%):** Given to the algorithm so it can learn the patterns.
+2. **Testing Set (e.g. 20%):** Hidden from the algorithm until the very end. We use this to evaluate how well the model *generalizes* to unseen data.
+
+```{r train-test-split, fig.height=4, fig.width=10, fig.cap="Data split visualization"}
+set.seed(seeds[6])
+# Create simple visualization of data split
+split_data <- tibble(
+  ID = 1:100,
+  Set = c(rep("Training Data (80%)", 80), rep("Testing Data (20%)", 20))
+)
+
+ggplot(split_data, aes(x = ID, y = 1, fill = Set)) +
+  geom_tile(color="white") +
+  scale_fill_manual(values = c("Testing Data (20%)" = "#ff7f0e", "Training Data (80%)" = "#1f77b4")) +
+  theme_void() +
+  labs(title="The Train / Test Split Concept", subtitle="We hold out a portion of our data to test the model's true performance.", fill="") +
+  theme(axis.text=element_blank(), axis.ticks=element_blank(), panel.grid=element_blank(),
+        plot.title=element_text(face="bold", size=14), legend.position="bottom", legend.text=element_text(size=12))
+```
+
+---
+
+# Part 5: ML from a Problem Perspective
+
+## 5.1 Problem Categories
 
 Once you know whether your problem is supervised or unsupervised, you must specify the **exact output type** the algorithm needs to produce. 
 
@@ -278,7 +352,7 @@ kable(problems,
   row_spec(4:5, background = "#fff8f1")
 ```
 
-## 4.2 Demo — Classification vs. Regression
+## 5.2 Demo — Classification vs. Regression
 
 Here is a side-by-side visual comparison of the two main types of Supervised Learning.
 
@@ -327,13 +401,13 @@ gridExtra::grid.arrange(p1, p2, ncol = 2)
 
 ---
 
-# Part 5: Linear Algebra for Machine Learning
+# Part 6: Linear Algebra for Machine Learning
 
 > Linear algebra is the mathematical language of ML. Vectors represent data points and model weights; matrices encode transformations and datasets; eigendecomposition underlies PCA and many optimisation algorithms.
 >
 > Book reference: Géron (2019) uses linear algebra throughout — see especially Ch. 4 (gradient descent), Ch. 8 (PCA).
 
-## 5.1 Vectors
+## 6.1 Vectors
 
 A **vector** is an ordered list of numbers. By convention, vectors are column vectors.
 
@@ -364,7 +438,7 @@ dot <- sum(v * u)
 cat("v · u =", dot, "\n")
 ```
 
-## 5.2 Matrices
+## 6.2 Matrices
 
 A **matrix** is a rectangular array of numbers. For ML, the data matrix $X$ is $n \times p$ (n observations, p features).
 
@@ -387,7 +461,7 @@ cat("\nA %*% B:\n"); print(A %*% B)
 cat("\nt(A):\n"); print(t(A))
 ```
 
-## 5.3 Matrix Determinant and Inverse
+## 6.3 Matrix Determinant and Inverse
 
 The **determinant** of a $2 \times 2$ matrix:
 
@@ -413,7 +487,7 @@ cat("\nA^(-1):\n"); print(round(A_inv, 4))
 cat("\nA %*% A^(-1) (should be I):\n"); print(round(A %*% A_inv, 10))
 ```
 
-## 5.4 Solving a System of Linear Equations
+## 6.4 Solving a System of Linear Equations
 
 Given $A\mathbf{x} = \mathbf{b}$, the solution is $\mathbf{x} = A^{-1}\mathbf{b}$ (when $A$ is invertible):
 
@@ -431,7 +505,7 @@ cat("Solution: x =", x[1], ", y =", x[2], "\n")
 cat("Check A %*% x:", A %*% x, "(should be", b, ")\n")
 ```
 
-## 5.5 Eigenvectors and Eigenvalues
+## 6.5 Eigenvectors and Eigenvalues
 
 For a square matrix $A$, if $A\mathbf{v} = \lambda\mathbf{v}$, then $\lambda$ is an **eigenvalue** and $\mathbf{v}$ is its corresponding **eigenvector**.
 
