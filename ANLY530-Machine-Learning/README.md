@@ -557,7 +557,7 @@ ANLY530-Machine-Learning/
 2. **Install Python via Anaconda** (see Software Requirements above)
 3. **Install R and RStudio** (see Software Requirements above)
 4. **Open the tutorial**: Navigate to the relevant `Week##/` folder and open the `.rmd` file in RStudio, or open the compiled `.html` file directly in a browser
-5. **View online**: All tutorials are hosted at [https://melhzy.github.io/data_sciences/](https://melhzy.github.io/data_sciences/) — click the **ANLY 530** tab
+5. **View online**: All tutorials are hosted at [https://melhzy.github.io/data_sciences/](https://melhzy.github.io/data_sciences/#530) — click the **ANLY 530** tab
 
 ### For Instructors / Collaborators
 
@@ -581,7 +581,7 @@ rmarkdown::render("Week01/01_Intro_to_Machine_Learning.rmd")
 
 ## 🔗 Links
 
-- 🌐 **Course Website**: [https://melhzy.github.io/data_sciences/](https://melhzy.github.io/data_sciences/)
+- 🌐 **Course Website**: [https://melhzy.github.io/data_sciences/](https://melhzy.github.io/data_sciences/#530)
 - 📁 **GitHub Repository**: [https://github.com/melhzy/data_sciences/tree/main/ANLY530-Machine-Learning](https://github.com/melhzy/data_sciences/tree/main/ANLY530-Machine-Learning)
 - 📊 **ANLY 500 Analytics I**: [https://github.com/melhzy/data_sciences/tree/main/ANLY500-Analytics-I](https://github.com/melhzy/data_sciences/tree/main/ANLY500-Analytics-I)
 
