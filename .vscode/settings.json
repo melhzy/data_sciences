@@ -6,8 +6,49 @@
         "--no-save"
     ],
     "r.bracketedPaste": true,
-    "r.sessionWatcher": true,
+    "r.sessionWatcher": false,
     "r.rtermSendDelay": 8,
+    "r.lsp.diagnostics": false,
+    "r.linting.enabled": false,
+    "python.terminal.activateEnvironment": false,
+    "python.condaPath": "C:\\Users\\huang\\anaconda3\\Scripts\\conda.exe",
+    "python.defaultInterpreterPath": "C:\\Users\\huang\\anaconda3\\python.exe",
     "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.defaultPackageManager": "ms-python.python:conda"
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+
+    "files.watcherExclude": {
+        "**/.conda/**": true,
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/**": true,
+        "**/*.html": true
+    },
+
+    "files.exclude": {
+        "**/.conda": true,
+        "**/.tmp_*.py": true
+    },
+
+    "search.exclude": {
+        "**/.conda/**": true,
+        "**/*.html": true,
+        "**/.tmp_*.py": true,
+        "**/docs/**": true
+    },
+
+    "python.analysis.exclude": [
+        ".conda/**",
+        ".tmp_*.py"
+    ],
+
+    "python.analysis.indexing": false,
+
+    "extensions.autoUpdate": false,
+
+    "git.untrackedChanges": "separate",
+    "git.autorefresh": false,
+
+    "terminal.integrated.enablePersistentSessions": false,
+    "terminal.integrated.shellIntegration.enabled": false,
+    "terminal.integrated.shellIntegration.decorationsEnabled": "never"
 }
