@@ -18,17 +18,17 @@ Foundational machine learning concepts, algorithms, and applications. Covers sup
 - [View Course Materials](./ANLY530-Machine-Learning/)
 - [Live Tutorials](https://melhzy.github.io/data_sciences/#530)
 
-### ANLY699 - Applied Project in Analytics
-Capstone applied project course in analytics. Students conduct comprehensive research projects demonstrating mastery of analytics principles and tools with APA 7th edition research writing.
-
-- [View Course Materials](./ANLY699-Applied-Project/)
-- [Live Tutorials](https://melhzy.github.io/data_sciences/#699)
-
 ### GRAD695 - Research Methodology & Writing
 Research methodology and scientific writing for analytics. Prepares students for analytics research through IEEE Access-format proposal development, research design fundamentals, and ethical research practices.
 
 - [View Course Materials](./GRAD695-Research-Methdology&Writing/)
 - [Live Tutorials](https://melhzy.github.io/data_sciences/#695)
+
+### ANLY699 - Applied Project in Analytics
+Capstone applied project course in analytics. Students conduct comprehensive research projects demonstrating mastery of analytics principles and tools with APA 7th edition research writing.
+
+- [View Course Materials](./ANLY699-Applied-Project/)
+- [Live Tutorials](https://melhzy.github.io/data_sciences/#699)
 
 ## Repository Structure
 
