@@ -21,5 +21,25 @@ ANLY500-Analytics-I/archive/
 # Conda environment embedded in workspace (152 MB - never commit)
 .conda/
 
-# Temporary AI-generated scripts
-.tmp_*.py
+# Temporary AI-generated scripts (any extension)
+.tmp_*
+
+# R session / workspace files (already covers .Rhistory, .RData above, but be explicit for nested dirs)
+**/.Rhistory
+**/.RData
+
+# LaTeX build artifacts
+*.log
+*.aux
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.nav
+*.snm
+*.vrb
+*.toc
+*.bbl
+*.blg
+
+# Compiled lab output (students regenerate locally)
+**/lab/*.docx
