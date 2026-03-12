@@ -1,0 +1,339 @@
+---
+output: 
+  pdf_document:
+    includes:
+      in_header: preamble.tex
+title: "GRAD 695 --- Research Methodology and Writing"
+author: "Ziyuan Huang, PhD"
+date: "Late Spring 2026"
+
+fontfamily: mathpazo
+fontsize: 10pt
+header-includes:
+   - \linespread{1.05}
+   - \usepackage{fancyhdr}
+   - \pagestyle{fancy}
+   - \usepackage{lastpage}
+   - \fancyhead[RO,RE]{\thepage\ of \pageref{LastPage}}
+   - \fancyfoot[LO,LE]{\changefont Adapted from The Course Syllabus, A Learning-Centered Approach, 2nd Edition, Judith Grunert OBrien, Barbara J. Millis, Margaret W. Cohen. ISBN 978-0-470-60549-3. Available as an E-Book from Wiley at https://www.wiley.com}
+---
+\newcommand{\changefont}{%
+    \fontsize{8}{8}\selectfont
+}
+\addtolength{\headheight}{1.0cm} 
+\pagestyle{fancyplain} 
+\rhead{\thepage\ of \pageref{LastPage}}
+\lhead{\includegraphics[height=0.8cm]{logo.png}} 
+\renewcommand{\headrulewidth}{0pt} 
+\renewcommand{\footrulewidth}{0.4pt}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancyfoot[C]{} 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = FALSE, dev = "pdf")
+
+# First class: Monday, March 14, 2026
+mon <- as.Date("2026-03-14")
+es1 <- as.Date("2026-03-21")
+es2 <- as.Date("2026-06-06")
+es_time <- "1:00 PM -- 6:00 PM"
+week_dates <- mon + 7 * (0:14)
+
+advdate <- function(week_num) {
+  d <- week_dates[week_num]
+  sprintf("Week %02d -- %s", week_num, format(d, "%B %d, %Y"))
+}
+```
+
+| | |
+|---|---|
+| **Instructor** | Ziyuan Huang, PhD |
+| **Email** | zhuang7@harrisburgu.edu |
+| **Office Hours** | TBD |
+| **Class Meeting** | Mondays, 7:00 PM - 8:30 PM (Eastern) |
+| **Format** | Synchronous Online (MS-Teams) |
+| **Dates** | 03/14/2026 - 06/18/2026 (15 weeks) |
+| **Executive Sessions** | **Session 1:** 03/21/2026, 1:00-6:00 PM (Room 1112) \newline \textbf{Session 2:} 06/06/2026, 1:00-6:00 PM (Room 1112) |
+| **Credits** | 3.00 \| Dept: GRAD |
+
+# Welcome {-}
+
+Congratulations on reaching this milestone. This course is the first of a two-part capstone project. We will work together in this course to prepare an **IEEE compliant research proposal with preliminary study results**, which you will expand in GRAD 699 to a complete research paper with full analysis (varies depending on the instructor). In this course, you will not only plan your research but also conduct initial data collection and analysis to demonstrate feasibility and preliminary findings. **Your final manuscript will be submitted to TechRxiv (https://www.techrxiv.org/)**, establishing a foundation for your continued work in GRAD 699. This is an exciting time full of creativity and discovery that will lead to the completion of your degree.
+
+### Two-Course Capstone Sequence {-}
+
+| Course | Scope | Length |
+|:-------|:------|:------:|
+| **GRAD 695 (This Course)** | Feasibility and preliminary study. Build a research proposal to validate your idea before full execution. | ~10 single-column / ~5 dual-column pages (excl.\ references) |
+| **GRAD 699 (Next Semester)** | Full research phase. Execute the proposal and report complete findings. | ~20 single-column / ~10 dual-column pages |
+
+### Course Schedule {-}
+
+- **Regular Sessions:** M 7:00--8:30 PM from 3/14/2026--6/18/2026 (Synchronous Virtual Classroom)
+- **Executive Session 1:** Saturday, 3/21/2026, 1:00--6:00 PM (Harrisburg University Main Campus, 326 Market Street Building, Room 1112)
+    - *Topics:* Scientific Thinking, Course Overview, Problem Definition, Analytics Research Overview
+    - *Purpose:* Move from broad interests to initial, feasible, and justifiable research direction
+- **Executive Session 2:** Saturday, 6/6/2026, 1:00--6:00 PM (Harrisburg University Main Campus, 326 Market Street Building, Room 1112)
+    - *Topics:* Final Presentations and Peer Feedback
+
+# Course Description {-}
+
+This course guides the student to identify and refine a problem or question to an effective **IEEE compliant formal manuscript reporting preliminary study results** which can serve as the basis for launching an experiential capstone project. **GRAD 695 produces a publication-ready preliminary study manuscript**, preparing you to execute full research in GRAD 699. The course provides an overview of strategies for effective problem investigation and solution proposal. Research methodology is studied and applied through conducting preliminary research to demonstrate feasibility and generate initial findings. Students will collect and analyze preliminary data, present initial results, and plan for comprehensive analysis in GRAD 699. Writing and formatting techniques are also explored and applied as a communication tool for cataloging the investigation and recommending the solution.
+
+**Formal Manuscript Standards:** Despite containing preliminary results, your submission must meet all standards of formal academic publication: rigorous methodology, professional writing, complete documentation, and publication-ready formatting. This is not a draft or proposal---it is a complete manuscript reporting preliminary findings.
+
+**The "Golden Thread" of Alignment:** Your manuscript must demonstrate clear alignment from problem statement $\rightarrow$ literature gap $\rightarrow$ research question $\rightarrow$ data \& variables $\rightarrow$ analysis method. This coherent flow ensures methodological rigor and supports valid conclusions.
+
+# Learning Objectives {-}
+
+By the end of this course, you should be able to:
+
+1. **Scientific Inquiry:** Explain how scientific inquiry supports analytics research and distinguish between research designs (experimental, quasi-experimental, observational).
+2. **Problem Definition:** Distinguish problem statements from research questions; define project scope, population, sample, and key variables.
+3. **FINER Criteria:** Evaluate research questions using FINER criteria (Feasible, Interesting, Novel, Ethical, Relevant).
+4. **Feasibility Assessment:** Evaluate project feasibility across four dimensions: Data availability, Technology/tools, Skills/competencies, and Timeline.
+5. **Literature Review:** Conduct systematic literature searches; synthesize existing evidence; identify research gaps.
+6. **Variable Roles:** Correctly identify and operationalize independent, dependent, confounding, mediating, and moderating variables.
+7. **Research Validity:** Address four types of validity: Internal (causal claims), External (generalizability), Construct (measurement), and Statistical (analysis assumptions).
+8. **Preliminary Research:** Conduct preliminary data collection and analysis to demonstrate research feasibility and generate initial findings.
+9. **Ethics & Reproducibility:** Address data privacy, consent, fairness/bias, and harm assessment; document all decisions for reproducibility.
+10. **Scientific Writing:** Master IEEE Access template formatting and utilize Zotero for citation management.
+11. **Synthesis:** Combine these elements into a coherent, well-aligned proposal with preliminary results for TechRxiv submission.
+ 
+# Course Policies {-}
+
+1. **Canvas:** We will use Canvas for all course activities. Lectures and executive sessions will occur on Microsoft Teams this semester which can be accessed by a link in the Microsoft Teams tab on the Canvas course.
+
+2. **Attendance:** Each week we will have a live session for course lecture. You are expected to attend these sessions. Additionally, attendance is expected for two executive sessions (`r format(es1, '%B %d')` and `r format(es2, '%B %d')`) from `r es_time` EST. Executive sessions will be in-person at Harrisburg University Main Campus (326 Market Street Building, Room 1112).
+
+3. **Late Assignments:** As assignments build on each other, submitting assignments by the deadline is very important. Every day an assignment is late is 10% off the final score achieved. If you need extra time, you MUST communicate that to me and get permission.
+
+4. **Email:** Email communication must be conducted in a professional manner, addressing your teachers using academic titles (Dr.\ or Professor). Use the email subject header with your course number, semester and your content. Use only HU's Outlook or Canvas email systems.
+
+5. **Required Tools and Templates:**
+
+    - **IEEE Access Template:** All written work must use the IEEE Access 2024 template (provided in course materials: `Access-Template-2024.docx`)
+    - **Zotero Citation Manager:** You must use Zotero for managing references and citations. This requirement ensures you can easily adapt to different citation styles in GRAD 699, as instructor requirements may vary.
+    - **TechRxiv Submission:** Your final manuscript must be submitted to TechRxiv (https://www.techrxiv.org/) as a preprint, establishing a citable foundation for your continued work in GRAD 699.
+
+6. **Research Quality Standards:**
+
+    - **FINER Criteria:** All research questions must meet FINER criteria (Feasible, Interesting, Novel, Ethical, Relevant).
+    - **Feasibility Assessment:** Projects must demonstrate feasibility across four dimensions: (1) Data availability and representativeness, (2) Technology/computational resources, (3) Required analytical skills, and (4) Realistic timeline (completable in two semesters).
+    - **Research Validity:** Proposals must address four types of validity: Internal (causality), External (generalizability), Construct (measurement quality), and Statistical (analysis rigor).
+    - **Ethics & Reproducibility:** All projects must address data privacy/PII, consent/data agreements, fairness/bias concerns, potential harms, and maintain reproducible documentation (code, data versioning, preprocessing decisions).
+
+# Generative AI Policy {-}
+
+- You are encouraged to use generative AI (e.g., ChatGPT, Claude, Copilot) as a research assistant throughout this course. AI tools can help you brainstorm ideas, search for relevant literature, debug code, check grammar, and deepen your understanding of concepts. However, **the research design, methodology, analysis, and writing must be your own original work.** AI should support your process, not replace it. You are the researcher --- AI is a tool in your toolkit.
+
+- **Originality Verification:** The instructor will use AI detection and plagiarism detection tools to evaluate the originality of all submitted work. Submissions that are flagged as substantially AI-generated or plagiarized will be subject to review and may result in grade penalties or referral under the Academic Integrity policy. If you have questions about appropriate AI use, please consult me.
+
+# Grading {-}
+
+As the majority of the assignments are designed to contribute to the final project proposal with preliminary results, you will have at least 3 attempts at every project assignment and one attempt on all other assignments.
+
+| Weight | Component |
+|-------:|:----------|
+| 30% | Project Assignments |
+| 15% | In-Class Exercises |
+| 5% | Presentation |
+| 10% | Attendance and Participation (including Consultations) |
+| 40% | Final Manuscript with Preliminary Results (Draft and Final version) |
+
+Final grades will be based on the university graduate grading system:
+
+| Grade | Range |
+|:-----:|:------|
+| A | 90.00%+ |
+| B | 80.00% -- 89.99% |
+| C | 70.00% -- 79.99% |
+| F | < 70.00% |
+
+# Assignments {-}
+
+1. **In-Class Exercises:** These are short assignments completed in class to practice/review the concepts presented.
+
+2. **Manuscript Section Assignments:** These assignments will help you begin to piece together the final capstone manuscript with preliminary results. These assignments are meant to be drafts for sections of your final manuscript and will include initial data collection and analysis activities. You will have multiple attempts on each of these and revisions/edits will be a key component. Remember: your final submission must meet formal publication standards.
+
+3. **Consultations:** You are required to attend 2 individual consultations with me throughout the semester to ensure sufficient progress on your capstone project. Attending these will constitute the majority of your Attendance and Participation grade.
+
+4. **Manuscript Draft:** This will be a full draft of your final manuscript, **including preliminary results** from your initial data collection and analysis. Note the purpose of this is to ensure you are making sufficient progress toward your final manuscript and to allow for a final chance to receive feedback. You will get full credit for this assignment as long as all the components are included so there is only one attempt for this. *However*, you will be expected to take feedback on this assignment, which you will receive, and incorporate it into the final manuscript. This draft must meet formal manuscript standards.
+
+5. **Research Presentation:** At the end of the semester during the final executive session, you will give a 5-minute presentation on your capstone project, **including your preliminary study results and findings**.
+
+6. **Final Manuscript with Preliminary Results:** For the final manuscript, you will bring together the sections you wrote in previous assignments by improving on your drafts and addressing feedback I've given you through the semester. **Importantly, this manuscript must include preliminary study results** from initial data collection and analysis you conduct during the semester. **This is a formal, publication-ready manuscript, not a proposal or draft.** Your TechRxiv submission will be publicly available with a DOI and must meet all standards for formal academic publication. This document is the foundation for your capstone project so by the time you finish the course your manuscript needs to be publication-quality with rigorous methodology and demonstrated feasibility, allowing you to move to comprehensive data collection and full analysis in GRAD 699.
+
+### Format and Submission Requirements {-}
+
+- **Template:** Use the IEEE Access 2024 template (`Access-Template-2024.docx` provided in course materials)
+- **Citation Management:** All references must be managed through Zotero (this allows easy style switching for GRAD 699)
+- **TechRxiv Submission:** Your completed manuscript must be submitted to TechRxiv (https://www.techrxiv.org/) as a preprint. This serves as your starting point for GRAD 699's full research paper.
+- **Length:** ~10 single-column pages or ~5 dual-column pages in IEEE Access format (excluding references)
+
+### Required Sections {-}
+
+- **Title page and abstract** (1 page) --- Clear problem statement and key findings summary
+- **Introduction** (1-2 pages) --- Problem context, significance, and research objectives
+- **Related works/literature review** (3-5 pages) --- Systematic synthesis of existing evidence; identification of research gaps; theoretical framework
+- **Methods section** (2-3 pages) --- Research design, population/sample definition, variable operationalization, data collection procedures, analysis plan
+- **Preliminary results section** (2-4 pages) --- Initial findings from pilot data or early analysis demonstrating feasibility
+- **Discussion** (1-2 pages) --- Interpretation of preliminary findings, limitations, implications, and plan for full study in GRAD 699
+- **Bibliography/references** (20-30 citations, Zotero-managed) --- Primarily peer-reviewed sources; demonstrate comprehensive literature coverage
+
+### Variable Definition Requirements {-}
+
+Your methods section must clearly identify and justify:
+
+- **Independent Variables (IV):** Predictors or manipulated factors
+- **Dependent Variables (DV):** Outcomes being measured
+- **Confounders:** Variables affecting both IV and DV that must be controlled
+- **Moderators:** Variables that change the strength of IV $\rightarrow$ DV relationships
+- **Mediators:** Variables that explain *how* IV affects DV
+
+7. **TechRxiv Formal Manuscript Submission:** Upon completion of your final manuscript, you will submit it as a formal preprint to TechRxiv (https://www.techrxiv.org/). **This is a formal manuscript submission, not a draft or proposal.** Your submission will be publicly available and citable with a DOI. Treat this with the same rigor as submitting to a peer-reviewed journal or conference. This submission serves multiple purposes:
+    a. Establishes a citable DOI for your preliminary work
+    b. Provides public documentation of your research methodology and initial findings
+    c. Demonstrates your capability to produce publication-quality research
+    d. Creates a formal foundation for expanding your work in GRAD 699
+
+    TechRxiv is IEEE's preprint server and your submission will be part of the permanent IEEE research archive.
+
+# Course Schedule {-}
+
+## `r advdate(1)`
+
+- Course Overview, Scientific Thinking and Writing
+- Introduction to IEEE Access Template
+- Zotero Setup and Citation Management
+- *In-Class Exercise:* Interests Survey
+- *In-Class Exercise:* Academic Integrity & Citations Modules
+
+## Executive Session 1: `r format(es1, '%B %d')`
+
+- What is Research?
+- Problem Definition and Research Questions
+- *Manuscript Section Assignment:* Research Topic Brainstorm
+- *In-Class Exercise:*: Defining Concepts (optional)
+
+## `r advdate(2)`
+
+- Finding and Comparing Frameworks and Benchmarks
+- *In-Class Exercise:* Finding Relevant Sources
+- *In-Class Exercise:* Adding Sources to Zotero
+- *Manuscript Section Assignment*: List of Sources
+
+## `r advdate(3)`
+
+- Doing Good Science: Ethics and the IRB
+- *Manuscript Section Assignment*: IRB Overview *and* CITI Ethics Training
+- **Requirement:** Students must complete and pass the CITI Program ethics training (https://about.citiprogram.org/) as preparation for IRB review. Proof of completion is required.
+
+## `r advdate(4)`
+
+- Basic Research Development and Writing
+- *Manuscript Section Assignment*: Introduction Section
+
+## `r advdate(5)`
+
+- Collecting Descriptive Data: Data Mining and Evaluating Data Sources
+- *In-Class Exercise:* Finding Data Sources
+
+## `r advdate(6)`
+
+- Collecting Descriptive Data: Surveys & Qualitative Methods
+- *In-Class Exercise:* Content Analysis
+- *Manuscript Section Assignment*: Literature Review Draft
+
+## `r advdate(7)`
+
+- Designing Solutions: Model Components
+- *In-Class Exercise:* Defining Model Parameters
+
+## `r advdate(8)`
+
+- Designing Solutions: Experiments and Quasi-Experiments
+- *In-Class Exercise:* Design an Experiment
+
+## `r advdate(9)`
+
+- Designing Solutions: Prompt-Engineering
+- *In-Class Exercise:* Comparing Prompts
+- *Manuscript Section Assignment*: Methods Section
+
+## `r advdate(10)`
+
+- Designing Solutions: Model Validation
+
+## `r advdate(11)`
+
+- Communicating Research: Effective Presentation
+- *In-Class Exercise:* Constructing Effective Visual
+
+## `r advdate(12)`
+
+- Communicating Research: Effective Writing
+
+## `r advdate(13)`
+
+- Communicating Research: Communicating to Non-technical Audiences
+- Introduction to TechRxiv Preprint Submission
+- *In-Class Exercise:* Translating Technical Jargon
+- *Assignment*: Complete Manuscript Draft
+
+## Executive Session 2: `r format(es2, '%B %d')`
+
+**In-person capstone project presentations to faculty and peers. Each student will present their research and preliminary results.**
+
+**Session Topics:**
+- Final Research Presentations (5 minutes each)
+- Peer and Faculty Feedback
+- Q&A on Methodology and Feasibility
+
+**Presentation Requirements:**
+- **Content:** Problem statement (1 min) → Research questions (30 sec) → Methods (2 min) → Preliminary results & expected outcomes (1 min) → Q&A preparation (30 sec)
+- **Format:** Professional slides (5-7 maximum), visual aids, clear delivery
+- **Evaluation:** Clarity, organization, depth, professional delivery, time management, Q&A response
+- *Assignment*: Research Presentation (50 points, 5%)
+
+**Location:** HU Harrisburg Campus, Room 1112, 1:00-6:00 PM
+
+## `r advdate(14)`
+
+- Revisions & One-on-One Consultations
+- TechRxiv Submission Preparation
+- Emphasis: Publication-Ready Formatting and Professional Writing Standards
+
+## `r advdate(15)`
+
+- Revisions & One-on-One Consultations
+- *Assignment*: Final Manuscript (Publication-Ready)
+- *Assignment*: TechRxiv Formal Submission
+
+# HU Core Competencies {-}
+
+At the conclusion of this course a student will have met the following core competencies that reflect HU's mission:
+
+1. Critical Thinking and Problem Solving skills are demonstrated by the student's ability to: Identify and clarify the problem, Gather information, Evaluate the evidence, Consider alternative solutions, and Choose and implement the best alternative.  
+
+2. Communication - The core communication skills are demonstrated by the student's ability to: Express ideas and facts to others effectively in a variety of formats, particularly written, oral, and visual formats, and Communicate effectively by making use of information resources and technology.
+
+3. Information Technology - The students will be making effective use of the .NET information resources and technology.
+
+# Statement of Academic Integrity {-}
+
+According to the University's Student Handbook: Academic integrity is the pursuit of scholarly activity free from fraud and deception, and is the educational objective of this institution.  Academic dishonesty includes, but is not limited to cheating, plagiarism, fabrication of information or citations, facilitating acts of academic dishonesty by others, unauthorized possession of examinations, submitting work of another person, or work previously used without informing the instructor, or tampering with the academic work of other students.  Any violation of academic integrity will be thoroughly investigated, and where warranted, punitive action will be taken. Students should be aware that standards for documentation and intellectual contribution may depend on the course content and method of teaching, and should consult the instructor for guidance in this area.
+
+*Honor Code* - We as members of Harrisburg University community pledge not to cheat, plagiarize, steal, or lie in matters related to academic work.  As a Community of Learners, we honor and uphold the *HU Honor Code*.
+
+# Disability Support Services {-}
+
+Please refer to the Harrisburg University 2020 graduate catalog for specifics regarding requests for accommodations by qualified individuals with a disability: [Student Handbook](https://www.harrisburgu.edu/lib/pdf/Student-Handbook-August-14-2020.pdf)
+
+# Writing Services {-}
+
+Please refer to the Harrisburg library for help with writing and research: [HU Library](http://library.harrisburgu.edu/home)
+
+## University Resources
+
+[Support Hub](https://www.harrisburgu.edu/support/)

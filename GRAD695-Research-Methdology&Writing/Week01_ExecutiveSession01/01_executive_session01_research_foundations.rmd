@@ -1,0 +1,966 @@
+---
+title: "Week 01 Executive Session 01: Research Foundations"
+author: "Ziyuan Huang"
+date: "Last Updated: `r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: cosmo
+    highlight: tango
+    code_folding: hide
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 5
+)
+
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+
+cat("Session: GRAD 695 Executive Session 01\n")
+cat("Date:", format(Sys.Date(), '%Y-%m-%d'), "\n")
+```
+
+# Introduction
+
+## 1. Session Overview
+
+This executive session combines four lecture modules:
+
+- Scientific Thinking
+- Course Overview
+- Problem Definition
+- Analytics Research Overview
+
+The purpose is to move from broad interests to an initial, feasible, and justifiable research direction for your capstone proposal.
+
+## 2. Learning Objectives
+
+By the end of this session, you should be able to:
+
+1. Explain how scientific inquiry supports analytics research.
+2. Distinguish problem statements from research questions.
+3. Define project scope, population, sample, and key variables.
+4. Evaluate feasibility based on data, tools, skills, and timeline.
+5. Draft and justify initial capstone topic ideas.
+
+## 3. Course Context (From Syllabus)
+
+GRAD 695 is the first course in a two-course capstone sequence:
+
+- GRAD 695: acts as a feasibility or preliminary study (~10 single-column / ~5 dual-column pages in IEEE Access format, excl. references). You will build a publication-ready manuscript with preliminary results for TechRxiv submission.
+- GRAD 699: the full research phase (~20 single-column / ~10 dual-column pages) where you execute the proposal and report complete findings.
+
+Proposal assignments are iterative. Revision based on feedback is expected each week.
+
+---
+
+# Part 1: Scientific Thinking and Inquiry
+
+## 1.1 What Is Science?
+
+Science is a systematic and creative way to investigate the world. It is not a single event but a dynamic process of asking questions, collecting evidence, and refining explanations.
+
+## 1.2 Goals of Science
+
+Common goals include:
+
+- Describe phenomena accurately.
+- Explain why patterns occur.
+- Predict likely outcomes.
+- Support decisions and interventions.
+
+Goal clarity determines both research design and data requirements.
+
+```{r science-goals-visual}
+goals <- tibble(
+  Goal = factor(c("Describe", "Explain", "Predict", "Support Decisions"),
+                levels = c("Describe", "Explain", "Predict", "Support Decisions")),
+  Importance = c(9, 8, 9, 10)
+)
+
+ggplot(goals, aes(x = Goal, y = Importance, fill = Goal)) +
+  geom_col(width = 0.7, show.legend = FALSE) +
+  geom_text(aes(label = Importance), vjust = -0.4, size = 4) +
+  scale_fill_manual(values = c("#2C7FB8", "#41B6C4", "#7FCDBB", "#C7E9B4")) +
+  ylim(0, 10.8) +
+  labs(
+    title = "Core Goals of Science in Analytics Research",
+    x = NULL,
+    y = "Relative Priority"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+## 1.3 Scientific Objectivity
+
+Objectivity does not mean having no bias. It means:
+
+- Recognizing your assumptions.
+- Being transparent about decisions.
+- Following ethical and evidence-based practices.
+- Remaining open to disconfirming evidence.
+
+## 1.4 Ways of Knowing in Research
+
+Analytics research often combines:
+
+- Practical knowledge (what works)
+- Experiential knowledge (what we observe in context)
+- Rational knowledge (logical reasoning)
+- Discursive knowledge (peer discussion and critique)
+- Empirical evidence (data)
+
+```{r ways-of-knowing-visual}
+ways <- tibble(
+  Source = factor(c("Practical", "Experiential", "Rational", "Discursive", "Empirical"),
+                  levels = c("Practical", "Experiential", "Rational", "Discursive", "Empirical")),
+  Contribution = c(7, 8, 9, 7, 10)
+)
+
+ggplot(ways, aes(x = Contribution, y = Source, fill = Source)) +
+  geom_col(width = 0.6, show.legend = FALSE) +
+  geom_text(aes(label = Contribution), hjust = -0.25, size = 4) +
+  xlim(0, 11) +
+  scale_fill_manual(values = c("#22577A", "#38A3A5", "#57CC99", "#80ED99", "#C7F9CC")) +
+  labs(
+    title = "Ways of Knowing Feed the Research Process",
+    x = "Contribution to Inquiry",
+    y = NULL
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+```{r research-process-visual, fig.width=10, fig.height=5.5}
+process_df <- tibble(
+  Step  = c("Observe\nPhenomenon", "Ask Focused\nQuestion",
+            "Review Existing\nWork", "Refine\nQuestion", "Design\nProposal"),
+  Stage = 1:5,
+  Effort = c(6, 7, 9, 8, 9),
+  # Alternate labels above (+) and below (-) the line to prevent overlap
+  nudge  = c(-0.85, 0.85, 0.85, -0.85, 0.85),
+  vjust  = c(1.1, -0.1, -0.1, 1.1, -0.1)
+)
+
+ggplot(process_df, aes(x = Stage, y = Effort)) +
+  geom_line(color = "#2A9D8F", linewidth = 1.2) +
+  geom_point(size = 4, color = "#264653") +
+  geom_text(aes(label = Step, y = Effort + nudge, vjust = vjust),
+            size = 3.4, lineheight = 0.9) +
+  scale_x_continuous(breaks = process_df$Stage,
+                     labels = paste("Step", 1:5),
+                     expand = expansion(add = 0.4)) +
+  ylim(3, 11) +
+  labs(
+    title = "Research as an Iterative Process",
+    x = NULL,
+    y = "Cognitive Effort"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+  ---
+
+  ## 1.5 Hypothesis Formation
+
+  A hypothesis is a **testable, falsifiable** statement predicting the relationship between variables. Scientific inquiry requires stating hypotheses *before* data collection to avoid confirmation bias and selective reporting.
+
+  Two hypotheses anchor every empirical test:
+
+  - **Null Hypothesis (H₀):** No effect, no difference, or no relationship exists.
+  - **Alternative Hypothesis (H₁):** An effect, difference, or relationship exists in a specific direction.
+
+  In analytics contexts this translates to: *"Does feature X improve predictive accuracy meaningfully beyond a baseline?"*
+
+  ```{r hypothesis-matrix-visual, fig.height=4.2}
+  h_matrix <- tibble(
+    Reality  = rep(c("H0 True\n(No Real Effect)", "H0 False\n(Real Effect Exists)"), each = 2),
+    Decision = rep(c("Fail to Reject H0", "Reject H0"), times = 2),
+    Outcome  = c("Correct\n(True Negative)", "Type I Error\n(False Positive, alpha)",
+                 "Type II Error\n(False Negative, beta)", "Correct\n(True Positive / Power)"),
+    Fill     = c("correct", "error", "error", "correct")
+  )
+
+  ggplot(h_matrix, aes(x = Decision, y = Reality, fill = Fill)) +
+    geom_tile(color = "white", linewidth = 2.5) +
+    geom_text(aes(label = Outcome), size = 4, lineheight = 1.15) +
+    scale_fill_manual(values = c(correct = "#52B788", error = "#E63946"), guide = "none") +
+    labs(title = "Hypothesis Testing Decision Matrix",
+         x = "Your Statistical Decision", y = "Ground Truth") +
+    theme_minimal(base_size = 13)
+  ```
+
+  ## 1.6 Types of Research Design
+
+  Design choice determines the strength of your causal claims, feasibility, and generalizability. No design is universally best — the right choice depends on your research question, available data, and practical constraints.
+
+  ```{r research-designs-comparison, fig.height=5, fig.width=10}
+  designs <- tibble(
+    Design = factor(
+      c("Randomized\nExperiment", "Quasi-\nExperiment", "Longitudinal\nObservation",
+        "Cross-Sectional\nSurvey", "Case\nStudy"),
+      levels = c("Randomized\nExperiment", "Quasi-\nExperiment", "Longitudinal\nObservation",
+                 "Cross-Sectional\nSurvey", "Case\nStudy")
+    ),
+    Causal_Strength  = c(10, 7, 5, 3, 2),
+    Feasibility      = c(3,  6, 6, 9, 9),
+    Generalizability = c(9,  7, 7, 8, 2)
+  )
+
+  designs_long <- designs |>
+    pivot_longer(cols = c(Causal_Strength, Feasibility, Generalizability),
+                 names_to = "Dimension", values_to = "Score")
+
+  ggplot(designs_long, aes(x = Design, y = Score, fill = Dimension)) +
+    geom_col(position = "dodge", width = 0.72) +
+    scale_fill_manual(
+      values = c(Causal_Strength = "#2C7BB6", Feasibility = "#ABD9E9", Generalizability = "#FDAE61"),
+      labels = c("Causal Strength", "Feasibility", "Generalizability")
+    ) +
+    ylim(0, 11) +
+    labs(title = "Research Design Trade-offs",
+         x = NULL, y = "Score (0-10)", fill = NULL) +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top")
+  ```
+
+  > **Analytics context:** Most capstone projects use observational or quasi-experimental designs because randomized experiments require controlled conditions rarely available with secondary data. This is entirely appropriate — observational research yields rigorous insights when validity threats are explicitly documented.
+
+---
+
+# Part 2: Course Overview and Expectations
+
+## 2.1 What You Will Produce
+
+By the end of GRAD 695, you should have a publication-ready preliminary study manuscript of approximately **10 single-column pages** (~5 dual-column pages in IEEE Access format, excluding references) with:
+
+- Introduction
+- Literature review
+- Methods section
+- Preliminary results
+
+This serves as a feasibility and preliminary study submitted to TechRxiv. In the following course (GRAD 699), you will undertake the full research phase (~20 single-column / ~10 dual-column pages), executing this proposal and reporting the complete findings.
+
+```{r capstone-sequence-visual}
+sequence_df <- tibble(
+  Course = factor(c("GRAD 695: Preliminary Study\n(~10 single-col / ~5 dual-col)", "GRAD 699: Full Research\n(~20 single-col / ~10 dual-col)"),
+                  levels = c("GRAD 695: Preliminary Study\n(~10 single-col / ~5 dual-col)", "GRAD 699: Full Research\n(~20 single-col / ~10 dual-col)")),
+  Writing_Pages = c(10, 20)
+)
+
+ggplot(sequence_df, aes(x = Course, y = Writing_Pages, fill = Course)) +
+  geom_col(width = 0.6, show.legend = FALSE) +
+  geom_text(aes(label = paste0("~", Writing_Pages, " single-col pages")), vjust = -0.4, size = 3.5) +
+  scale_fill_manual(values = c("#355070", "#6D597A")) +
+  ylim(0, 23) +
+  labs(
+    title = "Two-Course Capstone Progression (Single-Column Page Counts)",
+    x = NULL,
+    y = "Approximate Single-Column Pages"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+## 2.2 Proposal Expectations
+
+A strong proposal topic should be:
+
+- Relevant to data analytics
+- Feasible within available time and resources
+- Supported by data (public, secondary, or appropriately simulated)
+- Justified with prior work and clear contributions
+
+## 2.3 Policy Highlights
+
+- Attendance and communication are essential.
+- Proposal assignments build on each other and should be submitted on time.
+- Academic integrity applies to all writing and analysis.
+- Generative AI may support brainstorming and editing, but submitted work must be original and properly cited.
+
+```{r policy-focus-visual}
+policy_df <- tibble(
+  Area = factor(c("Timeliness", "Integrity", "Revision", "Communication"),
+                levels = c("Timeliness", "Integrity", "Revision", "Communication")),
+  Weight = c(9, 10, 9, 8)
+)
+
+ggplot(policy_df, aes(x = Area, y = Weight, fill = Area)) +
+  geom_col(width = 0.65, show.legend = FALSE) +
+  geom_text(aes(label = Weight), vjust = -0.4, size = 4) +
+  scale_fill_manual(values = c("#8E9AAF", "#CBC0D3", "#EFD3D7", "#FEEAFA")) +
+  ylim(0, 11) +
+  labs(
+    title = "Policy Emphasis Across the Semester",
+    x = NULL,
+    y = "Relative Emphasis"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+## 2.4 The Anatomy of a Scientific Proposal
+
+A research proposal is not an essay; it is a structured argument. Each section has a specific job in convincing the reader that your problem matters and your methods are sound. While the exact lengths will vary based on your topic, here is a typical page breakdown for a ~10 single-column page (~5 dual-column page in IEEE Access format) quantitative analytics manuscript with preliminary results (excluding references):
+
+```{r proposal-anatomy-visual, fig.height=3.5, fig.width=9}
+anatomy_df <- tibble(
+  Section = factor(c("Title & Abstract", "Introduction", "Literature Review", "Methods", "Preliminary Results", "Discussion", "References"),
+                   levels = c("References", "Discussion", "Preliminary Results", "Methods", "Literature Review", "Introduction", "Title & Abstract")),
+  Est_Pages = c(0.5, 1.5, 3, 2, 2, 1, 1.5),
+  Label = c("Title & Abstract\n(~0.5p)", "Introduction\n(~1.5p)", "Lit Review\n(~3p)", "Methods\n(~2p)", "Prelim Results\n(~2p)", "Discussion\n(~1p)", "References\n(Not Counted)")
+)
+
+ggplot(anatomy_df, aes(x = Est_Pages, y = "Proposal Structure", fill = Section)) +
+  geom_col(color = "white") +
+  geom_text(aes(label = Label, 
+                angle = ifelse(Est_Pages < 1, 90, 0)), 
+            position = position_stack(vjust = 0.5), size = 3.5, color = "white", fontface = "bold") +
+  scale_fill_manual(values = c("#6D597A", "#355070", "#B56576", "#E56B6F", "#EAAC8B", "#8B5CF6", "#A3A3A3")) +
+  labs(title = "Typical Weight of Proposal Sections",
+       x = "Approximate Page Count", y = NULL) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none",
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+```
+
+---
+
+# Part 3: Problem Definition and Scope
+
+## 3.1 Triangulation Mindset
+
+Good problem definition requires alignment among:
+
+- Research goal
+- Existing evidence
+- Available resources
+- Scope boundaries
+- Expected outcomes
+
+A topic can be interesting but still not feasible; feasibility is part of quality.
+
+```{r triangulation-visual}
+triangulation_df <- tibble(
+  Pillar = factor(c("Goal", "Evidence", "Resources", "Scope", "Outcomes"),
+                  levels = c("Goal", "Evidence", "Resources", "Scope", "Outcomes")),
+  Strength = c(9, 8, 7, 9, 8)
+)
+
+ggplot(triangulation_df, aes(x = Pillar, y = Strength, group = 1)) +
+  geom_polygon(fill = "#FFD6A5", alpha = 0.35, color = NA) +
+  geom_line(color = "#FB8500", linewidth = 1.1) +
+  geom_point(size = 3.5, color = "#023047") +
+  ylim(0, 10) +
+  labs(
+    title = "Triangulation: Balanced Problem Definition",
+    x = NULL,
+    y = "Readiness"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+## 3.2 Define Scope Early
+
+A clear scope should specify:
+
+- Population: who or what your findings apply to
+- Sample: what data you will actually analyze
+- Context boundaries: timeframe, geography, platform, or domain
+
+```{r scope-funnel-visual}
+scope_df <- tibble(
+  Layer = factor(c("Broad Topic", "Population", "Accessible Sample", "Analyzable Dataset"),
+                 levels = c("Broad Topic", "Population", "Accessible Sample", "Analyzable Dataset")),
+  Size = c(100, 65, 35, 18)
+)
+
+ggplot(scope_df, aes(x = Layer, y = Size, fill = Layer)) +
+  geom_col(width = 0.75, show.legend = FALSE) +
+  geom_text(aes(label = paste0(Size, "%")), vjust = -0.4, size = 4) +
+  scale_fill_manual(values = c("#003049", "#D62828", "#F77F00", "#FCBF49")) +
+  ylim(0, 110) +
+  labs(
+    title = "Scope Narrowing Funnel",
+    x = NULL,
+    y = "Relative Breadth"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+## 3.3 Defining Constructs and Variables
+
+Many analytics projects involve abstract constructs that need measurable proxies.
+
+Examples:
+
+- Construct: customer satisfaction
+- Variable: 1 to 7 satisfaction score
+
+- Construct: investment risk
+- Variable: monthly return volatility
+
+## 3.4 Feasibility Checklist
+
+Evaluate your project in four dimensions:
+
+1. Data: Is appropriate data available and representative?
+2. Technology: Do you have required computational tools?
+3. Skills: Can you collect/process/analyze the data?
+4. Time: Can this be completed within two semesters?
+
+```{r feasibility-heatmap-visual}
+feasibility_map <- tibble(
+  Dimension = rep(c("Data", "Technology", "Skills", "Time"), each = 3),
+  Status = rep(c("Current", "Gap", "Target"), times = 4),
+  Score = c(7, 3, 9, 8, 2, 9, 6, 4, 9, 5, 5, 9)
+)
+
+ggplot(feasibility_map, aes(x = Status, y = Dimension, fill = Score)) +
+  geom_tile(color = "white", linewidth = 0.7) +
+  geom_text(aes(label = Score), color = "#1A1A1A", size = 4) +
+  scale_fill_gradient(low = "#E0F3F8", high = "#08589E") +
+  labs(
+    title = "Feasibility Snapshot Matrix",
+    x = NULL,
+    y = NULL,
+    fill = "Score"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+```{r feasibility-template}
+feasibility_template <- tibble(
+  Dimension = c("Data", "Technology", "Skills", "Time"),
+  Guiding_Question = c(
+    "Is relevant, usable, and sufficiently representative data available?",
+    "Are required tools, software, and compute resources available?",
+    "Do I have or can I gain required domain and analytic skills quickly?",
+    "Can this project be completed with realistic milestones in two semesters?"
+  ),
+  Current_Status = c("", "", "", ""),
+  Action_Next_Week = c("", "", "", "")
+)
+
+kable(feasibility_template, caption = "Project Feasibility Worksheet") %>%
+  kable_styling(full_width = FALSE)
+```
+
+  ---
+
+  ## 3.5 Variable Roles and Relationships
+
+  Correctly identifying and labeling variables is one of the most important steps in proposal writing. Misclassifying a confounder as a covariate, or omitting a mediator, changes the interpretation of every result.
+
+  | Variable Role | Definition | Example |
+  |---|---|---|
+  | Independent (IV) | The predictor; what you manipulate or observe as a cause | Treatment group, age, education level |
+  | Dependent (DV) | The outcome; what you measure | Readmission rate, exam score, revenue |
+  | Confounder | Affects both IV and DV; must be controlled | SES affecting both diet and health outcomes |
+  | Moderator | Changes the *strength* of the IV → DV relationship | Gender moderates the stress → performance link |
+  | Mediator | *Explains how* IV affects DV | Motivation mediates study time → grade |
+
+  ```{r variable-roles-visual, fig.height=4.5}
+  var_df <- tibble(
+    Role = factor(
+      c("Independent\nVariable", "Dependent\nVariable", "Confounder", "Moderator", "Mediator"),
+      levels = c("Independent\nVariable", "Dependent\nVariable", "Confounder", "Moderator", "Mediator")
+    ),
+    Must_Define      = c(10, 10, 9, 7, 7),
+    Affects_Validity = c(9,  10, 10, 6, 7)
+  )
+
+  var_long <- var_df |>
+    pivot_longer(cols = c(Must_Define, Affects_Validity),
+                 names_to = "Dimension", values_to = "Score")
+
+  ggplot(var_long, aes(x = Role, y = Score, fill = Dimension)) +
+    geom_col(position = "dodge", width = 0.68) +
+    geom_text(aes(label = Score), position = position_dodge(0.68), vjust = -0.4, size = 3.8) +
+    scale_fill_manual(
+      values = c(Must_Define = "#457B9D", Affects_Validity = "#E63946"),
+      labels = c("Affects Validity if Ignored", "Must Define in Proposal")
+    ) +
+    ylim(0, 11) +
+    labs(title = "Variable Roles: Priority for Proposal Writing",
+         x = NULL, y = "Importance (0-10)", fill = NULL) +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top")
+  ```
+
+  ## 3.6 Literature Review Strategy
+
+  A rigorous literature review follows a systematic process to find, screen, and synthesize existing knowledge. This prevents duplication, establishes your study's contribution, and informs your methods.
+
+  **Step 1 – Build a keyword list:** Generate synonyms and related terms for each concept in your research question.
+
+  **Step 2 – Search databases:** Google Scholar first for breadth; then HU Library, IEEE Xplore, PubMed, or ACM Digital for depth.
+
+  **Step 3 – Screen results:** Read titles and abstracts; exclude irrelevant or low-quality sources.
+
+  **Step 4 – Full-text review:** Read retained articles; note methods, findings, limitations.
+
+  **Step 5 – Synthesize:** Group findings by *theme*, not article. Identify gaps your proposal fills.
+
+  ```{r lit-search-funnel-visual, fig.height=4}
+  lit_df <- tibble(
+    Stage = factor(
+      c("Keyword Search", "Title/Abstract Screen", "Full Text Review", "Quality Check", "Included"),
+      levels = rev(c("Keyword Search", "Title/Abstract Screen", "Full Text Review", "Quality Check", "Included"))
+    ),
+    Records = c(800, 220, 75, 40, 25)
+  )
+
+  ggplot(lit_df, aes(x = Records, y = Stage, fill = Stage)) +
+    geom_col(width = 0.65, show.legend = FALSE) +
+    geom_text(aes(label = Records), hjust = -0.2, size = 4) +
+    scale_fill_manual(values = c("#03045E", "#023E8A", "#0077B6", "#0096C7", "#00B4D8")) +
+    xlim(0, 920) +
+    labs(title = "Literature Search Funnel (Illustrative Counts)",
+         x = "Number of Records", y = NULL) +
+    theme_minimal(base_size = 13)
+  ```
+
+  ```{r source-quality-visual, fig.height=4}
+  source_df <- tibble(
+    Source = factor(
+      c("Peer-Reviewed Journal", "Conference Proceedings", "Pre-print (arXiv)",
+        "Tech Report / White Paper", "Blog / News Article"),
+      levels = rev(c("Peer-Reviewed Journal", "Conference Proceedings", "Pre-print (arXiv)",
+                     "Tech Report / White Paper", "Blog / News Article"))
+    ),
+    Credibility = c(10, 8, 6, 5, 2),
+    Timeliness  = c(5,  7, 10, 8, 10)
+  )
+
+  source_long <- source_df |>
+    pivot_longer(cols = c(Credibility, Timeliness),
+                 names_to = "Dimension", values_to = "Score")
+
+  ggplot(source_long, aes(x = Score, y = Source, fill = Dimension)) +
+    geom_col(position = "dodge", width = 0.65) +
+    scale_fill_manual(values = c(Credibility = "#1B4332", Timeliness = "#74C69D")) +
+    xlim(0, 11) +
+    labs(title = "Source Credibility vs. Timeliness",
+         x = "Score (0-10)", y = NULL, fill = NULL) +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top")
+  ```
+
+## 3.7 The "Golden Thread" of Alignment
+
+The biggest reason proposals fail is lack of alignment. Your proposal must contain a "Golden Thread" flowing logically from the original problem down to the exact mathematical operator used. 
+
+If your Research Question asks for a *prediction*, your methods cannot purely rely on descriptive *ANOVA*. If you are testing a *causal effect*, you need to control for confounders.
+
+```{r golden-thread-visual, fig.height=4, fig.width=10}
+thread_df <- tibble(
+  x = 1:5,
+  y = rep(1, 5),
+  Label = c("Problem\nStatement", "Literature\nGap", "Research\nQuestion", "Data &\nVariables", "Analysis\nMethod"),
+  Desc  = c("Why does it\nmatter?", "What's missing\nin existing research?", 
+            "Exactly what is being\ntested/predicted?", "How is it operationalized\nquantitatively?", 
+            "What algorithm answers\nthe question?")
+)
+
+ggplot(thread_df, aes(x = x, y = y)) +
+  # Draw the actual "thread" line
+  geom_line(color = "#FFD166", linewidth = 4) +
+  # Add nodes
+  geom_point(size = 18, color = "#264653") +
+  geom_text(aes(label = x), color = "white", fontface = "bold", size = 6) +
+  # Add labels above and descriptions below
+  geom_text(aes(label = Label), vjust = -1.8, fontface = "bold", size = 4) +
+  geom_text(aes(label = Desc), vjust = 2.4, size = 3.5, color = "#4A4A4A") +
+  ylim(0.8, 1.2) +
+  xlim(0.5, 5.5) +
+  labs(title = "The Golden Thread: Ensuring Methodological Alignment",
+       x = NULL, y = NULL) +
+  theme_void(base_size = 13)
+```
+
+## 4.1 What Counts as Analytics Research?
+
+Analytics research uses data and analytical methods to answer practical or theoretical questions. Typical outputs include explanation, prediction, comparison, and decision support.
+
+## 4.2 Data and Method Families
+
+Common categories in analytics research:
+
+- Structured data analysis
+- Machine learning (supervised and unsupervised)
+- Deep learning
+- Natural language processing
+- Computer vision
+- Signal processing
+- Predictive AI and generative AI applications
+
+```{r method-families-visual}
+method_df <- tibble(
+  Family = factor(c("Structured Data", "ML", "Deep Learning", "NLP", "Vision", "Signal", "Generative AI"),
+                  levels = c("Structured Data", "ML", "Deep Learning", "NLP", "Vision", "Signal", "Generative AI")),
+  Typical_Complexity = c(4, 6, 9, 7, 8, 7, 8)
+)
+
+ggplot(method_df, aes(x = Family, y = Typical_Complexity, fill = Family)) +
+  geom_col(width = 0.7, show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_manual(values = c("#1B4332", "#2D6A4F", "#40916C", "#52B788", "#74C69D", "#95D5B2", "#B7E4C7")) +
+  labs(
+    title = "Analytics Method Families and Typical Complexity",
+    x = NULL,
+    y = "Relative Complexity"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+## 4.3 Topic Brainstorm Questions
+
+For each candidate topic, ask:
+
+1. What is the concrete problem or unresolved question?
+2. What is already known in the literature or practice?
+3. What data can I access now?
+4. What method families are realistic for me?
+5. What impact could the results have?
+
+```{r brainstorm-priority-visual}
+priority_df <- tibble(
+  Criterion = factor(c("Problem Importance", "Data Availability", "Method Fit", "Feasibility", "Potential Impact"),
+                     levels = c("Problem Importance", "Data Availability", "Method Fit", "Feasibility", "Potential Impact")),
+  Priority = c(10, 9, 8, 10, 9)
+)
+
+ggplot(priority_df, aes(x = Criterion, y = Priority, fill = Criterion)) +
+  geom_col(width = 0.65, show.legend = FALSE) +
+  geom_text(aes(label = Priority), vjust = -0.4, size = 4) +
+  scale_fill_manual(values = c("#264653", "#2A9D8F", "#E9C46A", "#F4A261", "#E76F51")) +
+  ylim(0, 11) +
+  labs(
+    title = "Topic Selection Priorities",
+    x = NULL,
+    y = "Priority Level"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+```
+
+```{r topic-brainstorm-template}
+brainstorm_template <- tibble(
+  Topic = c(
+    "Social Media Sentiment & Stock Returns",
+    "Hospital Readmission Prediction",
+    "Student Dropout Early Warning"
+  ),
+  Problem_Statement = c(
+    "Can daily Twitter/X sentiment scores reliably predict next-day stock price movement for S&P 500 companies?",
+    "Which patient features at discharge best predict 30-day readmission in Medicare records?",
+    "Can early course engagement signals identify at-risk students before the midterm withdrawal deadline?"
+  ),
+  Data_Source = c(
+    "Twitter/X Academic API; Yahoo Finance historical prices",
+    "CMS Medicare claims data (public); hospital EHR de-identified datasets",
+    "University LMS logs (Canvas); institutional enrollment records"
+  ),
+  Candidate_Method = c(
+    "LSTM / Transformer sentiment model; regression or classification on returns",
+    "Logistic regression; gradient boosting (XGBoost); survival analysis",
+    "Logistic regression; random forest; time-series feature engineering"
+  ),
+  Potential_Contribution = c(
+    "Quantify lag between social sentiment and price movement; compare signal strength across sectors",
+    "Identify modifiable discharge factors; provide actionable risk scores for care teams",
+    "Build validated early-alert dashboard; reduce dropout by enabling timely advising interventions"
+  )
+)
+
+kable(brainstorm_template,
+      caption = "Research Topic Brainstorm Worksheet — Example Entries",
+      col.names = c("Topic", "Problem Statement", "Data Source",
+                    "Candidate Method", "Potential Contribution")) %>%
+  kable_styling(full_width = TRUE, bootstrap_options = c("striped", "hover", "condensed")) %>%
+  column_spec(2, width = "22%") %>%
+  column_spec(3, width = "18%") %>%
+  column_spec(4, width = "18%") %>%
+  column_spec(5, width = "22%")
+```
+
+---
+
+## 4.4 Research Validity
+
+Validity is the degree to which a study measures what it claims to measure and supports the conclusions drawn. Four types of validity are critical for every proposal.
+
+| Validity Type | Question It Answers | Common Threats |
+|---|---|---|
+| **Internal** | Does the IV actually cause changes in the DV? | Confounders, selection bias, maturation |
+| **External** | Can findings generalize beyond the study sample? | Non-representative sample, artificial setting |
+| **Construct** | Do our measures actually capture intended constructs? | Poor operationalization, mono-method bias |
+| **Statistical** | Are our statistical conclusions trustworthy? | Low power, violated assumptions, multiple testing |
+
+```{r validity-types-visual, fig.height=4.5}
+validity_df <- tibble(
+  Validity_Type = rep(c("Internal", "External", "Construct", "Statistical"), each = 3),
+  Aspect = rep(c("Importance", "Threat Level", "Ease of Control"), times = 4),
+  Score  = c(10, 8, 5,   7, 9, 6,   8, 7, 7,   9, 6, 8)
+)
+
+ggplot(validity_df, aes(x = Validity_Type, y = Aspect, fill = Score)) +
+  geom_tile(color = "white", linewidth = 0.8) +
+  geom_text(aes(label = Score), size = 4.2) +
+  scale_fill_gradient(low = "#FFF3CD", high = "#0A3161") +
+  labs(title = "Four Types of Research Validity",
+       x = NULL, y = NULL, fill = "Score") +
+  theme_minimal(base_size = 13)
+```
+
+## 4.5 Ethics and Reproducibility
+
+Ethical and reproducible practice is not a formality — it determines whether your work can be trusted, built upon, and defended.
+
+**Ethics essentials for analytics projects:**
+
+- Does your dataset contain personally identifiable information (PII)?
+- Has appropriate consent or a data use agreement been obtained?
+- Are protected groups (race, gender, health status) present, and how are fairness concerns addressed?
+- Have you considered potential harms from model errors or misuse?
+
+**Reproducibility best practices:**
+
+- Document all data sources with version or access date.
+- Record all preprocessing decisions, not just final code.
+- Use a fixed random seed for any stochastic steps.
+- Store data and code in a version-controlled repository (e.g., GitHub).
+
+```{r ethics-checklist-visual, fig.height=4.5}
+ethics_df <- tibble(
+  Item = factor(
+    c("Data Privacy / PII Check", "Consent or Data Agreement", "Fairness / Bias Review",
+      "Harm Assessment", "IRB / Ethics Review", "Code and Data Documentation"),
+    levels = rev(c("Data Privacy / PII Check", "Consent or Data Agreement", "Fairness / Bias Review",
+                   "Harm Assessment", "IRB / Ethics Review", "Code and Data Documentation"))
+  ),
+  Priority = c(10, 9, 8, 8, 7, 9)
+)
+
+ggplot(ethics_df, aes(x = Priority, y = Item)) +
+  geom_segment(aes(x = 0, xend = Priority, yend = Item), color = "#457B9D", linewidth = 1.4) +
+  geom_point(size = 5, color = "#E63946") +
+  geom_text(aes(label = Priority), hjust = -0.5, size = 4) +
+  xlim(0, 12) +
+  labs(title = "Ethics and Reproducibility Checklist",
+       x = "Priority (0-10)", y = NULL) +
+  theme_minimal(base_size = 13)
+```
+
+---
+
+# Part 5: In-Class Activities
+
+## 5.1 Claim Testing Discussion (Small Group)
+
+Choose one claim and discuss how you would test it with data:
+
+- Social media presence increases business profits.
+- News headlines can predict stock prices.
+- Positive mentions on social media predict election outcomes.
+- Bedside manner improves patient treatment adherence.
+
+For your selected claim, identify:
+
+1. Outcome variable
+2. Key predictor(s)
+3. Data source
+4. Likely limitations or confounders
+
+## 5.2 Concept Definition Exercise
+
+Pick one concept in your topic area and complete:
+
+- Concept definition (plain language)
+- Operational variable(s)
+- Measurement scale
+- Expected direction or hypothesis
+
+## 5.3 Academic Integrity & Citations Module Check-in
+
+A quick confirmation of course policies:
+- All sources must be properly cited in APA format.
+- Plagiarism (including undisclosed copy-pasting from generative AI) results in a zero.
+- Review the Academic Integrity module in Canvas.
+
+## 5.4 Research Topic Brainstorm Assignment Prep
+
+Before submission, ensure your topic includes:
+
+- A clear analytics-relevant problem
+- A feasible scope
+- Preliminary evidence that data exists
+- A short statement of expected contribution
+
+```{r activity-plan-visual}
+activity_df <- tibble(
+  Task = factor(c("Choose Topic", "Draft Questions", "Find Sources", "Check Data Access", "Write Justification"),
+                levels = c("Choose Topic", "Draft Questions", "Find Sources", "Check Data Access", "Write Justification")),
+  Effort_Hours = c(2, 3, 4, 2, 3)
+)
+
+ggplot(activity_df, aes(x = Task, y = Effort_Hours, fill = Task)) +
+  geom_col(width = 0.65, show.legend = FALSE) +
+  geom_text(aes(label = paste0(Effort_Hours, "h")), vjust = -0.4, size = 4) +
+  scale_fill_manual(values = c("#0B3954", "#087E8B", "#BFD7EA", "#FF5A5F", "#C81D25")) +
+  ylim(0, 5) +
+  labs(
+    title = "Suggested Effort for Week 1 Assignment Prep",
+    x = NULL,
+    y = "Estimated Hours"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+  ---
+
+  ## 5.4 Evaluating Research Questions: FINER Criteria
+
+  The FINER framework (Hulley et al., 2013) provides a systematic checklist for determining whether a research question is ready to anchor a proposal.
+
+  | Criterion | Meaning | Self-Check Question |
+  |---|---|---|
+  | **F**easible | Achievable with available resources | Can I realistically collect or access the data within two semesters? |
+  | **I**nteresting | Matters to a community | Would an analytics practitioner or researcher find this worth reading? |
+  | **N**ovel | Adds something new | Does this extend, replicate with variation, or challenge existing work? |
+  | **E**thical | Meets ethical standards | Does the study comply with data privacy and IRB requirements? |
+  | **R**elevant | Addresses a meaningful problem | Does this connect to real-world analytics practice or public good? |
+
+  ```{r finer-criteria-visual, fig.height=4}
+  finer_df <- tibble(
+    Criterion = factor(
+      c("Feasible", "Interesting", "Novel", "Ethical", "Relevant"),
+      levels = c("Feasible", "Interesting", "Novel", "Ethical", "Relevant")
+    ),
+    Difficulty = c(8, 6, 7, 6, 5),
+    Importance = c(10, 8, 9, 10, 9)
+  )
+
+  finer_long <- finer_df |>
+    pivot_longer(cols = c(Difficulty, Importance),
+                 names_to = "Dimension", values_to = "Score")
+
+  ggplot(finer_long, aes(x = Criterion, y = Score, fill = Dimension)) +
+    geom_col(position = "dodge", width = 0.65) +
+    geom_text(aes(label = Score), position = position_dodge(0.65), vjust = -0.4, size = 3.8) +
+    scale_fill_manual(
+      values = c(Difficulty = "#E76F51", Importance = "#457B9D"),
+      labels = c("How Hard to Satisfy", "How Important")
+    ) +
+    ylim(0, 11) +
+    labs(title = "FINER Criteria: Importance vs. Difficulty to Satisfy",
+         x = NULL, y = "Score (0-10)", fill = NULL) +
+    theme_minimal(base_size = 13) +
+    theme(legend.position = "top")
+  ```
+
+  ```{r rq-quality-comparison, fig.height=4}
+  rq_df <- tibble(
+    Question_Type = factor(
+      c("Too Broad", "Too Narrow", "Not Testable", "Strong Research Q"),
+      levels = c("Too Broad", "Too Narrow", "Not Testable", "Strong Research Q")
+    ),
+    FINER_Score  = c(3, 4, 2, 9),
+    Publishable  = c(2, 3, 1, 9)
+  )
+
+  rq_long <- rq_df |>
+    pivot_longer(cols = c(FINER_Score, Publishable),
+                 names_to = "Dimension", values_to = "Score")
+
+  ggplot(rq_long, aes(x = Question_Type, y = Score, fill = Dimension)) +
+    geom_col(position = "dodge", width = 0.65) +
+    geom_text(aes(label = Score), position = position_dodge(0.65), vjust = -0.4, size = 3.8) +
+    scale_fill_manual(
+      values = c(FINER_Score = "#2A9D8F", Publishable = "#E9C46A"),
+      labels = c("FINER Score", "Publishability Potential")
+    ) +
+    ylim(0, 11) +
+    labs(title = "Research Question Quality Comparison",
+         x = NULL, y = "Score (0-10)", fill = NULL) +
+    theme_minimal(base_size = 13) +
+    theme(legend.position = "top")
+  ```
+
+---
+
+# Part 6: Week 1 Deliverables and Next Steps
+
+## 6.1 Immediate Deliverables
+
+- Interest survey completion
+- Initial research topic brainstorm
+- Notes from concept-definition activity
+
+## 6.2 Preparation for Week 2
+
+1. Build a keyword list for your topic.
+2. Find 5 to 8 relevant sources (start with review papers when possible).
+3. Draft 1 to 3 preliminary research questions.
+4. Record feasibility risks and mitigation plans.
+
+```{r week2-readiness-visual}
+readiness_df <- tibble(
+  Milestone = factor(c("Keywords", "Sources", "Questions", "Risk Plan"),
+                     levels = c("Keywords", "Sources", "Questions", "Risk Plan")),
+  Completion_Target = c(100, 80, 75, 70)
+)
+
+ggplot(readiness_df, aes(x = Milestone, y = Completion_Target, fill = Milestone)) +
+  geom_col(width = 0.65, show.legend = FALSE) +
+  geom_text(aes(label = paste0(Completion_Target, "%")), vjust = -0.4, size = 4) +
+  scale_fill_manual(values = c("#1D3557", "#457B9D", "#A8DADC", "#E63946")) +
+  ylim(0, 110) +
+  labs(
+    title = "Week 2 Readiness Targets",
+    x = NULL,
+    y = "Target Completion"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+## 6.3 Semester Timeline for Proposal Writing
+
+Do not wait until Week 13 to write the proposal. The proposal is built sequentially. 
+
+```{r writing-gantt-visual, fig.height=4.5, fig.width=9}
+gantt_df <- tibble(
+  Task = factor(
+    c("Topic Discovery & Feasibility", "Literature Search & Synthesis", 
+      "Drafting Introduction", "Drafting Methods Section", "Draft Assembly & Revisions", "Final Proposal Polish"),
+    levels = rev(c("Topic Discovery & Feasibility", "Literature Search & Synthesis", 
+                   "Drafting Introduction", "Drafting Methods Section", "Draft Assembly & Revisions", "Final Proposal Polish"))
+  ),
+  Start_Week = c(1, 2, 4, 6, 12, 14),
+  End_Week   = c(3, 7, 6, 10, 14, 15)
+)
+
+ggplot(gantt_df, aes(y = Task)) +
+  geom_segment(aes(x = Start_Week, xend = End_Week, yend = Task, color = Task), 
+               linewidth = 8, show.legend = FALSE) +
+  scale_color_manual(values = c("#001219", "#005F73", "#0A9396", "#94D2BD", "#E9D8A6", "#EE9B00")) +
+  scale_x_continuous(breaks = 1:15, limits = c(1, 15)) +
+  labs(title = "Proposal Drafting Gantt Chart (15-Week Timeline)",
+       x = "Course Week", y = NULL) +
+  theme_minimal(base_size = 13) +
+  theme(panel.grid.minor.x = element_blank())
+```
+
+## 6.4 Closing Note
+
+Strong projects begin with clear thinking, realistic scope, and disciplined iteration. Prioritize feasibility and clarity now so that later methods and writing become easier and more rigorous.
