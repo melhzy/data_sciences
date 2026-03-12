@@ -17,3 +17,9 @@ Thumbs.db
 # Ignored Archives
 ANLY500-Analytics-I/archive/
 **/archive/
+
+# Conda environment embedded in workspace (152 MB - never commit)
+.conda/
+
+# Temporary AI-generated scripts
+.tmp_*.py
