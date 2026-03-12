@@ -162,7 +162,7 @@ Follow these rules for naming objects:
 - ❌ Don't use special characters (`@`, `#`, `$`, etc.)
 - ⚠️ R is case-sensitive: `data` and `Data` are different!
 
-```{r naming-examples}
+```{r naming-examples, eval=FALSE}
 # Good names
 student_age <- 20
 total_score <- 95
