@@ -1,0 +1,1150 @@
+---
+title: "Week 01: Introduction to R"
+author: "Ziyuan Huang"
+date: "Last Updated: `r format(Sys.Date(), '%B %d, %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: cosmo
+    highlight: tango
+    code_folding: show
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 5
+)
+```
+
+```{r machine-info, echo=FALSE, results='asis'}
+cat("**Machine:**", paste0(Sys.info()['nodename'], " - ", Sys.info()['sysname'], " ", Sys.info()['release']), "\n\n")
+```
+
+# Introduction
+
+## 1. Welcome to R!
+
+Welcome to your first week learning R, a powerful programming language for data analysis and statistical computing. This course is designed to help you become comfortable with R even if you've never programmed before. We'll start with the fundamentals and build your skills step by step.
+
+> **Key term – R:** R is both a programming language and an environment for statistical computing and graphics. Originally developed by Ross Ihaka and Robert Gentleman at the University of Auckland, R has become one of the most widely used tools in data analytics (R Core Team, 2024).
+
+## 2. Learning Objectives
+
+By the end of this week, you will be able to:
+
+1. Understand what R is and why it's valuable for data analysis
+2. Navigate the RStudio interface confidently
+3. Create and work with different types of data (numbers, text, categories)
+4. Store and organize data using vectors, matrices, data frames, and lists
+5. Perform calculations and comparisons
+6. Load data from CSV files
+7. Access and subset specific parts of your data
+8. Handle missing data appropriately
+9. Use built-in R functions for analysis
+10. Write your own simple functions
+
+## 3. What is R and Why Use It?
+
+R offers several advantages for data analytics:
+
+- **Free and open-source**: No licensing costs, ever
+- **Comprehensive**: Over 19,000 packages for specialized analyses
+- **Reproducible**: Your analysis can be easily shared and repeated
+- **Visualization**: Publication-quality graphics with ggplot2
+- **Community**: Extensive online support and resources
+- **Integration**: Works with databases, web APIs, and other languages
+
+> **Key concept – Reproducible Research:** Field, Miles, and Field (2012, ch. 3) emphasize that reproducible research allows others to verify your findings and build upon your work. Using R scripts instead of point-and-click software creates an auditable trail of your analytical decisions.
+
+---
+
+# Part 1: Getting Started with R
+
+## 1.1 Installing R and RStudio
+
+### Installation Steps
+
+1. **Download R** from: https://cran.r-project.org/
+   - Choose your operating system (Windows, macOS, or Linux)
+   - Install R first
+
+2. **Download RStudio** from: https://posit.co/downloads/
+   - RStudio is an Integrated Development Environment (IDE)
+   - Makes working with R much easier
+   - Install RStudio after R
+
+### The RStudio Interface
+
+RStudio has four main panes:
+
+1. **Source/Script Editor** (top-left): Where you write and save your code
+2. **Console** (bottom-left): Where code executes and results appear
+3. **Environment/History** (top-right): Shows objects you've created
+4. **Files/Plots/Help** (bottom-right): Navigation and visualization
+
+```{r eval=FALSE}
+# You can type directly in the Console:
+2 + 2
+
+# Or write code in the Script Editor and run it (Ctrl+Enter or Cmd+Return):
+x <- 10
+print(x)
+```
+
+## 1.2 R as a Calculator
+
+R can perform all basic arithmetic operations:
+
+```{r calculator}
+# Addition
+5 + 3
+
+# Subtraction
+10 - 4
+
+# Multiplication
+6 * 7
+
+# Division
+20 / 4
+
+# Exponentiation
+2^8
+
+# Modulo (remainder)
+17 %% 5
+
+# Order of operations (PEMDAS applies)
+(5 + 3) * 2^2
+```
+
+> **Key concept – Order of Operations:** Like in mathematics, R follows PEMDAS (Parentheses, Exponents, Multiplication/Division, Addition/Subtraction). Use parentheses to control calculation order (Field et al., 2012, ch. 3).
+
+## 1.3 Creating and Managing Objects
+
+In R, we store values in **objects** using the assignment operator `<-`:
+
+```{r objects}
+# Create objects
+A <- 5
+B <- 10
+name <- "R Programming"
+
+# Use objects in calculations
+A + B
+A * B
+
+# Check what's in your workspace
+ls()
+
+# View specific object
+print(A)
+print(name)
+```
+
+### Naming Conventions
+
+Follow these rules for naming objects:
+
+- ✅ Use letters, numbers, dots (`.`), and underscores (`_`)
+- ✅ Start with a letter (not a number)
+- ✅ Be descriptive: `student_age` is better than `x`
+- ✅ Use consistent style: `snake_case` or `camelCase`
+- ❌ Don't use spaces
+- ❌ Don't use special characters (`@`, `#`, `$`, etc.)
+- ⚠️ R is case-sensitive: `data` and `Data` are different!
+
+```{r naming-examples}
+# Good names
+student_age <- 20
+total_score <- 95
+mean_temperature <- 72.5
+
+# Avoid these
+x <- 20              # Not descriptive
+my.variable <- 10    # Dots are discouraged in modern R
+2ndScore <- 85       # Can't start with number (ERROR!)
+```
+
+### Removing Objects
+
+```{r removing}
+# Remove a specific object
+temp_value <- 100
+rm(temp_value)
+
+# Remove multiple objects
+x <- 1
+y <- 2
+z <- 3
+rm(x, y, z)
+
+# Remove all objects (use with caution!)
+# rm(list = ls())
+```
+
+---
+
+# Part 2: Data Types in R
+
+## 2.1 Basic Data Types
+
+R recognizes several fundamental data types:
+
+```{r data-types}
+# Numeric (numbers)
+age <- 25
+height <- 175.5
+class(age)          # Check data type
+class(height)
+
+# Character (text)
+name <- "John Doe"
+species <- "Adelie"
+class(name)
+
+# Logical (TRUE/FALSE)
+is_student <- TRUE
+has_passed <- FALSE
+class(is_student)
+
+# Integer (whole numbers)
+count <- 42L        # The 'L' specifies integer
+class(count)
+```
+
+### Type Conversion
+
+You can convert between types using `as.*()` functions:
+
+```{r type-conversion}
+# Numeric to character
+num <- 42
+char_num <- as.character(num)
+class(char_num)
+
+# Character to numeric
+text_num <- "123"
+converted <- as.numeric(text_num)
+class(converted)
+
+# Numeric to logical
+as.logical(1)       # TRUE
+as.logical(0)       # FALSE
+```
+
+## 2.2 Special Values
+
+R has special values for unusual situations:
+
+```{r special-values}
+# NA - Missing/Not Available
+missing_value <- NA
+is.na(missing_value)
+
+# NULL - Empty/Undefined
+empty_value <- NULL
+is.null(empty_value)
+
+# Inf - Infinity
+positive_inf <- 1/0
+negative_inf <- -1/0
+print(positive_inf)
+
+# NaN - Not a Number (undefined mathematical operations)
+undefined <- 0/0
+is.nan(undefined)
+```
+
+## 2.3 Factors
+
+Factors represent categorical data:
+
+```{r factors}
+# Create a factor
+species <- factor(c("Adelie", "Gentoo", "Chinstrap", "Adelie", "Gentoo"))
+print(species)
+
+# Check levels
+levels(species)
+
+# Specify level order (useful for ordinal data)
+satisfaction <- factor(
+  c("Low", "High", "Medium", "Low", "High"),
+  levels = c("Low", "Medium", "High"),
+  ordered = TRUE
+)
+print(satisfaction)
+```
+
+> **Key concept – Factors:** Field, Miles, and Field (2012, ch. 3) explain that factors are essential for categorical variables in R. Unlike character strings, factors store levels, which is memory-efficient and necessary for many statistical models.
+
+---
+
+# Part 3: Data Structures
+
+## 3.1 Vectors
+
+Vectors are collections of elements of the same type:
+
+```{r vectors}
+# Numeric vector
+ages <- c(23, 25, 31, 28, 26)
+print(ages)
+
+# Character vector
+names <- c("Alice", "Bob", "Carol", "David", "Eve")
+print(names)
+
+# Logical vector
+passed <- c(TRUE, TRUE, FALSE, TRUE, FALSE)
+print(passed)
+
+# Sequences
+seq1 <- 1:10                    # 1 to 10
+seq2 <- seq(0, 100, by = 10)    # 0 to 100 by 10
+rep1 <- rep(5, times = 3)       # Repeat 5 three times
+
+print(seq1)
+print(seq2)
+print(rep1)
+```
+
+### Vector Operations
+
+```{r vector-operations}
+# Element-wise operations
+x <- c(1, 2, 3, 4, 5)
+y <- c(10, 20, 30, 40, 50)
+
+x + y         # Addition
+x * y         # Multiplication
+x^2           # Square each element
+
+# Summary statistics
+mean(x)
+sum(x)
+sd(x)         # Standard deviation
+length(x)     # Number of elements
+```
+
+### Vector Subsetting
+
+```{r vector-subsetting}
+# Create a vector
+scores <- c(85, 92, 78, 90, 88)
+
+# Access by position
+scores[1]           # First element
+scores[3]           # Third element
+scores[c(1, 3, 5)]  # Multiple elements
+
+# Access by condition
+scores[scores > 85]          # Scores greater than 85
+scores[scores >= 85 & scores <= 90]  # Between 85 and 90
+
+# Negative indexing (exclude elements)
+scores[-2]          # All except second element
+```
+
+## 3.2 Matrices
+
+Matrices are 2-dimensional arrays with rows and columns:
+
+```{r matrices}
+# Create a matrix
+my_matrix <- matrix(
+  data = 1:12,
+  nrow = 4,
+  ncol = 3,
+  byrow = FALSE    # Fill by column (default)
+)
+print(my_matrix)
+
+# Matrix by row
+matrix_byrow <- matrix(
+  data = 1:12,
+  nrow = 4,
+  ncol = 3,
+  byrow = TRUE
+)
+print(matrix_byrow)
+
+# Matrix dimensions
+dim(my_matrix)
+nrow(my_matrix)
+ncol(my_matrix)
+```
+
+### Matrix Operations
+
+```{r matrix-operations}
+# Subsetting matrices
+my_matrix[2, 3]      # Row 2, Column 3
+my_matrix[1, ]       # First row, all columns
+my_matrix[, 2]       # All rows, second column
+my_matrix[1:2, 2:3]  # Rows 1-2, Columns 2-3
+
+# Matrix arithmetic
+mat1 <- matrix(1:4, nrow = 2)
+mat2 <- matrix(5:8, nrow = 2)
+
+mat1 + mat2          # Element-wise addition
+mat1 * mat2          # Element-wise multiplication
+mat1 %*% mat2        # Matrix multiplication
+
+# Transpose
+t(mat1)
+```
+
+## 3.3 Data Frames
+
+Data frames are the most common structure for datasets:
+
+```{r dataframes}
+# Create a data frame
+students <- data.frame(
+  Name = c("Alice", "Bob", "Carol", "David"),
+  Age = c(20, 22, 21, 23),
+  Grade = c(85, 92, 78, 88),
+  Passed = c(TRUE, TRUE, TRUE, TRUE)
+)
+
+print(students)
+
+# View structure
+str(students)
+
+# View dimensions
+dim(students)
+nrow(students)
+ncol(students)
+
+# Column names
+names(students)
+colnames(students)
+```
+
+### Accessing Data Frame Elements
+
+```{r dataframe-access}
+# Access columns
+students$Name              # Using $
+students[, "Grade"]        # Using column name
+students[, 3]              # Using position
+
+# Access rows
+students[1, ]              # First row
+students[c(1, 3), ]        # Rows 1 and 3
+
+# Access specific cells
+students[2, 3]             # Row 2, Column 3
+students$Grade[2]          # Second value in Grade column
+```
+
+### Filtering Data Frames
+
+```{r dataframe-filtering}
+# Filter by condition
+students[students$Age > 21, ]
+students[students$Grade >= 85, ]
+
+# Multiple conditions (AND)
+students[students$Age > 20 & students$Grade > 80, ]
+
+# Multiple conditions (OR)
+students[students$Age < 21 | students$Grade > 90, ]
+
+# Using subset() function
+subset(students, Age > 21)
+subset(students, Grade >= 85 & Passed == TRUE)
+```
+
+> **Important:** The `subset()` function automatically removes rows with `NA` values. Use bracket notation `[ ]` if you want to keep `NA`s.
+
+## 3.4 Lists
+
+Lists can contain different types and structures:
+
+```{r lists}
+# Create a list
+my_list <- list(
+  numbers = 1:5,
+  text = c("a", "b", "c"),
+  logical = c(TRUE, FALSE),
+  matrix = matrix(1:4, nrow = 2),
+  dataframe = students
+)
+
+# View structure
+str(my_list)
+
+# Access list elements
+my_list$numbers              # Using name
+my_list[[1]]                 # Using position (double brackets)
+my_list[["text"]]            # Using name (double brackets)
+
+# Access nested elements
+my_list$dataframe$Name       # Names from dataframe in list
+```
+
+---
+
+# Part 4: Working with Data Files
+
+## 4.1 Working Directory
+
+Before importing data, know where R is looking for files:
+
+```{r working-directory}
+# Check current working directory
+getwd()
+
+# Set working directory (use forward slashes or double backslashes)
+# setwd("C:/Users/YourName/Documents/R_Projects")
+# setwd("C:\\Users\\YourName\\Documents\\R_Projects")
+```
+
+### Best Practices for File Paths
+
+1. **Use R Projects** (recommended): Automatically sets working directory
+2. **Use R Markdown**: Automatically uses the file's location
+3. **Use relative paths**: `"data/myfile.csv"` instead of full paths
+4. **Avoid `setwd()`**: Breaks when you share code
+
+## 4.2 Importing Data
+
+### Using Base R
+
+```{r import-base, eval=FALSE}
+# Read CSV files
+data_csv <- read.csv("data/mydata.csv")
+
+# Read tab-delimited files
+data_tab <- read.table("data/mydata.txt", header = TRUE, sep = "\t")
+
+# Read from clipboard (Windows)
+data_clipboard <- read.table("clipboard", header = TRUE)
+```
+
+### Using rio Package (Recommended)
+
+The `rio` package handles many file formats automatically:
+
+```{r import-rio, eval=FALSE}
+# Install rio if needed
+# install.packages("rio")
+
+library(rio)
+
+# Import various formats
+data <- import("data/mydata.csv")      # CSV
+data <- import("data/mydata.xlsx")     # Excel
+data <- import("data/mydata.sav")      # SPSS
+data <- import("data/mydata.dta")      # Stata
+data <- import("data/mydata.rds")      # R data
+```
+
+## 4.3 Exploring Your Data
+
+Once data is loaded, explore it:
+
+```{r explore-data}
+# Use built-in airquality dataset
+data(airquality)
+
+# View first few rows
+head(airquality)
+
+# View last few rows
+tail(airquality)
+
+# Structure
+str(airquality)
+
+# Summary statistics
+summary(airquality)
+
+# Dimensions
+dim(airquality)
+nrow(airquality)
+ncol(airquality)
+
+# Column names
+names(airquality)
+```
+
+### Interactive Viewing
+
+```{r eval=FALSE}
+# Open data viewer (in RStudio)
+View(airquality)
+
+# Print specific summaries
+summary(airquality$Temp)
+table(airquality$Month)
+```
+
+---
+
+# Part 5: Basic Operations
+
+## 5.1 Arithmetic Operations
+
+```{r arithmetic}
+# Basic operations
+10 + 5
+10 - 5
+10 * 5
+10 / 5
+10^2
+
+# More complex
+(10 + 5) * 2
+10 + 5 * 2        # Multiplication before addition
+
+# Functions
+sqrt(16)          # Square root
+abs(-10)          # Absolute value
+log(10)           # Natural log
+log10(100)        # Base-10 log
+exp(1)            # e^1
+```
+
+## 5.2 Comparison Operators
+
+Comparisons return `TRUE` or `FALSE`:
+
+```{r comparison}
+# Equality and inequality
+5 == 5            # Equal to (two equals signs!)
+5 != 3            # Not equal to
+
+# Greater and less than
+10 > 5
+10 < 5
+10 >= 10
+10 <= 9
+
+# Compare vectors element-wise
+x <- c(1, 2, 3, 4, 5)
+x > 3
+x == 3
+```
+
+## 5.3 Logical Operators
+
+Combine conditions:
+
+```{r logical}
+# AND operator (&)
+TRUE & TRUE       # TRUE
+TRUE & FALSE      # FALSE
+
+# OR operator (|)
+TRUE | FALSE      # TRUE
+FALSE | FALSE     # FALSE
+
+# NOT operator (!)
+!TRUE             # FALSE
+!FALSE            # TRUE
+
+# Combining conditions
+age <- 25
+age > 18 & age < 30              # Between 18 and 30
+age < 18 | age > 65              # Less than 18 OR greater than 65
+```
+
+### Using Logical Operators for Filtering
+
+```{r logical-filtering}
+# Filter airquality data
+hot_days <- airquality[airquality$Temp > 85, ]
+head(hot_days)
+
+# Multiple conditions
+hot_windy <- airquality[airquality$Temp > 85 & airquality$Wind < 10, ]
+head(hot_windy)
+
+# Count matching rows
+sum(airquality$Temp > 85, na.rm = TRUE)
+```
+
+---
+
+# Part 6: Handling Missing Data
+
+## 6.1 Identifying Missing Values
+
+```{r missing-data}
+# Create data with missing values
+x <- c(1, 2, NA, 4, 5, NA)
+
+# Check for missing values
+is.na(x)
+
+# Count missing values
+sum(is.na(x))
+
+# Which positions are missing?
+which(is.na(x))
+
+# Check airquality for missing values
+sum(is.na(airquality))                    # Total NAs
+colSums(is.na(airquality))                # NAs per column
+```
+
+> **Key concept – Missing Data:** Field, Miles, and Field (2012, ch. 5) discuss three types of missing data mechanisms: Missing Completely At Random (MCAR), Missing At Random (MAR), and Missing Not At Random (MNAR). Understanding why data is missing determines appropriate handling strategies.
+
+## 6.2 Handling Missing Values
+
+```{r handling-missing}
+# Remove NAs from vector
+x_complete <- x[!is.na(x)]
+x_complete
+
+# Or use na.omit()
+x_clean <- na.omit(x)
+x_clean
+
+# Remove rows with any NA
+airquality_complete <- na.omit(airquality)
+nrow(airquality)           # Original
+nrow(airquality_complete)  # After removing NAs
+
+# Use complete.cases()
+complete_rows <- complete.cases(airquality)
+airquality_filtered <- airquality[complete_rows, ]
+```
+
+## 6.3 Functions and Missing Data
+
+Many functions return `NA` if there are missing values:
+
+```{r functions-missing}
+# This returns NA
+mean(airquality$Ozone)
+
+# Remove NAs before calculating
+mean(airquality$Ozone, na.rm = TRUE)
+median(airquality$Ozone, na.rm = TRUE)
+sd(airquality$Ozone, na.rm = TRUE)
+
+# Summary handles NAs automatically
+summary(airquality$Ozone)
+```
+
+---
+
+# Part 7: Essential R Functions
+
+## 7.1 Getting Help
+
+```{r help, eval=FALSE}
+# View help documentation
+?mean
+help(mean)
+
+# Search help
+??correlation
+
+# View function arguments
+args(mean)
+
+# Run examples
+example(mean)
+```
+
+## 7.2 Descriptive Statistics
+
+```{r descriptive-stats}
+# Create sample data
+scores <- c(85, 92, 78, 90, 88, 95, 82, 87)
+
+# Measures of central tendency
+mean(scores)        # Average
+median(scores)      # Middle value
+# mode() doesn't exist in base R
+
+# Measures of dispersion
+sd(scores)          # Standard deviation
+var(scores)         # Variance
+range(scores)       # Min and max
+min(scores)
+max(scores)
+
+# Other useful functions
+sum(scores)
+length(scores)
+quantile(scores, probs = c(0.25, 0.5, 0.75))  # Quartiles
+
+# Comprehensive summary
+summary(scores)
+```
+
+## 7.3 Frequency Tables
+
+```{r frequency-tables}
+# Create categorical data
+grades <- c("A", "B", "A", "C", "B", "A", "B", "A", "C", "B")
+
+# Frequency table
+table(grades)
+
+# Proportions
+prop.table(table(grades))
+
+# Cross-tabulation (two variables)
+data(mtcars)
+table(mtcars$cyl, mtcars$gear)
+
+# Add margins (totals)
+addmargins(table(mtcars$cyl, mtcars$gear))
+```
+
+## 7.4 Data Exploration Functions
+
+```{r exploration-functions}
+data(iris)
+
+# Structure
+str(iris)
+
+# Summary statistics
+summary(iris)
+
+# Dimensions
+dim(iris)
+nrow(iris)
+ncol(iris)
+
+# Column names
+names(iris)
+colnames(iris)
+
+# First and last rows
+head(iris, n = 3)
+tail(iris, n = 3)
+
+# Unique values
+unique(iris$Species)
+length(unique(iris$Species))
+```
+
+## 7.5 Correlation and Covariance
+
+```{r correlation}
+# Correlation between two variables
+cor(iris$Sepal.Length, iris$Sepal.Width)
+
+# Correlation matrix (numeric columns only)
+cor(iris[, 1:4])
+
+# Handle missing data
+cor(airquality$Ozone, airquality$Temp, use = "complete.obs")
+
+# Covariance
+cov(iris$Sepal.Length, iris$Sepal.Width)
+cov(iris[, 1:4])
+```
+
+---
+
+# Part 8: Writing Your Own Functions
+
+## 8.1 Function Basics
+
+Functions automate repetitive tasks:
+
+```{r function-basics}
+# Basic function structure
+square <- function(x) {
+  result <- x^2
+  return(result)
+}
+
+# Use the function
+square(5)
+square(10)
+
+# Simplified version (R returns last value automatically)
+square_simple <- function(x) {
+  x^2
+}
+
+square_simple(7)
+```
+
+## 8.2 Functions with Multiple Arguments
+
+```{r function-arguments}
+# Function with two arguments
+add_numbers <- function(a, b) {
+  a + b
+}
+
+add_numbers(5, 3)
+add_numbers(10, 15)
+
+# Function with default values
+greet <- function(name = "Friend") {
+  paste("Hello,", name)
+}
+
+greet("Alice")
+greet()           # Uses default "Friend"
+```
+
+## 8.3 Practical Examples
+
+```{r practical-functions}
+# Calculate z-score
+z_score <- function(x, mean_val, sd_val) {
+  (x - mean_val) / sd_val
+}
+
+scores <- c(85, 92, 78, 90, 88)
+z_score(85, mean(scores), sd(scores))
+
+# Convert Fahrenheit to Celsius
+f_to_c <- function(temp_f) {
+  temp_c <- (temp_f - 32) * 5/9
+  return(temp_c)
+}
+
+f_to_c(98.6)
+f_to_c(32)
+f_to_c(212)
+
+# Function that returns multiple values (using list)
+summary_stats <- function(x) {
+  list(
+    mean = mean(x, na.rm = TRUE),
+    median = median(x, na.rm = TRUE),
+    sd = sd(x, na.rm = TRUE),
+    min = min(x, na.rm = TRUE),
+    max = max(x, na.rm = TRUE)
+  )
+}
+
+summary_stats(scores)
+```
+
+---
+
+# Part 9: Combining Data
+
+## 9.1 Combining Vectors and Data Frames
+
+```{r combining-data}
+# Combine vectors as columns
+x <- c(1, 2, 3)
+y <- c(4, 5, 6)
+cbind(x, y)
+
+# Combine as rows
+rbind(x, y)
+
+# Combine data frames by columns
+df1 <- data.frame(ID = 1:3, Name = c("A", "B", "C"))
+df2 <- data.frame(Score = c(85, 90, 78))
+combined_cols <- cbind(df1, df2)
+print(combined_cols)
+
+# Combine data frames by rows (must have same columns)
+df3 <- data.frame(ID = 4:5, Name = c("D", "E"), Score = c(92, 88))
+combined_rows <- rbind(combined_cols, df3)
+print(combined_rows)
+```
+
+## 9.2 Adding Columns and Rows
+
+```{r adding-data}
+# Add column to data frame
+students <- data.frame(
+  Name = c("Alice", "Bob", "Carol"),
+  Age = c(20, 22, 21)
+)
+
+students$Grade <- c(85, 92, 78)
+print(students)
+
+# Add row
+new_student <- data.frame(Name = "David", Age = 23, Grade = 88)
+students <- rbind(students, new_student)
+print(students)
+```
+
+---
+
+# Part 10: Practical Example - Palmer Penguins
+
+Let's put everything together with a real dataset:
+
+```{r penguins-example}
+# Install and load palmerpenguins package
+# install.packages("palmerpenguins")
+library(palmerpenguins)
+
+# Load the penguins dataset
+data(penguins)
+
+# Explore the data
+str(penguins)
+head(penguins)
+summary(penguins)
+
+# How many penguins of each species?
+table(penguins$species)
+
+# Average bill length by species
+aggregate(bill_length_mm ~ species, data = penguins, FUN = mean, na.rm = TRUE)
+
+# Filter for Adelie penguins only
+adelie <- subset(penguins, species == "Adelie")
+nrow(adelie)
+
+# Penguins with bill length > 50mm
+long_bills <- subset(penguins, bill_length_mm > 50)
+nrow(long_bills)
+
+# Create a new variable: bill aspect ratio
+penguins$bill_ratio <- penguins$bill_length_mm / penguins$bill_depth_mm
+head(penguins$bill_ratio)
+
+# Summary of body mass by sex
+aggregate(body_mass_g ~ sex, data = penguins, FUN = mean, na.rm = TRUE)
+```
+
+---
+
+# Summary
+
+## Key Takeaways
+
+1. **R Basics**
+   - R is free, powerful, and reproducible
+   - RStudio makes R easier to use
+   - Objects store values with `<-`
+
+2. **Data Types**
+   - Numeric, character, logical, factor
+   - Special values: NA, NULL, Inf, NaN
+
+3. **Data Structures**
+   - Vectors: 1-dimensional, same type
+   - Matrices: 2-dimensional, same type
+   - Data frames: 2-dimensional, different types
+   - Lists: flexible, can contain anything
+
+4. **Working with Data**
+   - Import with `read.csv()` or `rio::import()`
+   - Explore with `head()`, `str()`, `summary()`
+   - Subset with `[ ]`, `$`, or `subset()`
+
+5. **Missing Data**
+   - Identify with `is.na()`
+   - Remove with `na.omit()` or `na.rm = TRUE`
+   - Understand why data is missing (MCAR, MAR, MNAR)
+
+6. **Functions**
+   - Use built-in functions for analysis
+   - Write your own functions for custom tasks
+   - Get help with `?function_name`
+
+## Next Steps
+
+Week 2 will build on these fundamentals:
+
+- Advanced data manipulation with dplyr
+- Creating visualizations with ggplot2
+- More statistical analyses
+- Hypothesis testing basics
+
+## Practice Resources
+
+- **Lab Assignment**: `01_lab_R_learning.Rmd` (30 exercises)
+- **RStudio Cheatsheets**: https://posit.co/resources/cheatsheets/
+- **Quick-R**: https://www.statmethods.net/
+- **Stack Overflow**: https://stackoverflow.com/questions/tagged/r
+
+---
+
+# References
+
+Field, A., Miles, J., & Field, Z. (2012). *Discovering Statistics Using R*. SAGE Publications Ltd., London.
+
+R Core Team (2024). *R: A language and environment for statistical computing*. R Foundation for Statistical Computing, Vienna, Austria. https://www.R-project.org/
+
+Wickham, H. (2016). *ggplot2: Elegant Graphics for Data Analysis* (2nd ed.). Springer.
+
+Horst, A. M., Hill, A. P., & Gorman, K. B. (2020). *palmerpenguins: Palmer Archipelago (Antarctica) penguin data*. R package version 0.1.0. https://allisonhorst.github.io/palmerpenguins/
+
+---
+
+# Appendix: Additional Resources
+
+## Useful Packages for Beginners
+
+```{r eval=FALSE}
+# Data manipulation
+install.packages("dplyr")
+install.packages("tidyr")
+
+# Visualization
+install.packages("ggplot2")
+
+# Data import
+install.packages("rio")
+install.packages("readr")
+install.packages("haven")       # For SPSS, Stata, SAS
+
+# Reporting
+install.packages("rmarkdown")
+install.packages("knitr")
+
+# Practice datasets
+install.packages("palmerpenguins")
+install.packages("datasets")
+```
+
+## Common Keyboard Shortcuts (RStudio)
+
+- **Ctrl/Cmd + Enter**: Run current line/selection
+- **Ctrl/Cmd + Shift + Enter**: Run entire script
+- **Ctrl/Cmd + S**: Save file
+- **Ctrl/Cmd + Shift + C**: Comment/uncomment
+- **Alt/Option + -**: Insert `<-` assignment operator
+- **Tab**: Auto-complete function/variable names
+
+## Where to Get Help
+
+1. **Built-in help**: `?function_name` or `help(function_name)`
+2. **RStudio Community**: https://community.rstudio.com/
+3. **Stack Overflow**: Tag questions with [r]
+4. **R Documentation**: https://www.rdocumentation.org/
+5. **Your instructor**: Office hours or course forum
+
+## Tips for Success
+
+1. **Practice regularly** - Programming is a skill learned by doing
+2. **Type code yourself** - Don't just copy-paste
+3. **Read error messages carefully** - They're trying to help!
+4. **Use comments** - Explain your code with `#`
+5. **Save often** - Use Ctrl/Cmd + S frequently
+6. **Start simple** - Break complex problems into smaller steps
+7. **Ask for help** - Everyone starts as a beginner!
+
+Remember: R has a steep learning curve at first, but it gets easier with practice. You're building a valuable skill that will serve you throughout your analytics career!
+
+---
+
+*Document generated on `r format(Sys.Date(), '%B %d, %Y')`*
