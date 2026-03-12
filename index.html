@@ -150,6 +150,67 @@
         .panel-530 .badge.new {
             background: #ff6b6b;
         }
+
+        /* GRAD 695 burgundy/wine theme overrides */
+        .class-tab.active.tab-695 {
+            color: #8b2942;
+        }
+
+        .panel-695 header {
+            background: linear-gradient(135deg, #8b2942 0%, #5a1a28 100%);
+        }
+
+        .panel-695 .week-card h3 {
+            color: #8b2942;
+        }
+
+        .panel-695 .week-card:hover {
+            box-shadow: 0 10px 25px rgba(139, 41, 66, 0.3);
+            border-color: #8b2942;
+        }
+
+        .panel-695 .week-card a {
+            background: linear-gradient(135deg, #8b2942 0%, #5a1a28 100%);
+        }
+
+        .panel-695 .week-card a:hover {
+            box-shadow: 0 5px 15px rgba(139, 41, 66, 0.4);
+        }
+
+        .panel-695 .week-card a.secondary {
+            background: white;
+            color: #8b2942;
+            border-color: #8b2942;
+        }
+
+        .panel-695 .week-card a.secondary:hover {
+            background: #8b2942;
+            color: white;
+        }
+
+        .panel-695 .intro h2 {
+            color: #8b2942;
+        }
+
+        .panel-695 .intro {
+            border-left-color: #8b2942;
+        }
+
+        .panel-695 h2[style] {
+            color: #8b2942 !important;
+        }
+
+        .panel-695 footer a {
+            color: #8b2942;
+        }
+
+        .panel-695 .badge {
+            background: #8b2942;
+        }
+
+        .panel-695 .badge.new {
+            background: #ff6b6b;
+        }
         
         .content {
             padding: 40px;
@@ -289,6 +350,7 @@
         <div style="background:rgba(255,255,255,0.15);border-radius:50px;padding:6px;display:flex;gap:8px;backdrop-filter:blur(10px);box-shadow:0 4px 15px rgba(0,0,0,0.2);">
             <button class="class-tab tab-500 active" onclick="switchClass('500')">📊 ANLY 500 — Analytics I</button>
             <button class="class-tab tab-530" onclick="switchClass('530')">🤖 ANLY 530 — Machine Learning</button>
+            <button class="class-tab tab-695" onclick="switchClass('695')">📝 GRAD 695 — Research Methods</button>
         </div>
     </div>
 
@@ -547,11 +609,98 @@
     </div>
     </div><!-- end panel-530 -->
 
+    <!-- ══════════════════════════════════════
+         GRAD 695 — Research Methodology & Writing
+    ══════════════════════════════════════ -->
+    <div id="panel-695" class="course-panel panel-695">
+    <div class="container">
+        <header>
+            <h1>📝 Data Sciences Repository</h1>
+            <p>GRAD 695 - Research Methodology & Writing | Harrisburg University</p>
+        </header>
+
+        <div class="content">
+            <div class="intro">
+                <h2>Welcome to GRAD 695 Research Methodology & Writing</h2>
+                <p>This course prepares students for analytics research through IEEE Access-format proposal development, research design fundamentals, and ethical research practices. Students learn to frame research questions, design methodological approaches, and communicate findings effectively in academic publication format.</p>
+                <p><strong>Target Format:</strong> IEEE Access 2024 (dual-column) | <strong>Ethics:</strong> CITI Program Training Required</p>
+                <p><strong>Author:</strong> Ziyuan Huang | <strong>Course:</strong> Research Methodology & Writing | <strong>Institution:</strong> Harrisburg University</p>
+                <p style="margin-top: 14px;">
+                    <a href="https://github.com/melhzy/data_sciences/tree/main/GRAD695-Research-Methdology&Writing"
+                       target="_blank"
+                       style="display:inline-flex;align-items:center;gap:8px;background:#8b2942;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.95em;box-shadow:0 2px 6px rgba(0,0,0,0.15);">
+                        <svg height="18" width="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                        View Repository on GitHub
+                    </a>
+                    <a href="GRAD695-Research-Methdology&Writing/Syllabus/GRAD695-Syllabus.pdf"
+                       target="_blank"
+                       style="display:inline-flex;align-items:center;gap:8px;background:white;color:#8b2942;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.95em;border:2px solid #8b2942;box-shadow:0 2px 6px rgba(0,0,0,0.15);margin-left:12px;">
+                        📄 Course Syllabus (PDF)
+                    </a>
+                </p>
+            </div>
+
+            <h2 style="margin-bottom: 25px; color: #8b2942;">📚 Course Content</h2>
+
+            <div class="weeks-grid">
+                <div class="week-card">
+                    <h3>Executive Session 01: Research Foundations <span class="badge new">NEW</span></h3>
+                    <p>Introduction to the research process, problem definition, analytics research methodology overview, and GRAD 695/699 two-course capstone sequence structure. Includes page count expectations and IEEE Access formatting requirements.</p>
+                    <div class="links">
+                        <a href="GRAD695-Research-Methdology&Writing/Week01_ExecutiveSession01/01_executive_session01_research_foundations.html" target="_blank">📄 View Tutorial</a>
+                        <a href="https://github.com/melhzy/data_sciences/tree/main/GRAD695-Research-Methdology&Writing/Week01_ExecutiveSession01" target="_blank" class="secondary">🐙 Source on GitHub</a>
+                    </div>
+                </div>
+
+                <div class="week-card" style="opacity: 0.6;">
+                    <h3>Weeks 02-15 <span class="badge" style="background: #6c757d;">Coming Soon</span></h3>
+                    <p>Literature review strategies, research question formulation, methodology design, data collection, analysis planning, results presentation, discussion frameworks, and APA 7th edition writing conventions.</p>
+                    <div class="links">
+                        <a href="#" style="pointer-events: none; background: #6c757d;">🚧 Under Development</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="intro" style="border-left-color: #28a745; margin-top: 20px;">
+                <h2>🎯 Key Features</h2>
+                <ul style="margin-left: 20px; margin-top: 15px;">
+                    <li><strong>Publication-Ready Format:</strong> IEEE Access 2024 dual-column template with LaTeX/Pandoc</li>
+                    <li><strong>Ethics First:</strong> CITI Program training required for IRB preparation</li>
+                    <li><strong>Two-Course Sequence:</strong> GRAD 695 (proposal ~5 dual-column pages) → GRAD 699 (full thesis ~10 dual-column pages)</li>
+                    <li><strong>Professional Writing:</strong> APA 7th edition citation and style requirements</li>
+                </ul>
+            </div>
+
+            <div class="intro" style="border-left-color: #6c757d; margin-top: 40px;">
+                <h2>📖 Key Resources</h2>
+                <ul style="margin-left: 20px; margin-top: 15px; list-style-type: none; padding-left: 0;">
+                    <li style="margin-bottom: 10px;">
+                        American Psychological Association. (2020). <em>Publication Manual of the American Psychological Association</em> (7th ed.). APA.
+                    </li>
+                    <li style="margin-bottom: 10px;">
+                        IEEE. (2024). <em>IEEE Access Author Instructions</em>. Available at <a href="https://ieeeaccess.ieee.org/about-ieee-access/learn-more-about-ieee-access/" target="_blank" style="color: #8b2942;">ieeeaccess.ieee.org</a>
+                    </li>
+                    <li style="margin-bottom: 10px;">
+                        CITI Program. <em>Human Subjects Research Ethics Training</em>. Available at <a href="https://about.citiprogram.org/" target="_blank" style="color: #8b2942;">about.citiprogram.org</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <footer>
+            <p><strong>Repository:</strong> <a href="https://github.com/melhzy/data_sciences/tree/main/GRAD695-Research-Methdology&Writing" target="_blank">github.com/melhzy/data_sciences — GRAD695-Research-Methdology&Writing</a></p>
+            <p style="margin-top: 10px;">© 2026 Ziyuan Huang | GRAD 695 Research Methodology & Writing | Harrisburg University</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">Built with ❤️ using R Markdown, LaTeX, and Pandoc for IEEE Access format.</p>
+        </footer>
+    </div>
+    </div><!-- end panel-695 -->
+
     <script>
         function switchClass(cls) {
             // toggle panels
             document.getElementById('panel-500').classList.toggle('active', cls === '500');
             document.getElementById('panel-530').classList.toggle('active', cls === '530');
+            document.getElementById('panel-695').classList.toggle('active', cls === '695');
             // toggle tab buttons
             document.querySelectorAll('.class-tab').forEach(function(btn) {
                 btn.classList.remove('active');
@@ -565,7 +714,7 @@
 
         function activateFromHash() {
             var hash = window.location.hash.replace('#', '');
-            if (hash === '500' || hash === '530') {
+            if (hash === '500' || hash === '530' || hash === '695') {
                 switchClass(hash);
             }
         }
