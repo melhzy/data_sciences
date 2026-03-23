@@ -1,0 +1,550 @@
+---
+title: "Week 2: Frameworks, Benchmarks, and Literature Reviews"
+author: "Ziyuan Huang"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    theme: united
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(DiagrammeR)
+library(ggplot2)
+library(ggrepel)
+```
+
+# Introduction
+
+This week we move from a broad research idea to a structured, justifiable research plan. Good research is always **contextualized within the history of what has been done** — you must show that you understand the existing landscape before you can make a meaningful contribution to it. To do this, we focus on three foundational skills:
+
+*   A **Framework** is the intellectual structure for your study — an existing analytic, theoretical, or methodological tradition that guides how you approach your problem and interpret your results.
+
+*   A **Benchmark** is your yardstick for success — an established standard from prior work that lets you answer the question *"How good are my results compared to the best that's been done?"*
+
+*   A **Literature Review** is the written argument that ties it all together — connecting existing research to your specific problem, establishing the importance of your research questions, and justifying your approach.
+
+---
+
+# Part 1: Frameworks
+
+## What is a Framework?
+
+For different types of problems, **frameworks** exist for the best — or at least most common — approaches to that class of problem. A framework is not something you invent; it is something you adopt, adapt, and justify. Your choice signals to readers that you understand the research tradition your work belongs to.
+
+## Types of Frameworks
+
+Research frameworks fall into three broad categories, and a single study may incorporate more than one:
+
+```{r framework-types, fig.align='center'}
+grViz("
+digraph framework_types {
+  graph [layout = dot, rankdir = LR, label = 'Three Types of Research Frameworks', labelloc = t, fontsize = 20, splines=ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 13]
+  edge [fontname = Helvetica]
+
+  F [label = 'Research\nFramework', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  A [label = 'Analytic\nFramework', fillcolor = '#5BA85B', fontcolor = white]
+  B [label = 'Theoretical\nFramework', fillcolor = '#D97B4A', fontcolor = white]
+  C [label = 'Methodological\nFramework', fillcolor = '#9B59B6', fontcolor = white]
+
+  A1 [label = 'Predictive Modeling', fillcolor = '#D5EDD5']
+  A2 [label = 'Forecasting', fillcolor = '#D5EDD5']
+
+  B1 [label = 'Game Theory', fillcolor = '#FDDFC8']
+  B2 [label = 'Information Theory', fillcolor = '#FDDFC8']
+
+  C1 [label = 'Experimental Design', fillcolor = '#E8D5F5']
+  C2 [label = 'Data Mining', fillcolor = '#E8D5F5']
+
+  F -> A; F -> B; F -> C;
+  A -> A1; A -> A2;
+  B -> B1; B -> B2;
+  C -> C1; C -> C2;
+}
+")
+```
+
+### Analytic Frameworks
+
+Analytic frameworks define the *type of analysis* you will conduct and the computational or statistical tools best suited for that analysis.
+
+| Framework | Description | Example Use Case |
+|---|---|---|
+| Predictive Modeling | Build a model to estimate an unknown outcome from known inputs | Predicting student dropout from engagement data |
+| Forecasting | Estimate future values of a time-series variable | Projecting enrollment trends over the next 5 years |
+| Classification | Assign observations to discrete categories | Diagnosing disease from medical imaging |
+| Clustering / Segmentation | Discover natural groupings in unlabeled data | Identifying patient risk profiles |
+
+### Theoretical Frameworks
+
+Theoretical frameworks provide the *conceptual lens* through which you interpret your problem and results. They connect your study to a body of scholarly thought.
+
+| Framework | Description | Example Use Case |
+|---|---|---|
+| Game Theory | Models strategic decision-making among rational agents | Analyzing competitive pricing behavior |
+| Information Theory | Quantifies information, uncertainty, and communication limits | Measuring entropy in communication networks |
+| Tinto's Model | Explains student persistence through academic and social integration | Predicting college dropout |
+| Technology Acceptance Model | Explains user adoption of new technologies | Studying e-learning platform adoption |
+
+### Methodological Frameworks
+
+Methodological frameworks define the *overall research design strategy* — how you will collect, generate, or analyze evidence.
+
+| Framework | Description | Example Use Case |
+|---|---|---|
+| Experimental Design | Controlled manipulation of variables with randomization | Testing the effect of an intervention on outcomes |
+| Quasi-Experimental | Comparison without full randomization | Pre/post analysis without a true control group |
+| Data Mining | Extraction of patterns from large datasets | Mining electronic health records for adverse events |
+| Survey Research | Systematic collection of self-reported data | Measuring student satisfaction across programs |
+
+## Selecting and Justifying Your Framework
+
+After reviewing the literature, choose the framework(s) that best fit your problem. A study may legitimately combine more than one — for example, using a **predictive modeling** analytic framework, guided by **Tinto's theoretical model**, and executed through a **data mining** methodological approach.
+
+Your justification should explain:
+
+1. **Why this framework fits your problem** — how its assumptions and constructs match your context.
+2. **Any adaptations needed** — e.g., applying an on-campus student model to an online setting.
+3. **How it connects to your research question** — the framework should make your RQ feel inevitable and well-motivated.
+
+---
+
+# Part 2: Benchmarks
+
+## What is a Benchmark?
+
+For the majority of analytic problems, **some model or solution already exists**. New models or solutions must be compared against them. As you define your problem and methodological approach, you must establish what the **baseline or best current performance** is for your task.
+
+> Without benchmarks, your result is just a number without meaning. A model with 83% accuracy could be excellent or mediocre — it depends entirely on what the field has already achieved.
+
+## Types of Benchmarks
+
+```{r benchmark-types-diagram, fig.align='center'}
+grViz("
+digraph benchmark_types {
+  graph [layout = dot, rankdir = TB, label = 'Types of Benchmarks', labelloc = t, fontsize = 20]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 13]
+
+  B [label = 'Benchmarks', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  D [label = 'Benchmark\nDatasets', fillcolor = '#5BA85B', fontcolor = white]
+  M [label = 'Benchmark\nMetrics', fillcolor = '#D97B4A', fontcolor = white]
+  E [label = 'Exploratory /\nDescriptive', fillcolor = '#9B59B6', fontcolor = white]
+
+  D1 [label = 'ImageNet\n(image classification)', fillcolor = '#D5EDD5']
+  D2 [label = 'UCI Repository\n(general ML)', fillcolor = '#D5EDD5']
+  D3 [label = 'GLUE\n(NLP tasks)', fillcolor = '#D5EDD5']
+
+  M1 [label = 'Reported accuracy, F1,\nAUC for a specific task', fillcolor = '#FDDFC8']
+  M2 [label = 'State-of-the-art\nperformance thresholds', fillcolor = '#FDDFC8']
+
+  E1 [label = 'Compare to what is\ncurrently known about\nthe topic or area', fillcolor = '#E8D5F5']
+
+  B -> D; B -> M; B -> E;
+  D -> D1; D -> D2; D -> D3;
+  M -> M1; M -> M2;
+  E -> E1;
+}
+")
+```
+
+### Benchmark Datasets
+
+Established datasets created specifically to test new models or solutions on common tasks. Using a standard benchmark dataset allows direct, apples-to-apples comparison with every other study that used it.
+
+**Examples:**
+
+*   **ImageNet** — the standard for basic image classification (millions of labeled images across 1,000 classes)
+*   **UCI Machine Learning Repository** — a broad collection of datasets across domains, widely used in academic research
+*   **GLUE / SuperGLUE** — standard benchmarks for natural language understanding tasks
+
+### Benchmark Metrics
+
+Recorded performance values from prior high-quality studies for a given task under given conditions. These answer the question: *"What is the best performance anyone has achieved on this specific problem?"*
+
+When reporting benchmark metrics, always capture:
+
+| Field | Description |
+|---|---|
+| Author & Year | Who achieved this result |
+| Task / Problem | Exactly what problem was being solved |
+| Method | What model or approach was used |
+| Performance Metric | The metric used (Accuracy, F1, AUC, RMSE, etc.) |
+| Result | The numeric value |
+| Conditions | Dataset, data splits, key parameters |
+
+### Exploratory and Descriptive Research Benchmarks
+
+Exploratory or descriptive research generally does not have concrete numeric benchmarks, but it must still be compared to **what is currently known** about the topic or area. Your contribution is measured by how much new understanding you add relative to the existing body of knowledge — what patterns were previously unknown, what relationships were previously assumed but not demonstrated, or what populations were previously understudied.
+
+## Visualizing Your Result Against Benchmarks
+
+```{r benchmark-chart, fig.align='center'}
+benchmark_data <- data.frame(
+  study = c('Smith et al. (2019)\n(Baseline)', 'Chen (2020)', 'Jones & Lee (2021)\n(State-of-the-Art)', 'Your Hypothetical\nResult'),
+  f1_score = c(0.78, 0.82, 0.85, 0.83),
+  type = c('Baseline', 'Prior Work', 'State-of-the-Art', 'Your Result')
+)
+
+ggplot(benchmark_data, aes(x = reorder(study, f1_score), y = f1_score, fill = type)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = f1_score), vjust = -0.5, size = 4) +
+  scale_fill_manual(values = c('Baseline' = '#d9534f',
+                               'Prior Work' = '#5bc0de',
+                               'State-of-the-Art' = '#5cb85c',
+                               'Your Result' = '#f0ad4e')) +
+  labs(
+    title = 'Visualizing Your Result Against Benchmarks',
+    subtitle = 'Context makes your performance meaningful',
+    x = 'Study',
+    y = 'F1-Score',
+    fill = 'Study Type'
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 0, hjust = 0.5)) +
+  ylim(0, 1.0)
+```
+
+**Reading the chart:** Your hypothetical F1 of 0.83 sits above the baseline (0.78) and prior work (0.82), and is competitive with the SOTA (0.85). Without this comparison, 0.83 has no interpretable meaning.
+
+---
+
+# Part 3: Establishing Frameworks and Benchmarks via a Literature Search
+
+## How to Conduct a Literature Search
+
+To determine the appropriate frameworks and benchmarks for your study, you must conduct a **literature search**. The goal is to accumulate 10–20 peer-reviewed sources, after which you have enough foundation to begin writing your literature review section.
+
+### Where to Search
+
+| Source | Notes |
+|---|---|
+| **Google Scholar** | Best starting point; broad coverage; shows citation counts |
+| **Ask ChatGPT** | Can suggest frameworks and papers — but **always verify the sources exist and say what is claimed** |
+| **Reference sections** | Once you find a key paper, mine its reference list for related foundational work |
+
+> **Source quality:** Peer-reviewed journal articles and conference papers are the gold standard. White papers from reputable institutions are acceptable. Blog posts, news articles, and other informal sources are **not** acceptable as primary citations.
+
+### Building Your Search Query
+
+```{r keyword-search-viz, fig.align='center'}
+grViz("
+digraph keyword_search {
+  graph [layout = dot, rankdir = LR, labelloc = t, fontsize = 18, fontname = Helvetica, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12, fillcolor = white]
+
+  subgraph cluster_topic {
+    label = '1. Start with Topic';
+    style = filled; color = '#ECECEC';
+    topic [label = 'Predicting Student Dropout\nin Online Courses', shape = box, style = 'rounded,filled', fillcolor = '#D6E4F0', fontcolor = '#1A1A1A'];
+  }
+
+  subgraph cluster_concepts {
+    label = '2. Core Concepts';
+    style = filled; color = '#D6EAF8';
+    c1 [label = 'Student Dropout',   shape = box, style = 'rounded,filled', fillcolor = '#2E86C1', fontcolor = white];
+    c2 [label = 'Online Courses',    shape = box, style = 'rounded,filled', fillcolor = '#2E86C1', fontcolor = white];
+    c3 [label = 'Machine Learning',  shape = box, style = 'rounded,filled', fillcolor = '#2E86C1', fontcolor = white];
+  }
+
+  subgraph cluster_synonyms {
+    label = '3. Expand with Synonyms (OR)';
+    style = filled; color = '#D5F5E3';
+    s1 [label = 'attrition\npersistence',            shape = box, style = 'rounded,filled', fillcolor = '#1E8449', fontcolor = white];
+    s2 [label = 'e-learning\nMOOCs',                 shape = box, style = 'rounded,filled', fillcolor = '#1E8449', fontcolor = white];
+    s3 [label = 'predictive modeling\ndata mining',  shape = box, style = 'rounded,filled', fillcolor = '#1E8449', fontcolor = white];
+  }
+
+  subgraph cluster_framework_terms {
+    label = '4. Add Framework Terms (AND)';
+    style = filled; color = '#FDEBD0';
+    f1 [label = 'theory\nframework\nreview', shape = box, style = 'rounded,filled', fillcolor = '#CA6F1E', fontcolor = white];
+  }
+
+  subgraph cluster_query {
+    label = '5. Final Search Query';
+    style = filled; color = '#922B21';
+    query [label = 'student dropout OR attrition\nAND online course OR e-learning\nAND theory OR framework OR review', shape = box, style = 'rounded,filled', fillcolor = '#922B21', fontcolor = white, color = white, fontsize = 13];
+  }
+
+  topic -> {c1, c2, c3}
+  c1 -> s1; c2 -> s2; c3 -> s3;
+  {s1, s2, s3, f1} -> query;
+}
+")
+```
+
+## Benchmark Literature Table
+
+As you accumulate sources, track benchmark studies in a structured table:
+
+| Author (Year) | Task / Problem | Method | Metric | Result | Notes |
+|---|---|---|---|---|---|
+| Smith et al. (2019) | Predicting dropout in MOOCs | Logistic Regression | Accuracy | 78% | Demographic features only. Good baseline. |
+| Jones & Lee (2021) | Real-time dropout prediction | Random Forest | F1-Score | 0.85 | Clickstream data. Considered SOTA. |
+| Chen (2020) | Identifying at-risk students | SVM | AUC | 0.82 | First two weeks of course only. |
+
+**Synthesis statement template:** *"The current literature shows that for [your task], state-of-the-art models achieve [SOTA metric]. Simpler baseline models achieve [baseline metric]. My goal is to exceed this baseline while [your specific contribution — e.g., using a more interpretable model, applying to a novel population, etc.]."*
+
+---
+
+# Part 4: The Literature Review
+
+## Purpose of a Literature Review
+
+A literature review is not a summary exercise — it is a **structured argument** that does three specific things:
+
+1. **Relates your work to ongoing discussion in the field** — situating your project within the broader scholarly conversation.
+2. **Establishes a framework for the importance of your research question** — demonstrating why your question matters and why it has not been fully answered.
+3. **Establishes benchmarks for comparing results and conclusions** — answering "How much better is your model?", "How much more variance can you explain?", and "What have you added to what is known?"
+
+## What a Literature Review IS
+
+A well-written literature review is:
+
+*   **A logical argument** based on a comprehensive understanding of the state of research on your topic
+*   **Fully supported by credible sources** — every major claim cites peer-reviewed evidence
+*   **Explicitly connective** — it shows how your proposed project relates to past work, and very importantly, how your proposed work **extends past studies or addresses their limitations**
+*   **Organized with logical flow** — it moves coherently from the broad context of your field to your specific research questions
+
+```{r lit-review-anatomy, fig.align='center'}
+grViz("
+digraph lit_review {
+  graph [layout = dot, rankdir = TB, label = 'Anatomy of a Literature Review Argument', labelloc = t, fontsize = 18]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  A [label = 'Broad Field Context\n(What is the general problem area?)', fillcolor = '#AED6F1']
+  B [label = 'Existing Approaches & Frameworks\n(What has been tried? What theories exist?)', fillcolor = '#A9DFBF']
+  C [label = 'Gaps & Limitations in Prior Work\n(What has NOT been answered well?)', fillcolor = '#FAD7A0']
+  D [label = 'Your Research Question\n(How does your study address a gap?)', fillcolor = '#F1948A']
+  E [label = 'Your Hypotheses / Expected Contributions\n(What will you show or demonstrate?)', fillcolor = '#D7BDE2']
+
+  A -> B [label = ' grounds ']
+  B -> C [label = ' reveals ']
+  C -> D [label = ' motivates ']
+  D -> E [label = ' leads to ']
+}
+")
+```
+
+## What a Literature Review is NOT
+
+Avoid these common mistakes:
+
+| What students write | What it actually is | Why it fails |
+|---|---|---|
+| "Smith (2020) found that X. Jones (2021) found that Y. Chen (2022) found that Z." | An annotated bibliography | No argument, no connection, no synthesis |
+| A list of paper summaries with no linking commentary | A data dump | Reader cannot see how it all relates to your project |
+| Extensive technical explanation of algorithms you will use | A methods primer | Unless you are developing a new algorithm, briefly justify *why* the method fits — don't explain how it works |
+
+> A good literature review reads like a coherent essay that happens to have citations, not like a collection of summaries stapled together.
+
+## Citation Management with Zotero
+
+Managing 10–20+ sources manually is error-prone. **Zotero** (https://www.zotero.org/) is the recommended free, open-source citation management tool.
+
+**What Zotero does:**
+
+*   Stores full citation metadata (author, year, journal, DOI, etc.)
+*   Generates formatted citations in APA, MLA, Chicago, and other styles automatically
+*   Lets you attach PDFs, highlight passages, and keep notes on each source
+*   Syncs across devices and integrates with Word, Google Docs, and RStudio
+
+HU's Library has put together resources and guides to help you get started with Zotero.
+
+---
+
+# Part 5: Organizing Your Literature Review
+
+## Three Methods for Outlining a Literature Review
+
+Before writing, you need a plan. Three proven methods for organizing a literature review are:
+
+### Method 1: Literature Maps
+
+A **literature map** is a diagram that links important concepts and clusters your sources around those concepts. It is the most visual approach and is excellent for seeing the structure of a large body of literature at a glance.
+
+```{r lit-map, fig.align='center'}
+grViz("
+digraph lit_map {
+  graph [layout = dot, rankdir = TB, label = 'Example Literature Map: Twitter Marketing & Tech Stocks', labelloc = t, fontsize = 16, splines=curved]
+
+  node [shape = ellipse, style = 'filled', fontname = Helvetica, fontsize = 11]
+  edge [fontname = Helvetica, fontsize = 10]
+
+  RQ [label = 'Research Question:\nInfluence of Twitter Marketing\non Tech Stocks', fillcolor = '#4A90D9', fontcolor = white, shape = box, style = 'rounded,filled']
+
+  TM [label = 'Twitter Marketing', fillcolor = '#5BA85B', fontcolor = white]
+  TI [label = 'Tech Industry Marketing', fillcolor = '#D97B4A', fontcolor = white]
+  TS [label = 'Factors Impacting\nTech Stocks', fillcolor = '#9B59B6', fontcolor = white]
+
+  TM1 [label = 'Taecharungroj (2017)\nStarbucks Twitter strategy', fillcolor = '#D5EDD5', shape = note]
+  TM2 [label = 'Leung et al. (2015)\nFacebook vs. Twitter\nhotel industry', fillcolor = '#D5EDD5', shape = note]
+
+  TI1 [label = 'Nouri & Ahmady (2018)\nMarketing in high-tech SMBs', fillcolor = '#FDDFC8', shape = note]
+  TI2 [label = 'Yang & Gabrielsson (2017)\nEntrepreneurial marketing B2B', fillcolor = '#FDDFC8', shape = note]
+
+  TS1 [label = 'Bento et al. (2019)\nCrowdfunding & clean-tech stocks', fillcolor = '#E8D5F5', shape = note]
+  TS2 [label = 'Lee et al. (2013)\nIndustry returns & stock market', fillcolor = '#E8D5F5', shape = note]
+
+  RQ -> TM; RQ -> TI; RQ -> TS;
+  TM -> TM1; TM -> TM2;
+  TI -> TI1; TI -> TI2;
+  TS -> TS1; TS -> TS2;
+}
+")
+```
+
+Many templates and examples for literature maps are available online. Search for *"literature map examples template"* to find formats that match your project's complexity.
+
+### Method 2: Subheadings
+
+Essentially a literature map formatted as a **bulleted outline**. Each subheading represents a major concept or theme, and sources are listed under the subheading they belong to.
+
+**Rules of thumb:**
+*   Start from the **broadest concepts and oldest, most foundational methods** and progressively narrow to what is unknown or evolving
+*   No more than **2 subheadings per page** of finished text
+*   At least **4 citations under each subheading**
+
+**Example Topic:** *The influence of Twitter marketing on tech stocks*
+
+---
+
+**Subheading 1: Twitter Marketing**
+
+- Taecharungroj, V. (2017). Starbucks' marketing communications strategy on Twitter. *Journal of Marketing Communications, 23*(6), 552–571.
+- Leung, X. Y., Bai, B., & Stahura, K. A. (2015). The marketing effectiveness of social media in the hotel industry: A comparison of Facebook and Twitter. *Journal of Hospitality & Tourism Research, 39*(2), 147–169.
+
+**Subheading 2: Tech Industry Marketing**
+
+- Nouri, P., & Ahmady, A. (2018). A taxonomy of nascent entrepreneurs' marketing decisions in high-tech small businesses. *Journal of Small Business Strategy, 28*(3), 69–79.
+- Yang, M., & Gabrielsson, P. (2017). Entrepreneurial marketing of international high-tech business-to-business new ventures. *Industrial Marketing Management, 64*, 147–160.
+
+**Subheading 3: Factors Impacting Tech Stocks**
+
+- Bento, N., Gianfrate, G., & Groppo, S. V. (2019). Do crowdfunding returns reward risk? *Technological Forecasting and Social Change, 141*, 107–116.
+- Lee, C. C., Chen, M. P., & Chang, C. H. (2013). Dynamic relationships between industry returns and stock market returns. *The North American Journal of Economics and Finance, 26*, 119–144.
+
+---
+
+### Method 3: First Sentences
+
+The most rigorous organizational method. Instead of just listing topics, you write **the actual first sentence of each paragraph** in your literature review before writing the full text. Each first sentence is a claim or premise that your supporting citations will back up.
+
+This approach forces you to think through the **logical argument** your literature review is making — every sentence must connect to the next, moving from broad context toward your specific research questions.
+
+**Example Topic:** *Changes in communication styles of political leaders*
+
+> 1. Most scholars and political commentators agree that Donald Trump is unlike any previous US president.
+> 2. During his campaign and early presidency, many claimed that Trump's simplicity and directness were keys to his popularity.
+> 3. A second major distinguishing feature of Trump's language is his self-confidence.
+> 4. We build on an extensive research tradition of exploring political leadership traits.
+> 5. If conveying simple messages with confidence is a powerful way to persuade voters, it is incumbent on researchers to determine effective ways to measure these dimensions reliably, quickly, and efficiently.
+> 6. A common distinction in language is between content words and function words.
+> 7. The eight categories of function words capture an underlying psychological dimension known as analytic thinking.
+> 8. Past work has validated the use of function words as markers of the analytic thinking dimension, including a study of college admission essays from over 25,000 incoming students.
+> 9. The analysis of function words has also been useful in identifying people's relative status or "clout" in a social hierarchy.
+> 10. The computerized text analysis program LIWC was updated in 2015 to include empirically established measures of both analytic thinking and confidence.
+> 11. The algorithm developed from Kacewicz et al. is formally referred to as *clout*.
+> 12. The purpose of this project was to apply linguistic analyses to large corpora of texts from the American presidency, non-US leaders, legislative bodies, and cultural contexts spanning multiple decades.
+
+Notice how each sentence builds logically on the last — this is a **complete argumentative skeleton** for a literature review before a single full paragraph is written.
+
+---
+
+# Part 6: Final Guidance on Literature Reviews
+
+```{r final-guidance-viz, fig.align='center'}
+grViz("
+digraph guidance {
+  graph [layout = dot, rankdir = LR, label = 'Do vs. Do Not', labelloc = t, fontsize = 18, splines=ortho]
+
+  node [fontname = Helvetica, fontsize = 12]
+
+  subgraph cluster_do {
+    label = 'DO';
+    style = filled; color = '#D5EDD5';
+    node [style='filled', fillcolor=white, shape=box];
+    d1 [label = 'Read critically']
+    d2 [label = 'Write short summaries\nfor each source']
+    d3 [label = 'Keep your goal in mind\nthroughout']
+    d4 [label = 'Find multiple citations\nfor main points']
+    d5 [label = 'Focus on the big picture']
+    d6 [label = 'Briefly justify WHY\na method fits your problem']
+  }
+
+  subgraph cluster_dont {
+    label = 'DO NOT';
+    style = filled; color = '#FDDFC8';
+    node [style='filled', fillcolor=white, shape=box];
+    n1 [label = 'Just summarize sources\none by one']
+    n2 [label = 'Write an\nannotated bibliography']
+    n3 [label = 'Dump every fact\nyou can find']
+    n4 [label = 'Extensively explain\ntechnical components']
+    n5 [label = 'Lose sight of\nyour research question']
+    n6 [label = 'Use informal sources\n(blogs, news, etc.)']
+  }
+}
+")
+```
+
+**Key reminders:**
+
+*   Read critically — ask yourself *"Does this source support my argument? Does it contradict it? Does it reveal a gap?"*
+*   Write short notes or summaries as you read each source — you will not remember the details later
+*   Keep your research goal visible while writing — every paragraph should connect back to it
+*   Try to find **multiple citations** supporting your main points — a claim backed by 3–4 sources is much stronger than one backed by 1
+*   Focus on the **big picture**, not small technical details — unless you are developing a new algorithm, you do not need to extensively explain technical components; briefly discuss why the chosen model makes the most sense for your particular problem
+
+---
+
+# Bringing It All Together
+
+Your framework, benchmarks, and literature review are not separate deliverables — they are one integrated argument.
+
+```{r research-narrative-viz, fig.align='center'}
+grViz("
+digraph research_narrative {
+  graph [layout = dot, rankdir = TB, label = 'From Literature to Contribution', labelloc = t, fontsize = 18]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  A [label = 'Literature Search\n(10-20 peer-reviewed sources)', fillcolor = '#AED6F1']
+  B [label = 'Adopt a Framework\n(Analytic / Theoretical / Methodological)', fillcolor = '#A9DFBF']
+  C [label = 'Establish Benchmarks\n(Datasets / Metrics / Known patterns)', fillcolor = '#FAD7A0']
+  D [label = 'Write Literature Review\n(Logical argument connecting field to your RQ)', fillcolor = '#D7BDE2']
+  E [label = 'Design Methodology\n(Guided by framework and gap identified)', fillcolor = '#F9E79F']
+  F [label = 'Generate & Compare Results\n(Against established benchmarks)', fillcolor = '#FADBD8']
+  G [label = 'State Your Contribution\n(What you added to the field)', fillcolor = '#D5EDD5']
+
+  A -> B; A -> C; A -> D;
+  B -> D; C -> D;
+  D -> E;
+  E -> F;
+  F -> G;
+}
+")
+```
+
+**Example narrative statement:**
+
+> "My research uses a predictive modeling analytic framework, grounded in an adapted version of Tinto's Student Integration Model, to predict student dropout in online courses. A literature search revealed that the state-of-the-art F1-Score for this task is 0.85 (Jones & Lee, 2021), using clickstream features, with a baseline of 78% accuracy from simpler demographic models (Smith et al., 2019). My study extends this work by applying theoretically-grounded features tied explicitly to academic and social integration constructs, which prior benchmark studies did not use. By doing so, my model aims to be both predictive and interpretable — addressing a limitation in existing SOTA work that prioritizes performance over explainability."
+
+---
+
+# Next Steps & To-Do
+
+- [ ] **Action 1:** Identify which type(s) of framework apply to your project (Analytic, Theoretical, Methodological) and locate the foundational paper for your chosen framework.
+- [ ] **Action 2:** Conduct a literature search on Google Scholar. Collect 10–20 peer-reviewed sources and save them in Zotero.
+- [ ] **Action 3:** Identify 2–3 benchmark studies and record their task, method, metric, and result in a table.
+- [ ] **Action 4:** Choose an organizational method (Literature Map, Subheadings, or First Sentences) and draft an outline for your literature review before writing full text.
+- [ ] **Action 5:** Write a 1-paragraph synthesis statement connecting your research question, your framework, and the key benchmarks you will use for comparison.
