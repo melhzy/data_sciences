@@ -33,7 +33,10 @@ Decision Trees are one of the most intuitive and powerful models in machine lear
 Think of a Decision Tree like a game of "20 Questions." You start with a question about your data, and the answer leads you to the next question, until you arrive at a final prediction.
 
 > *"Decision Trees are intuitive, and their decisions are easy to interpret. Such models are often called **white box models**. In contrast, Random Forests or neural networks are generally considered **black box models** — they make great predictions, but it is usually hard to explain in simple terms why a particular prediction was made."*
-> — Aurélien Géron, *Hands-On Machine Learning*
+> — A. Géron **[1]**
+
+> *"Tree-based models are a class of nonparametric algorithms that work by partitioning the feature space into a number of smaller (non-overlapping) regions with similar response values using a set of splitting rules... decision trees offer many benefits; however, they typically lack in predictive performance compared to more complex algorithms. However, future chapters will discuss powerful ensemble algorithms — like random forests and gradient boosting machines — which are constructed by combining together many decision trees in a clever way."*
+> — B. C. Boehmke & B. M. Greenwell **[2]**
 
 **Learning Objectives:**
 
@@ -684,6 +687,221 @@ The ensemble average is visibly smoother and closer to the true function than an
 
 ---
 
+# Part 10: Feature Importance
+
+## What is Feature Importance?
+
+When a tree splits on a feature, it reduces the impurity (or error) at that node. Summing this reduction across every split where a feature is used gives its **total contribution** to the model's predictive power. Features that are never used in any split have zero importance.
+
+As described by Boehmke & Greenwell **[2]**:
+
+> *"To measure feature importance, the reduction in the loss function (e.g., SSE) attributed to each variable at each split is tabulated. In some instances, a single variable could be used multiple times in a tree; consequently, the total reduction in the loss function across all splits by a variable are summed up and used as the total feature importance."*
+
+This means **a single feature can appear in multiple splits** — and its importance accumulates across all of them.
+
+## Feature Importance for Classification (Iris)
+
+```{r feature-importance-class, fig.height=4}
+# Build a full classification tree on all iris features
+iris_full_tree <- rpart(Species ~ ., data = iris, method = "class",
+                        control = rpart.control(cp = 0.001))
+
+# rpart stores total impurity reduction per feature in $variable.importance
+imp <- iris_full_tree$variable.importance
+imp_df <- data.frame(
+  Feature    = names(imp),
+  Importance = as.numeric(imp)
+) |> arrange(Importance)
+
+ggplot(imp_df, aes(x = reorder(Feature, Importance), y = Importance)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title    = "Feature Importance — Iris Classification Tree",
+       subtitle  = "Total reduction in Gini impurity attributed to each feature",
+       x = "Feature", y = "Importance (Total Gini Reduction)") +
+  theme_minimal(base_size = 13)
+```
+
+```{r feature-importance-table}
+# Access the raw importance values
+imp <- iris_full_tree$variable.importance
+imp_df <- data.frame(
+  Feature    = names(imp),
+  Importance = round(imp, 2),
+  Pct        = round(100 * imp / sum(imp), 1)
+) |> arrange(desc(Importance))
+
+knitr::kable(imp_df, col.names = c("Feature", "Importance (Gini Reduction)", "% of Total"),
+             caption = "Feature importance values from the iris classification tree")
+```
+
+**Interpretation:** `Petal.Length` and `Petal.Width` dominate — which matches what we saw in the decision boundaries plot, where petal measurements drew clear, clean boundaries between species. `Sepal.Length` and `Sepal.Width` contribute very little.
+
+## Feature Importance for Regression
+
+```{r feature-importance-reg, fig.height=4}
+# Regression tree on mtcars: predict fuel efficiency (mpg) from car attributes
+reg_tree_cars <- rpart(mpg ~ ., data = mtcars, method = "anova",
+                       control = rpart.control(cp = 0.01))
+
+imp_reg <- reg_tree_cars$variable.importance
+imp_reg_df <- data.frame(
+  Feature    = names(imp_reg),
+  Importance = as.numeric(imp_reg)
+) |> arrange(Importance)
+
+ggplot(imp_reg_df, aes(x = reorder(Feature, Importance), y = Importance)) +
+  geom_col(fill = "coral") +
+  coord_flip() +
+  labs(title    = "Feature Importance — MPG Regression Tree (mtcars)",
+       subtitle  = "Total reduction in SSE attributed to each feature",
+       x = "Feature", y = "Importance (Total SSE Reduction)") +
+  theme_minimal(base_size = 13)
+```
+
+```{r reg-tree-plot, fig.height=4}
+rpart.plot(reg_tree_cars, type = 4, extra = 101, box.palette = "RdYlGn",
+           main = "Regression Tree: Predicting MPG (mtcars)")
+```
+
+**Key insight from the tree:** `cyl` (number of cylinders) is the dominant first split, and `disp` (engine displacement) refines predictions further — consistent with automotive intuition that engine size is the primary driver of fuel efficiency.
+
+> **Note:** Decision trees perform **automatic feature selection** — features that provide no impurity reduction simply never appear in the tree, and their importance is zero. Unlike regression models, you do not need to manually remove uninformative features. **[2]**
+
+---
+
+# Part 11: Partial Dependence Plots
+
+## What are Partial Dependence Plots?
+
+Feature importance tells you *which* features matter. **Partial Dependence Plots (PDPs)** tell you *how* a feature affects the prediction — its direction and shape of influence — while marginalizing (averaging) over all other features.
+
+For a feature $x_j$, the partial dependence function is:
+
+$$\hat{f}_{x_j}(x_j) = \frac{1}{n} \sum_{i=1}^{n} \hat{f}(x_j, \mathbf{x}_{i,-j})$$
+
+Where $\mathbf{x}_{i,-j}$ means "all features except $x_j$, held at their observed values."
+
+In plain terms: for each possible value of $x_j$, we predict on the entire dataset with that value forced, and average the predictions. This isolates the marginal effect of $x_j$.
+
+## PDP for the Regression Tree (mtcars)
+
+```{r pdp-regression, fig.height=4, fig.width=10}
+# Manual PDP: for each unique value of a feature, force that value across
+# all observations and average the predictions
+manual_pdp <- function(model, data, feature, grid_n = 50) {
+  vals <- seq(min(data[[feature]]), max(data[[feature]]), length.out = grid_n)
+  yhat <- sapply(vals, function(v) {
+    d_temp <- data
+    d_temp[[feature]] <- v
+    mean(predict(model, d_temp))
+  })
+  data.frame(x = vals, yhat = yhat)
+}
+
+pd_cyl  <- manual_pdp(reg_tree_cars, mtcars, "cyl",  grid_n = 30)
+pd_disp <- manual_pdp(reg_tree_cars, mtcars, "disp", grid_n = 60)
+
+p_cyl <- ggplot(pd_cyl, aes(x = x, y = yhat)) +
+  geom_step(color = "coral", linewidth = 1.4) +
+  geom_point(color = "coral", size = 2) +
+  labs(title    = "PDP: Number of Cylinders",
+       subtitle  = "Avg predicted MPG with cyl forced to each value",
+       x = "cyl (cylinders)", y = "Predicted MPG") +
+  theme_minimal(base_size = 12)
+
+p_disp <- ggplot(pd_disp, aes(x = x, y = yhat)) +
+  geom_step(color = "steelblue", linewidth = 1.4) +
+  labs(title    = "PDP: Engine Displacement",
+       subtitle  = "Step-wise pattern = tree's rigid rectangular regions",
+       x = "disp (cubic inches)", y = "Predicted MPG") +
+  theme_minimal(base_size = 12)
+
+grid.arrange(p_cyl, p_disp, ncol = 2)
+```
+
+**Reading the PDPs:**
+
+- **`cyl` (cylinders)**: Clear step-function — 4-cylinder cars average ~26 MPG, 6-cylinder ~20 MPG, 8-cylinder ~15 MPG. The tree learned three distinct prediction regions.
+- **`disp` (displacement)**: As displacement increases, predicted MPG drops sharply up to ~200 cu.in., then levels off. The step-function shape is the signature of a tree model — compare to a smooth LOESS curve that a regression model would produce.
+
+## PDP for the Classification Tree (Iris)
+
+```{r pdp-classification, fig.height=4, fig.width=10}
+# Manual PDP for classification: average P(virginica) with one feature forced
+manual_pdp_class <- function(model, data, feature, class_name, grid_n = 60) {
+  vals <- seq(min(data[[feature]]), max(data[[feature]]), length.out = grid_n)
+  yhat <- sapply(vals, function(v) {
+    d_temp <- data
+    d_temp[[feature]] <- v
+    mean(predict(model, d_temp, type = "prob")[, class_name])
+  })
+  data.frame(x = vals, yhat = yhat)
+}
+
+pd_petal_l <- manual_pdp_class(iris_full_tree, iris, "Petal.Length", "virginica")
+pd_petal_w <- manual_pdp_class(iris_full_tree, iris, "Petal.Width",  "virginica")
+
+p1 <- ggplot(pd_petal_l, aes(x = x, y = yhat)) +
+  geom_step(color = "#E15759", linewidth = 1.4) +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray50") +
+  labs(title    = "PDP: Petal Length → P(virginica)",
+       subtitle  = "Probability flips from ~0 to ~1 near 5 cm",
+       x = "Petal Length (cm)", y = "P(Species = virginica)") +
+  ylim(0, 1) + theme_minimal(base_size = 12)
+
+p2 <- ggplot(pd_petal_w, aes(x = x, y = yhat)) +
+  geom_step(color = "#4E79A7", linewidth = 1.4) +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray50") +
+  labs(title    = "PDP: Petal Width → P(virginica)",
+       subtitle  = "Probability rises sharply above 1.75 cm",
+       x = "Petal Width (cm)", y = "P(Species = virginica)") +
+  ylim(0, 1) + theme_minimal(base_size = 12)
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+## 2D Interaction PDP
+
+PDPs can also show the **joint effect** of two features simultaneously — useful for detecting interaction effects:
+
+```{r pdp-2d, fig.height=5}
+# Manual 2D PDP: grid over both features, average P(virginica) across all obs
+pl_grid <- seq(min(iris$Petal.Length), max(iris$Petal.Length), length.out = 40)
+pw_grid <- seq(min(iris$Petal.Width),  max(iris$Petal.Width),  length.out = 40)
+grid_2d <- expand.grid(Petal.Length = pl_grid, Petal.Width = pw_grid)
+
+grid_2d$yhat <- apply(grid_2d, 1, function(row) {
+  d_temp <- iris
+  d_temp$Petal.Length <- row["Petal.Length"]
+  d_temp$Petal.Width  <- row["Petal.Width"]
+  mean(predict(iris_full_tree, d_temp, type = "prob")[, "virginica"])
+})
+
+ggplot(grid_2d, aes(x = Petal.Length, y = Petal.Width, fill = yhat)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "steelblue", mid = "white", high = "tomato",
+                       midpoint = 0.5, name = "P(virginica)") +
+  labs(title    = "2D Partial Dependence: Petal Length × Petal Width",
+       subtitle  = "Joint marginal effect on P(Species = virginica)",
+       x = "Petal Length (cm)", y = "Petal Width (cm)") +
+  theme_minimal(base_size = 13)
+```
+
+**Key limitation highlighted by Boehmke & Greenwell [2]:** Decision trees produce **rigid, non-smooth prediction surfaces** — the step-function nature is clearly visible in the 2D PDP as hard rectangular boundaries. MARS and neural networks produce smoother surfaces. This is a fundamental characteristic of tree-based models.
+
+## Feature Importance vs. Partial Dependence — Summary
+
+| Tool | Answers | Shows Direction? | Shows Shape? |
+|---|---|---|---|
+| **Feature Importance** | *Which features matter?* | No | No |
+| **PDP (1D)** | *How does feature X affect predictions?* | Yes | Yes |
+| **PDP (2D)** | *How do X and Y interact?* | Yes | Yes |
+
+> Always use both together: importance tells you *which* features to investigate; PDPs tell you *how* they behave. **[2]**
+
+---
+
 # Knowledge Check
 
 Test your understanding with these questions from the textbook:
@@ -711,3 +929,29 @@ cat("3. DECREASE max_depth — a shallower tree has less flexibility to overfit.
 cat("4. NO — Decision Trees do not use distances or gradients, so feature scale is irrelevant.\n")
 cat("5. ~11.7 hours — 10x more data → 10 * log2(10M)/log2(1M) ≈ 11.7x longer.\n")
 ```
+
+**6.** You build a decision tree on a dataset and notice that `Age` is used in 5 different splits while `Income` is used in only 1. Which feature will have higher importance, and why?
+
+**7.** A PDP for a regression tree on feature `x` shows a flat line at ŷ = 42 from x = 10 to x = 50, then a sharp jump to ŷ = 65 at x = 51, then flat again. What does this tell you about the tree's split structure?
+
+---
+
+# References
+
+The following references were used in the development of this tutorial. Citations are formatted in **IEEE style**.
+
+---
+
+**[1]** A. Géron, *Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow*, 2nd ed. Sebastopol, CA, USA: O'Reilly Media, 2019.
+
+**[2]** B. C. Boehmke and B. M. Greenwell, *Hands-On Machine Learning with R*. Boca Raton, FL, USA: CRC Press, 2020. [Online]. Available: https://bradleyboehmke.github.io/HOML/DT.html
+
+**[3]** L. Breiman, J. H. Friedman, R. A. Olshen, and C. J. Stone, *Classification and Regression Trees*. Boca Raton, FL, USA: Chapman & Hall/CRC, 1984.
+
+**[4]** T. M. Therneau and E. J. Atkinson, "An Introduction to Recursive Partitioning Using the RPART Routines," Mayo Foundation, Rochester, MN, USA, Tech. Rep., 1997.
+
+**[5]** B. M. Greenwell, "pdp: An R Package for Constructing Partial Dependence Plots," *The R Journal*, vol. 9, no. 1, pp. 421–436, 2017. *(Partial dependence methodology implemented manually in this tutorial via grid prediction.)*
+
+**[6]** B. M. Greenwell and B. C. Boehmke, "Variable Importance Plots — An Introduction to the vip Package," *The R Journal*, vol. 12, no. 1, pp. 343–366, 2020. *(Feature importance extracted directly from `rpart`'s `$variable.importance` field.)*
+
+**[7]** R. A. Fisher, "The Use of Multiple Measurements in Taxonomic Problems," *Annals of Eugenics*, vol. 7, no. 2, pp. 179–188, 1936.
