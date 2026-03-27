@@ -1,0 +1,713 @@
+---
+title: "Week 02: Decision Trees"
+author: "Ziyuan Huang"
+date: "Last Updated: `r format(Sys.Date(), '%B %d, %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: cosmo
+    highlight: tango
+    code_folding: show
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 6
+)
+
+set.seed(123)
+```
+
+# Introduction
+
+Decision Trees are one of the most intuitive and powerful models in machine learning. They are versatile — capable of performing both classification and regression — and they form the fundamental building blocks for more advanced algorithms like **Random Forests**.
+
+Think of a Decision Tree like a game of "20 Questions." You start with a question about your data, and the answer leads you to the next question, until you arrive at a final prediction.
+
+> *"Decision Trees are intuitive, and their decisions are easy to interpret. Such models are often called **white box models**. In contrast, Random Forests or neural networks are generally considered **black box models** — they make great predictions, but it is usually hard to explain in simple terms why a particular prediction was made."*
+> — Aurélien Géron, *Hands-On Machine Learning*
+
+**Learning Objectives:**
+
+By the end of this tutorial, you will be able to:
+
+1. Understand the core structure of a Decision Tree (nodes, branches, leaves).
+2. Explain how the **CART algorithm** chooses splits using **Gini Impurity** and **Entropy**.
+3. Build, visualize, and interpret a Decision Tree in R.
+4. Estimate **class probabilities** from a tree.
+5. Visualize **decision boundaries** to understand what a tree has learned.
+6. Understand **overfitting** and apply **regularization** (pruning, `cp`, `max_depth`, `minsplit`).
+7. Build and regularize a **regression tree**.
+8. Demonstrate tree **instability** and understand why it motivates ensemble methods.
+
+## Required Packages
+
+```{r load-packages}
+# install.packages(c("rpart", "rpart.plot", "tidyverse"))
+
+library(rpart)
+library(rpart.plot)
+library(tidyverse)
+library(gridExtra)
+```
+
+---
+
+# Part 1: The Anatomy of a Decision Tree
+
+A Decision Tree is a flowchart-like structure. Every tree has three types of nodes:
+
+| Node Type | Role |
+|---|---|
+| **Root Node** | The very first question — applied to the entire dataset |
+| **Internal Node** | A follow-up question applied to a subset of the data |
+| **Leaf Node** | A terminal node — gives the final prediction (class or value) |
+
+Each node stores four key pieces of information:
+
+- **The splitting rule** — which feature and threshold was used (e.g., `Petal.Length < 2.45`)
+- **`samples`** — how many training instances reached this node
+- **`value`** — how many instances of each class are at this node
+- **`gini`** — the impurity of this node (0 = perfectly pure)
+
+Let's build our first tree using a classic teaching dataset: predicting whether to play outside based on weather.
+
+```{r create-play-data}
+play_data <- data.frame(
+  Outlook     = c("Sunny","Sunny","Overcast","Rainy","Rainy","Rainy",
+                  "Overcast","Sunny","Sunny","Rainy","Sunny","Overcast","Overcast","Rainy"),
+  Temperature = c("Hot","Hot","Hot","Mild","Cool","Cool","Cool",
+                  "Mild","Cool","Mild","Mild","Mild","Hot","Mild"),
+  Humidity    = c("High","High","High","High","Normal","Normal","Normal",
+                  "High","Normal","Normal","Normal","High","Normal","High"),
+  Windy       = c(FALSE,TRUE,FALSE,FALSE,FALSE,TRUE,TRUE,
+                  FALSE,FALSE,FALSE,TRUE,TRUE,FALSE,TRUE),
+  Play        = c("No","No","Yes","Yes","Yes","No","Yes",
+                  "No","Yes","Yes","Yes","Yes","Yes","No")
+)
+knitr::kable(play_data, caption = "The 'Play Outside' Dataset (14 observations)")
+```
+
+```{r build-first-tree}
+# minsplit = 2 allows splits on this small 14-row teaching example
+# (default minsplit = 20 would prevent any splits)
+play_tree <- rpart(Play ~ ., data = play_data, method = "class",
+                   control = rpart.control(minsplit = 2))
+print(play_tree)
+```
+
+```{r plot-first-tree, fig.height=5}
+rpart.plot(play_tree,
+           type    = 4,
+           extra   = 101,
+           box.palette = "BuGn",
+           main    = "Decision Tree: Should We Play Outside?")
+```
+
+**How to read this tree:**
+
+- The **root node** shows the overall class distribution and asks the most informative first question.
+- Each **internal node** applies a yes/no test on a single feature. The left branch is always the "yes" (condition is TRUE) path; the right is "no."
+- Each **leaf node** gives the majority-class prediction among all training samples that arrived there. The numbers show: predicted class | probability | % of training data.
+- **A node's Gini score = 0** means it is perfectly pure — every sample in it belongs to one class.
+
+---
+
+# Part 2: How Trees Decide Where to Split — The CART Algorithm
+
+## The Core Idea: Impurity
+
+The tree must decide which feature and which threshold to use at each node. It does this by measuring **impurity** — how mixed the classes are within each resulting group. A good split creates child nodes that are as **pure** (unmixed) as possible.
+
+The algorithm used in `rpart` is **CART (Classification and Regression Trees)**. It is a **greedy algorithm**: at every node, it searches through every feature and every possible split threshold, picks the one that minimizes impurity in the two resulting child nodes, then repeats recursively.
+
+> CART does *not* look ahead. It picks the locally best split at each step without checking if a suboptimal split now might lead to a better tree later. This is why we must settle for a "reasonably good" solution rather than a guaranteed optimal one.
+
+## Gini Impurity
+
+The default impurity measure in CART is **Gini Impurity**:
+
+$$G_i = 1 - \sum_{k=1}^{n} p_{i,k}^2$$
+
+Where $p_{i,k}$ is the proportion of class $k$ instances at node $i$.
+
+- **Gini = 0**: Node is perfectly pure (all one class)
+- **Gini = 0.5**: Node is maximally impure (50/50 split between two classes)
+
+```{r gini-visualization, fig.height=4}
+calculate_gini <- function(p1) 1 - (p1^2 + (1 - p1)^2)
+
+gini_df <- data.frame(p = seq(0, 1, 0.01)) |>
+  mutate(gini = calculate_gini(p))
+
+ggplot(gini_df, aes(x = p, y = gini)) +
+  geom_line(color = "darkcyan", linewidth = 1.5) +
+  geom_point(aes(x = 0.5, y = 0.5), color = "red", size = 4) +
+  annotate("text", x = 0.5, y = 0.46, label = "Max Impurity (0.5)", color = "red", size = 4) +
+  annotate("text", x = 0.05, y = 0.04, label = "Pure\n(Gini = 0)", color = "darkgreen", size = 3.5) +
+  annotate("text", x = 0.95, y = 0.04, label = "Pure\n(Gini = 0)", color = "darkgreen", size = 3.5) +
+  labs(title = "Gini Impurity for a Two-Class Problem",
+       x = "Proportion of Class 'Yes'", y = "Gini Impurity") +
+  theme_minimal(base_size = 13)
+```
+
+## Entropy — An Alternative Impurity Measure
+
+**Entropy** is a second common impurity measure, borrowed from information theory. It measures the average *surprise* or uncertainty in a node:
+
+$$H_i = -\sum_{k=1}^{n} p_{i,k} \log_2(p_{i,k}) \quad (\text{terms where } p_{i,k} = 0 \text{ are set to 0})$$
+
+```{r gini-vs-entropy, fig.height=4}
+entropy_fn <- function(p) {
+  if (p == 0 | p == 1) return(0)
+  -(p * log2(p) + (1 - p) * log2(1 - p))
+}
+
+compare_df <- data.frame(p = seq(0.001, 0.999, 0.001)) |>
+  mutate(
+    Gini    = calculate_gini(p),
+    Entropy = sapply(p, entropy_fn) / 2  # scaled to [0,0.5] for visual comparison
+  ) |>
+  pivot_longer(c(Gini, Entropy), names_to = "Measure", values_to = "Value")
+
+ggplot(compare_df, aes(x = p, y = Value, color = Measure)) +
+  geom_line(linewidth = 1.4) +
+  scale_color_manual(values = c("darkcyan", "coral")) +
+  labs(title = "Gini Impurity vs. Entropy (Entropy scaled by ½ for comparison)",
+       x = "Proportion of Positive Class", y = "Impurity Value",
+       caption = "Both measures peak at 0.5 (maximum disorder) and reach 0 at purity.") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "top")
+```
+
+**Which should you use?**
+
+| Property | Gini | Entropy |
+|---|---|---|
+| Computation | Faster (no logarithm) | Slightly slower |
+| Behavior | Tends to isolate the most frequent class in its own branch | Tends to produce slightly more balanced trees |
+| Default in `rpart` | Yes (`parms = list(split = "gini")`) | No (`parms = list(split = "information")`) |
+
+In practice, they produce very similar trees. Gini is the standard default.
+
+```{r gini-vs-entropy-tree, fig.height=5, fig.width=12}
+par(mfrow = c(1, 2))
+
+tree_gini <- rpart(Species ~ Petal.Length + Petal.Width, data = iris,
+                   method = "class", parms = list(split = "gini"))
+tree_entropy <- rpart(Species ~ Petal.Length + Petal.Width, data = iris,
+                      method = "class", parms = list(split = "information"))
+
+rpart.plot(tree_gini,    main = "Gini Impurity",  box.palette = "auto", extra = 101)
+rpart.plot(tree_entropy, main = "Entropy (Info Gain)", box.palette = "auto", extra = 101)
+
+par(mfrow = c(1, 1))
+```
+
+## The CART Cost Function: A Worked Example
+
+At every node, CART evaluates every possible split and picks the one minimizing this weighted cost:
+
+$$J(k, t_k) = \frac{m_{\text{left}}}{m} G_{\text{left}} + \frac{m_{\text{right}}}{m} G_{\text{right}}$$
+
+Let's calculate this manually for the first split in the iris tree (`Petal.Length < 2.45`):
+
+```{r cart-cost-calculation}
+# Reproduce the iris root split: Petal.Length < 2.45
+left  <- iris[iris$Petal.Length < 2.45, ]   # setosa only
+right <- iris[iris$Petal.Length >= 2.45, ]  # versicolor + virginica
+
+gini_node <- function(df) {
+  props <- table(df$Species) / nrow(df)
+  1 - sum(props^2)
+}
+
+m       <- nrow(iris)
+m_left  <- nrow(left)
+m_right <- nrow(right)
+G_left  <- gini_node(left)
+G_right <- gini_node(right)
+J       <- (m_left / m) * G_left + (m_right / m) * G_right
+
+cat("--- Root split: Petal.Length < 2.45 ---\n")
+cat(sprintf("Left  node:  %d samples, Gini = %.4f\n", m_left,  G_left))
+cat(sprintf("Right node:  %d samples, Gini = %.4f\n", m_right, G_right))
+cat(sprintf("Weighted cost J = (%.0f/%.0f)*%.4f + (%.0f/%.0f)*%.4f = %.4f\n",
+            m_left, m, G_left, m_right, m, G_right, J))
+cat("\nCART selects the (feature, threshold) pair that minimizes J.")
+```
+
+The left node is **pure** (Gini = 0): all 50 setosa fall there. The right node still has mixed versicolor and virginica, so CART will continue splitting it.
+
+---
+
+# Part 3: Estimating Class Probabilities
+
+A Decision Tree does not just predict a class — it also returns the **probability** that an instance belongs to each class. This probability is simply the proportion of training instances of that class in the leaf node where the prediction lands.
+
+```{r class-probabilities}
+# Build a classification tree on iris using Petal features only
+iris_tree <- rpart(Species ~ Petal.Length + Petal.Width,
+                   data = iris, method = "class")
+
+# --- Hard class prediction ---
+new_flower <- data.frame(Petal.Length = 5.0, Petal.Width = 1.5)
+pred_class  <- predict(iris_tree, new_flower, type = "class")
+pred_prob   <- predict(iris_tree, new_flower, type = "prob")
+
+cat("New flower: Petal.Length = 5.0 cm, Petal.Width = 1.5 cm\n\n")
+cat("Predicted class:", as.character(pred_class), "\n\n")
+cat("Class probabilities:\n")
+print(round(pred_prob, 4))
+```
+
+```{r probability-heatmap, fig.height=5}
+# Create a prediction grid over the petal feature space
+pl_range <- seq(0.5, 7.5, length.out = 200)
+pw_range <- seq(0.0, 2.8, length.out = 200)
+grid     <- expand.grid(Petal.Length = pl_range, Petal.Width = pw_range)
+
+# Probability of being virginica
+grid$prob_virginica <- predict(iris_tree, grid, type = "prob")[, "virginica"]
+
+ggplot(grid, aes(x = Petal.Length, y = Petal.Width, fill = prob_virginica)) +
+  geom_tile() +
+  geom_point(data = iris, aes(x = Petal.Length, y = Petal.Width,
+             shape = Species, fill = NULL), size = 2, alpha = 0.8) +
+  scale_fill_gradient2(low = "steelblue", mid = "white", high = "tomato",
+                       midpoint = 0.5, name = "P(virginica)") +
+  scale_shape_manual(values = c(21, 22, 24)) +
+  labs(title = "Class Probability Map: P(Iris virginica)",
+       subtitle = "Color shows probability of virginica at each point in feature space",
+       x = "Petal Length (cm)", y = "Petal Width (cm)") +
+  theme_minimal(base_size = 13)
+```
+
+Notice that the probability is **constant within each rectangular region** — it jumps only at the split boundaries. This is fundamental to how trees make predictions: every point in the same leaf gets exactly the same probability vector.
+
+---
+
+# Part 4: Decision Boundaries
+
+One of the most revealing ways to understand what a decision tree has learned is to visualize its **decision boundaries** — the lines that separate predicted classes in feature space.
+
+Because CART splits on a single feature at a time, all boundaries are **axis-aligned rectangles**. This is an important limitation: if the true boundary is diagonal, the tree approximates it with a "staircase" of right-angle cuts.
+
+```{r decision-boundaries, fig.height=5}
+# Grid prediction for all three species
+grid$pred_class <- predict(iris_tree, grid, type = "class")
+
+ggplot() +
+  geom_tile(data = grid,
+            aes(x = Petal.Length, y = Petal.Width, fill = pred_class),
+            alpha = 0.3) +
+  geom_point(data = iris,
+             aes(x = Petal.Length, y = Petal.Width,
+                 color = Species, shape = Species),
+             size = 2.5, alpha = 0.9) +
+  scale_fill_manual(values  = c("setosa" = "#4E79A7",
+                                "versicolor" = "#F28E2B",
+                                "virginica"  = "#E15759"),
+                    name = "Predicted") +
+  scale_color_manual(values = c("setosa" = "#4E79A7",
+                                "versicolor" = "#F28E2B",
+                                "virginica"  = "#E15759"),
+                     name = "Actual") +
+  labs(title = "Decision Boundaries of the Iris Tree",
+       subtitle = "Background color = predicted class  |  Points = actual class",
+       x = "Petal Length (cm)", y = "Petal Width (cm)") +
+  theme_minimal(base_size = 13)
+```
+
+```{r show-tree-alongside, fig.height=4}
+rpart.plot(iris_tree, type = 4, extra = 101, box.palette = "auto",
+           main = "The Iris Tree (Petal Features Only)")
+```
+
+**Tracing a prediction through the tree:**
+
+1. **Start** at the root. Is `Petal.Length < 2.45`?  → If YES → predict **setosa** (pure leaf, Gini = 0)
+2. If NO, go right. Is `Petal.Width < 1.75`?  → If YES → predict **versicolor**
+3. If NO → predict **virginica**
+
+The rectangular region in the top-left of the boundary plot (all blue, all setosa) corresponds exactly to the left branch of the root node.
+
+---
+
+# Part 5: Overfitting and Regularization
+
+## The Overfitting Problem
+
+If a tree is allowed to grow without any restriction, it will keep splitting until every leaf contains exactly one class — or even exactly one training instance. This is called **overfitting**: the tree memorizes the training data so precisely (including its noise) that it fails to generalize to new data.
+
+```{r overfit-demo, fig.height=5, fig.width=12}
+par(mfrow = c(1, 2))
+
+# Fully grown tree (default rpart already applies minimal stopping, but cp=0 grows more)
+full_tree   <- rpart(Species ~ ., data = iris, method = "class",
+                     control = rpart.control(cp = 0, minsplit = 2))
+pruned_tree <- rpart(Species ~ ., data = iris, method = "class")
+
+rpart.plot(full_tree,   main = "Fully Grown Tree (cp = 0)\nOverfits — too many splits", box.palette = "auto")
+rpart.plot(pruned_tree, main = "Default Tree (cp = 0.01)\nMore generalizable", box.palette = "auto")
+
+par(mfrow = c(1, 1))
+```
+
+## Regularization with the Complexity Parameter (cp)
+
+`rpart` uses a **complexity parameter (`cp`)** to penalize tree size. A split is only accepted if it improves the overall fit by at least `cp`. Larger `cp` → smaller, simpler tree.
+
+```{r plot-cp}
+full_iris_tree <- rpart(Species ~ ., data = iris, method = "class",
+                        control = rpart.control(cp = 0))
+plotcp(full_iris_tree)
+```
+
+```{r print-cp}
+printcp(full_iris_tree)
+```
+
+```{r prune-tree}
+# Select cp at the row with minimum cross-validated error
+best_cp <- full_iris_tree$cptable[which.min(full_iris_tree$cptable[, "xerror"]), "CP"]
+cat("Optimal cp selected:", round(best_cp, 4), "\n")
+
+pruned_iris_tree <- prune(full_iris_tree, cp = best_cp)
+
+rpart.plot(pruned_iris_tree,
+           main = "Pruned Iris Tree (Optimal cp)",
+           box.palette = "auto", extra = 101)
+```
+
+## Regularization with Structural Hyperparameters
+
+Beyond `cp`, `rpart` provides hyperparameters that directly constrain the tree's structure. These are often more interpretable than `cp`:
+
+| Parameter | What it controls | Effect of increasing |
+|---|---|---|
+| `max_depth` | Maximum levels from root to leaf | Smaller tree |
+| `minsplit` | Min samples needed to attempt a split | Fewer splits |
+| `minbucket` | Min samples required in any leaf | Fewer, larger leaves |
+| `max_leaf_nodes` | (via `maxdepth` in rpart) | Caps total leaves |
+
+```{r regularization-comparison, fig.height=10, fig.width=12}
+# Create a noisier, harder dataset using the moons-like concept with iris
+set.seed(42)
+n <- 200
+x1 <- c(rnorm(n/2, 2, 1), rnorm(n/2, 4, 1))
+x2 <- c(rnorm(n/2, 2, 1), rnorm(n/2, 4, 1))
+y  <- factor(ifelse(x1 + x2 + rnorm(n, 0, 0.5) < 6, "A", "B"))
+noisy_data <- data.frame(x1, x2, y)
+
+configs <- list(
+  list(label = "No restriction (cp=0)",    cp = 0,    minsplit = 2,  maxdepth = 30),
+  list(label = "max_depth = 2",            cp = 0,    minsplit = 2,  maxdepth = 2),
+  list(label = "minsplit = 30",            cp = 0,    minsplit = 30, maxdepth = 30),
+  list(label = "Balanced (cp=0.01, min=10)", cp = 0.01, minsplit = 10, maxdepth = 30)
+)
+
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+
+for (cfg in configs) {
+  t <- rpart(y ~ x1 + x2, data = noisy_data, method = "class",
+             control = rpart.control(cp = cfg$cp, minsplit = cfg$minsplit,
+                                     maxdepth = cfg$maxdepth))
+  grid2 <- expand.grid(x1 = seq(min(x1)-0.5, max(x1)+0.5, length.out = 150),
+                        x2 = seq(min(x2)-0.5, max(x2)+0.5, length.out = 150))
+  grid2$pred <- predict(t, grid2, type = "class")
+
+  plot(grid2$x1, grid2$x2,
+       col = ifelse(grid2$pred == "A", "#AED6F1", "#FADBD8"),
+       pch = 15, cex = 0.4, xlab = "x1", ylab = "x2",
+       main = sprintf("%s\n(leaves: %d)", cfg$label, sum(t$frame$var == "<leaf>")))
+  points(noisy_data$x1, noisy_data$x2,
+         col   = ifelse(noisy_data$y == "A", "#1A5276", "#922B21"),
+         pch   = ifelse(noisy_data$y == "A", 16, 17),
+         cex   = 0.8)
+  legend("topright", legend = c("A","B"),
+         col = c("#1A5276","#922B21"), pch = c(16,17), cex = 0.7)
+}
+
+par(mfrow = c(1, 1))
+```
+
+**Reading the comparison:**
+
+- **No restriction** — the tree carves out tiny rectangular pockets, memorizing every training point. Every wrinkle in the boundary is noise being fit.
+- **max_depth = 2** — only 2 levels of splits. Very simple, may underfit complex patterns.
+- **minsplit = 30** — refuses to split any node with fewer than 30 samples. Reduces fragmentation.
+- **Balanced** — combines a small `cp` penalty with a minimum split count. Usually the best practical approach.
+
+---
+
+# Part 6: Instability — A Key Limitation
+
+Decision trees are **highly sensitive to small changes in the training data**. Remove a single outlier, and you may get a completely different tree structure. This is called **instability**, and it is one of the most important limitations to understand.
+
+```{r instability-demo, fig.height=5, fig.width=12}
+par(mfrow = c(1, 2))
+
+# Original iris tree
+tree_original <- rpart(Species ~ Petal.Length + Petal.Width,
+                       data = iris, method = "class")
+rpart.plot(tree_original, main = "Original Iris Tree\n(all 150 flowers)",
+           box.palette = "auto", extra = 101)
+
+# Remove just ONE borderline versicolor flower
+borderline_idx <- which(iris$Petal.Length == max(iris$Petal.Length[iris$Species == "versicolor"]) &
+                          iris$Species == "versicolor")[1]
+iris_modified <- iris[-borderline_idx, ]
+tree_modified <- rpart(Species ~ Petal.Length + Petal.Width,
+                       data = iris_modified, method = "class")
+rpart.plot(tree_modified,
+           main = sprintf("Modified Tree\n(removed 1 borderline versicolor, n=%d)", nrow(iris_modified)),
+           box.palette = "auto", extra = 101)
+
+par(mfrow = c(1, 1))
+```
+
+```{r instability-boundaries, fig.height=5, fig.width=12}
+grid_compare <- expand.grid(
+  Petal.Length = seq(0.5, 7.5, length.out = 300),
+  Petal.Width  = seq(0.0, 2.8, length.out = 300)
+)
+grid_compare$original <- predict(tree_original,  grid_compare, type = "class")
+grid_compare$modified <- predict(tree_modified, grid_compare, type = "class")
+
+p1 <- ggplot() +
+  geom_tile(data = grid_compare,
+            aes(x = Petal.Length, y = Petal.Width, fill = original), alpha = 0.35) +
+  geom_point(data = iris, aes(x = Petal.Length, y = Petal.Width, color = Species, shape = Species),
+             size = 2) +
+  scale_fill_manual(values = c("setosa"="#4E79A7","versicolor"="#F28E2B","virginica"="#E15759"),
+                    name="Predicted") +
+  scale_color_manual(values = c("setosa"="#4E79A7","versicolor"="#F28E2B","virginica"="#E15759")) +
+  labs(title = "Original (n=150)", x = "Petal Length", y = "Petal Width") +
+  theme_minimal() + theme(legend.position = "bottom")
+
+p2 <- ggplot() +
+  geom_tile(data = grid_compare,
+            aes(x = Petal.Length, y = Petal.Width, fill = modified), alpha = 0.35) +
+  geom_point(data = iris_modified,
+             aes(x = Petal.Length, y = Petal.Width, color = Species, shape = Species), size = 2) +
+  scale_fill_manual(values = c("setosa"="#4E79A7","versicolor"="#F28E2B","virginica"="#E15759"),
+                    name="Predicted") +
+  scale_color_manual(values = c("setosa"="#4E79A7","versicolor"="#F28E2B","virginica"="#E15759")) +
+  labs(title = "After Removing 1 Flower (n=149)", x = "Petal Length", y = "Petal Width") +
+  theme_minimal() + theme(legend.position = "bottom")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+Even removing a single borderline observation can shift split thresholds and reorganize entire branches. This is why single decision trees are rarely used in production — **Random Forests** overcome this by averaging predictions across hundreds of trees built on random subsets of the data, making the ensemble much more stable.
+
+---
+
+# Part 7: Regression Trees
+
+## How Regression Trees Work
+
+Regression trees follow the same CART logic, but with two key changes:
+
+1. **Splitting criterion**: Instead of minimizing Gini impurity, CART minimizes the **Mean Squared Error (MSE)** in the child nodes:
+
+$$J(k, t_k) = \frac{m_{\text{left}}}{m} \text{MSE}_{\text{left}} + \frac{m_{\text{right}}}{m} \text{MSE}_{\text{right}}$$
+
+2. **Leaf prediction**: The prediction is the **mean** of all training values that fall into that leaf — a single constant for the entire region.
+
+## Building a Regression Tree
+
+```{r create-regression-data}
+x <- seq(0, 10, by = 0.1)
+y <- sin(x) + rnorm(length(x), sd = 0.3)
+regression_data <- data.frame(x, y)
+
+ggplot(regression_data, aes(x = x, y = y)) +
+  geom_point(alpha = 0.6, color = "steelblue") +
+  geom_line(aes(y = sin(x)), color = "black", linewidth = 0.8, linetype = "dashed") +
+  labs(title = "Noisy Sine Wave — Our Regression Target",
+       subtitle = "Dashed line = true underlying sine function",
+       x = "x", y = "y") +
+  theme_minimal(base_size = 13)
+```
+
+```{r build-regression-tree}
+regression_tree <- rpart(y ~ x, data = regression_data, method = "anova")
+regression_data$predicted_y <- predict(regression_tree, regression_data)
+
+ggplot(regression_data, aes(x = x, y = y)) +
+  geom_point(alpha = 0.4, color = "gray50") +
+  geom_step(aes(y = predicted_y), color = "red", linewidth = 1.2) +
+  geom_line(aes(y = sin(x)), color = "black", linewidth = 0.8, linetype = "dashed") +
+  labs(title    = "Default Regression Tree Predictions",
+       subtitle  = "Red steps = tree prediction  |  Dashed = true sine function",
+       x = "x", y = "y") +
+  theme_minimal(base_size = 13)
+```
+
+The tree approximates the smooth curve with **step-wise constant values** — one constant per leaf region.
+
+## Overfitting vs. Underfitting in Regression Trees
+
+```{r regression-depth-comparison, fig.height=10}
+depths <- c(1, 3, 6, 15)
+plots  <- list()
+
+for (d in depths) {
+  t <- rpart(y ~ x, data = regression_data, method = "anova",
+             control = rpart.control(maxdepth = d, cp = 0))
+  regression_data[[paste0("pred_d", d)]] <- predict(t, regression_data)
+  n_leaves <- sum(t$frame$var == "<leaf>")
+
+  plots[[as.character(d)]] <- ggplot(regression_data, aes(x = x)) +
+    geom_point(aes(y = y), alpha = 0.3, color = "gray50") +
+    geom_step(aes(y = .data[[paste0("pred_d", d)]]), color = "red", linewidth = 1) +
+    geom_line(aes(y = sin(x)), color = "black", linewidth = 0.7, linetype = "dashed") +
+    labs(title    = sprintf("max_depth = %d  (%d leaves)", d, n_leaves),
+         subtitle = if (d <= 2) "Underfitting" else if (d >= 10) "Overfitting" else "Good fit",
+         x = "x", y = "y") +
+    theme_minimal(base_size = 11)
+}
+
+gridExtra::grid.arrange(grobs = plots, ncol = 2)
+```
+
+| `max_depth` | Behavior |
+|---|---|
+| 1 | Extreme underfitting — only one split, two constants |
+| 3 | Reasonable approximation — captures the main waves |
+| 6 | Good fit — tracks the curve without chasing noise |
+| 15 | Severe overfitting — interpolates individual noisy points |
+
+## The CART Cost Function in Action for Regression
+
+```{r regression-mse-calculation}
+# Show MSE calculation for a candidate split in the regression tree
+split_point <- 5.0
+left_y  <- regression_data$y[regression_data$x <  split_point]
+right_y <- regression_data$y[regression_data$x >= split_point]
+
+mse_node <- function(vals) mean((vals - mean(vals))^2)
+
+m       <- nrow(regression_data)
+J_split <- (length(left_y)/m) * mse_node(left_y) + (length(right_y)/m) * mse_node(right_y)
+
+cat("--- Candidate split: x < 5.0 ---\n")
+cat(sprintf("Left  region: %d points, mean=%.3f, MSE=%.4f\n",
+            length(left_y),  mean(left_y),  mse_node(left_y)))
+cat(sprintf("Right region: %d points, mean=%.3f, MSE=%.4f\n",
+            length(right_y), mean(right_y), mse_node(right_y)))
+cat(sprintf("Weighted cost J = %.4f\n", J_split))
+cat("\nCART evaluates this cost for every possible x threshold and picks the minimum.")
+```
+
+---
+
+# Part 8: Advantages and Disadvantages
+
+## Advantages
+
+| Advantage | Why it matters |
+|---|---|
+| **White box model** | Every decision is traceable — you can follow the exact path from input to prediction. Unlike neural networks, you can explain a tree's decision to a non-technical stakeholder. |
+| **No feature scaling needed** | Trees split on individual feature thresholds, so standardization or normalization is irrelevant. |
+| **Handles mixed data types** | Categorical and numerical features can live in the same tree without preprocessing. |
+| **Non-linear patterns** | Trees are not limited to linear boundaries — they can model complex, non-monotonic relationships. |
+| **Fast prediction** | Prediction is O(log₂ m) — just traversing from root to leaf. Very efficient even for large datasets. |
+| **Built-in feature selection** | Features that don't improve purity are simply never used. The tree implicitly selects the most informative features. |
+
+## Disadvantages
+
+| Disadvantage | Details |
+|---|---|
+| **Overfitting** | Unconstrained trees memorize training noise. Requires careful regularization. |
+| **Instability** | Small data changes can completely restructure the tree. Random Forests solve this by averaging many trees. |
+| **Orthogonal boundaries only** | All splits are axis-aligned. Diagonal or curved true boundaries are approximated inefficiently with many steps. |
+| **Greedy algorithm** | CART picks the locally best split at each node, which is not guaranteed to produce the globally optimal tree (this is NP-Complete). |
+| **Biased toward high-cardinality features** | Features with many possible split points get more chances to be selected. Use `cp` and `minsplit` to mitigate this. |
+
+## Computational Complexity
+
+| Operation | Complexity |
+|---|---|
+| **Prediction** | O(log₂ m) — traverse from root to leaf |
+| **Training** | O(n × m log₂ m) — compare n features across m samples at each split |
+
+Decision trees are fast to predict and reasonably fast to train. The main cost is finding the best split at each node, which requires checking every feature at every possible threshold.
+
+---
+
+# Part 9: From Trees to Forests — A Preview
+
+The instability and overfitting tendency of single decision trees motivated the development of **Random Forests**: an ensemble of many trees, each built on a random subset of the data and a random subset of the features. The final prediction is the **majority vote** (classification) or **average** (regression) across all trees.
+
+```{r forest-intuition, fig.height=4}
+# Simulate what happens when we average 5 differently-sampled regression trees
+set.seed(42)
+n_trees  <- 5
+all_preds <- matrix(NA, nrow = nrow(regression_data), ncol = n_trees)
+
+for (i in seq_len(n_trees)) {
+  boot_idx <- sample(nrow(regression_data), replace = TRUE)
+  boot_dat <- regression_data[boot_idx, c("x", "y")]
+  t_i      <- rpart(y ~ x, data = boot_dat, method = "anova",
+                    control = rpart.control(maxdepth = 4, cp = 0))
+  all_preds[, i] <- predict(t_i, regression_data)
+}
+
+regression_data$forest_avg <- rowMeans(all_preds)
+
+ggplot(regression_data, aes(x = x)) +
+  geom_point(aes(y = y), alpha = 0.3, color = "gray60") +
+  geom_line(aes(y = sin(x)), color = "black", linewidth = 0.8, linetype = "dashed") +
+  geom_step(aes(y = predicted_y), color = "red",    linewidth = 0.8, alpha = 0.6) +
+  geom_line(aes(y = forest_avg),  color = "darkgreen", linewidth = 1.4) +
+  annotate("text", x = 8.5, y = 1.1,  label = "Single tree", color = "red",       size = 4) +
+  annotate("text", x = 8.5, y = 0.85, label = "Forest avg (5 trees)", color = "darkgreen", size = 4) +
+  annotate("text", x = 8.5, y = 0.6,  label = "True sine",   color = "black",     size = 4) +
+  labs(title    = "Single Tree vs. Forest Average",
+       subtitle  = "Averaging across trees smooths out the step-function artifact",
+       x = "x", y = "y") +
+  theme_minimal(base_size = 13)
+```
+
+The ensemble average is visibly smoother and closer to the true function than any single tree. This motivates **Week 3: Random Forests**.
+
+---
+
+# Knowledge Check
+
+Test your understanding with these questions from the textbook:
+
+**1.** What is the approximate depth of a Decision Tree trained *without restrictions* on a training set with 1 million instances?
+
+> *Hint: Trees are approximately balanced, so depth ≈ log₂(1,000,000) ≈ ?*
+
+**2.** Is a node's Gini impurity generally **lower** or **greater** than its parent's Gini impurity? Is it always the case, or just generally?
+
+**3.** Your Decision Tree is overfitting the training set. Should you try **increasing** or **decreasing** `max_depth`?
+
+**4.** Your Decision Tree is underfitting. Would **scaling the input features** help? Why or why not?
+
+**5.** If training takes 1 hour on 1 million instances, roughly how long would it take on 10 million instances?
+
+> *Hint: Training complexity is O(n × m log₂ m). How does this scale?*
+
+```{r knowledge-check-answers, echo=FALSE}
+cat("Answers (unhide to reveal):\n")
+cat("1. ~20 levels (log2(1,000,000) ≈ 20)\n")
+cat("2. Generally LOWER — CART minimizes child impurity. Always lower for training data,")
+cat(" but may not improve much if the gain is near zero.\n")
+cat("3. DECREASE max_depth — a shallower tree has less flexibility to overfit.\n")
+cat("4. NO — Decision Trees do not use distances or gradients, so feature scale is irrelevant.\n")
+cat("5. ~11.7 hours — 10x more data → 10 * log2(10M)/log2(1M) ≈ 11.7x longer.\n")
+```
