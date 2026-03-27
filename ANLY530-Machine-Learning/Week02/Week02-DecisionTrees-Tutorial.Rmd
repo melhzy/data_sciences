@@ -115,12 +115,58 @@ rpart.plot(play_tree,
            main    = "Decision Tree: Should We Play Outside?")
 ```
 
-**How to read this tree:**
+## What Do the Numbers Inside Each Node Mean?
 
-- The **root node** shows the overall class distribution and asks the most informative first question.
-- Each **internal node** applies a yes/no test on a single feature. The left branch is always the "yes" (condition is TRUE) path; the right is "no."
-- Each **leaf node** gives the majority-class prediction among all training samples that arrived there. The numbers show: predicted class | probability | % of training data.
-- **A node's Gini score = 0** means it is perfectly pure — every sample in it belongs to one class.
+Every node in the plot produced by `rpart.plot(..., extra = 101)` displays **three lines**:
+
+```
+        ┌─────────────┐
+        │     Yes     │  ← Line 1: Predicted class (majority class at this node)
+        │     5  9    │  ← Line 2: Class counts in alphabetical order (No=5, Yes=9)
+        │    100%     │  ← Line 3: % of total training data that reached this node
+        └─────────────┘
+```
+
+Let's trace each piece for the **root node** (`Yes | 5 9 | 100%`):
+
+| Line | Value | Meaning |
+|---|---|---|
+| **Predicted class** | `Yes` | The majority class: 9 Yes vs. 5 No, so the node predicts "Yes" |
+| **Class counts** | `5  9` | 5 observations of class "No" and 9 of class "Yes" (alphabetical order) |
+| **% of data** | `100%` | 14 out of 14 training instances pass through the root — always 100% |
+
+Now trace a **leaf node** (`No | 3 0 | 21%`):
+
+| Line | Value | Meaning |
+|---|---|---|
+| **Predicted class** | `No` | All samples here are "No" — a perfectly pure leaf |
+| **Class counts** | `3  0` | 3 "No" instances and 0 "Yes" instances |
+| **% of data** | `21%` | 3 out of 14 total training instances end up at this leaf (3/14 ≈ 21%) |
+
+**Branch direction:** The left branch always follows the condition printed above it (TRUE path); the right branch is FALSE. For example, the root splits on `Outlook = Rainy, Sunny` — observations where Outlook is Rainy or Sunny go **left**; Overcast goes **right**.
+
+**Node color:** In the `BuGn` palette, **darker green = higher confidence "Yes"**; **blue = "No"**. The shade intensity reflects how pure the node is — a perfectly pure leaf is solid-colored, a mixed node is lighter.
+
+**Key insight:** The percentages across all leaf nodes must add up to 100% — every training observation ends up in exactly one leaf. Checking this is a quick sanity test: 21% + 7% + 7% + 7% + 7% + 21% + 29% = 99% ≈ 100% (rounding).
+
+```{r node-numbers-demo, echo=FALSE}
+# Show the root node numbers explicitly
+cat("Root node breakdown:\n")
+cat("  Total observations:   ", nrow(play_data), "\n")
+cat("  Class 'No' count:     ", sum(play_data$Play == "No"),  "(", round(100*sum(play_data$Play=="No")/nrow(play_data)), "% )\n")
+cat("  Class 'Yes' count:    ", sum(play_data$Play == "Yes"), "(", round(100*sum(play_data$Play=="Yes")/nrow(play_data)), "% )\n")
+cat("  Predicted class:       Yes (majority)\n")
+cat("  Gini impurity:         1 - ((5/14)^2 + (9/14)^2) =",
+    round(1 - (5/14)^2 - (9/14)^2, 3), "\n")
+```
+
+**How to read this tree (summary):**
+
+- The **root node** (top) sees 100% of the data and makes the first split.
+- Each **internal node** applies a yes/no test. Left = condition TRUE; right = condition FALSE.
+- Each **leaf node** shows the final prediction. Its class counts and % tell you exactly which training samples land there and how pure the node is.
+- **A node with counts like `3 0`** is perfectly pure (Gini = 0) — ideal. **`1 1`** is maximally impure (Gini = 0.5).
+- The **% of data** at a leaf tells you how often that rule applies to your training set — small percentages mean the rule fires rarely and may be unreliable on new data.
 
 ---
 
