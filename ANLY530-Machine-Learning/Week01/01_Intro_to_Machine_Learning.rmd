@@ -22,7 +22,9 @@ knitr::opts_chunk$set(
   fig.width = 8,
   fig.height = 5
 )
+```
 
+```{r seeds, include=TRUE}
 library(seedhash)
 gen <- SeedHashGenerator$new("Week01 Introduction to Machine Learning - ANLY530")
 seeds <- gen$generate_seeds(10)
