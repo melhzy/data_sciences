@@ -23,7 +23,18 @@ knitr::opts_chunk$set(
   fig.height = 6
 )
 
-set.seed(42)
+# Deterministic seed via seedhash — reproducible across machines
+# Source: https://github.com/melhzy/seedhash
+if (!requireNamespace("seedhash", quietly = TRUE)) {
+  if (!requireNamespace("pak", quietly = TRUE)) {
+    install.packages("pak", repos = "https://r-lib.github.io/p/pak/stable/")
+  }
+  pak::pkg_install("github::melhzy/seedhash/R", ask = FALSE)
+}
+library(seedhash)
+gen <- SeedHashGenerator$new("ANLY530-Week03-RandomForest")
+MASTER_SEED <- gen$generate_seeds(1)
+set.seed(MASTER_SEED)
 ```
 
 # Introduction
@@ -61,8 +72,13 @@ pacman::p_load(
   rpart,
   rpart.plot,
   gridExtra,
-  gbm
+  gbm,
+  scales
 )
+```
+
+```{r seedhash-info, echo=FALSE, results='asis'}
+cat(sprintf("**Random Seed Source:** `seedhash` package — input string: `\"ANLY530-Week03-RandomForest\"` → seed: `%d`\n\n", MASTER_SEED))
 ```
 
 ---
@@ -138,7 +154,7 @@ data(iris)
 iris_2d <- iris[, c("Petal.Length", "Petal.Width", "Species")]
 
 # Train/test split (70/30)
-set.seed(42)
+set.seed(MASTER_SEED)
 idx <- sample(1:nrow(iris_2d), size = floor(0.7 * nrow(iris_2d)))
 train <- iris_2d[idx, ]
 test  <- iris_2d[-idx, ]
@@ -205,7 +221,7 @@ Instead of training different algorithms on the same data, **bagging** (Bootstra
 - **Pasting**: sample **without replacement**.
 
 ```{r bagging-diagram, echo=FALSE, fig.height=3, fig.width=8}
-set.seed(1)
+set.seed(MASTER_SEED)
 full_data <- 1:10
 par(mar = c(0, 0, 1, 0))
 plot(0, 0, type = "n", xlim = c(0, 10), ylim = c(0, 3), axes = FALSE,
@@ -237,6 +253,54 @@ $$P(\text{not selected in any draw}) = \left(1 - \frac{1}{m}\right)^m \xrightarr
 
 So each bootstrap sample leaves out about **37% of instances** — these are the **Out-of-Bag (OOB)** instances.
 
+### Visualizing the Bootstrap: Which Instances Go Where?
+
+The heatmap below shows a small example (20 training instances, 10 trees). Each cell is colored **blue** if instance $i$ is **in the bootstrap sample** for tree $j$, and **orange** if it is **OOB** (held-out for that tree).
+
+```{r bootstrap-heatmap, fig.height=4.5, fig.width=9}
+set.seed(MASTER_SEED)
+n_inst  <- 20   # training instances
+n_tr    <- 10   # trees to show
+
+# Build in-bag (1) vs OOB (0) matrix
+inbag_mat <- matrix(0L, nrow = n_inst, ncol = n_tr)
+for (j in 1:n_tr) {
+  selected <- sample(1:n_inst, n_inst, replace = TRUE)
+  inbag_mat[unique(selected), j] <- 1L
+}
+
+# Compute each instance's OOB count
+oob_counts <- rowSums(inbag_mat == 0)
+
+inbag_df <- as.data.frame(inbag_mat) %>%
+  mutate(Instance = 1:n_inst) %>%
+  pivot_longer(-Instance, names_to = "Tree", values_to = "Status") %>%
+  mutate(
+    Tree   = factor(as.integer(gsub("V", "", Tree))),
+    Status = factor(Status, levels = c(0, 1), labels = c("OOB (held-out)", "In-Bag (training)"))
+  )
+
+ggplot(inbag_df, aes(x = Tree, y = factor(Instance), fill = Status)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  scale_fill_manual(values = c("OOB (held-out)" = "#F28E2B", "In-Bag (training)" = "#4E79A7")) +
+  labs(
+    title = "Bootstrap Sample Composition Across Trees",
+    subtitle = sprintf("N=%d instances, %d trees — orange cells = OOB (never seen by that tree)",
+                       n_inst, n_tr),
+    x = "Tree Index", y = "Training Instance",
+    fill = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top",
+        axis.text.y = element_text(size = 8),
+        panel.grid = element_blank())
+```
+
+> **Key observations:**
+> - No instance is OOB for *all* trees — every instance is seen by *most* trees.
+> - On average, each tree sees ~63% of instances (blue) and skips ~37% (orange).
+> - Each tree's OOB instances form its **private validation set**. Averaging OOB predictions across all trees gives the **OOB error estimate** — free cross-validation with no extra data!
+
 ```{r oob-convergence, fig.height=4, fig.width=7}
 m_values <- seq(2, 500, by = 5)
 oob_frac  <- (1 - 1 / m_values)^m_values
@@ -258,7 +322,7 @@ ggplot(data.frame(m = m_values, oob = oob_frac), aes(x = m, y = oob)) +
 ## 2.3 Manual Bagging in R
 
 ```{r manual-bagging, fig.height=5, fig.width=10}
-set.seed(42)
+set.seed(MASTER_SEED)
 n_trees <- 200
 
 # Binary classification on iris: setosa vs non-setosa
@@ -312,6 +376,15 @@ ggplot(data.frame(n = 1:n_trees, acc = ensemble_acc), aes(x = n, y = acc)) +
 
 # Part 3: Random Forests — Decorrelated Trees
 
+```{r rf-data-prep, include=FALSE}
+# Shared train/test split used throughout Part 3–5
+set.seed(MASTER_SEED)
+data(iris)
+train_idx  <- sample(1:nrow(iris), floor(0.7 * nrow(iris)))
+iris_train <- iris[train_idx, ]
+iris_test  <- iris[-train_idx, ]
+```
+
 ## 3.1 From Bagging to Random Forests
 
 Bagging reduces **variance** (instability) by averaging many trees. But there's still a problem: if one or two features are very strong predictors, most trees will split on them first — making the trees **correlated** with each other. Correlated trees don't reduce variance as effectively.
@@ -321,6 +394,134 @@ Bagging reduces **variance** (instability) by averaging many trees. But there's 
 > At each split, only a **random subset of features** (typically $\sqrt{p}$ for classification, $p/3$ for regression) is considered as split candidates.
 
 This **decorrelates** the trees — even if Feature A is the best predictor overall, it won't dominate every tree, because sometimes it won't even be in the candidate set!
+
+### Visualizing Tree Diversity: Six Trees from the Same Forest
+
+Below we extract six individual trees from a trained Random Forest and plot them. Notice how each tree splits on **different features** and **different thresholds** — yet together they form a powerful ensemble.
+
+```{r tree-diversity, fig.height=10, fig.width=12}
+set.seed(MASTER_SEED)
+# Build a small RF on the 2-feature iris (petal only) for easy visualization
+iris_2feat <- iris[, c("Petal.Length", "Petal.Width", "Species")]
+train_2f   <- iris_2feat[train_idx, ]
+
+rf_small <- randomForest(
+  Species ~ .,
+  data       = train_2f,
+  ntree      = 100,
+  mtry       = 1,       # only 1 feature per split → maximum diversity
+  importance = FALSE,
+  keep.inbag = TRUE
+)
+
+# Extract and plot 6 individual trees
+par(mfrow = c(2, 3), mar = c(1, 1, 2, 1))
+for (tree_id in c(1, 5, 15, 30, 60, 100)) {
+  tree_df <- getTree(rf_small, k = tree_id, labelVar = TRUE)
+  n_leaves <- sum(tree_df$status == -1)
+  
+  # Plot as a simple rpart-style tree using rpart on the bootstrap sample
+  boot_obs <- which(rf_small$inbag[, tree_id] > 0)
+  if (length(unique(train_2f$Species[boot_obs])) > 1 && length(boot_obs) > 5) {
+    t_i <- rpart(Species ~ .,
+                 data    = train_2f[boot_obs, ],
+                 control = rpart.control(maxdepth = 3, minsplit = 2, cp = 0))
+    rpart.plot(t_i,
+               main        = sprintf("Tree #%d  (%d leaves)", tree_id, n_leaves),
+               type        = 2,
+               extra       = 104,
+               box.palette = "RdYlGn",
+               shadow.col  = "grey80",
+               cex         = 0.7)
+  }
+}
+par(mfrow = c(1, 1))
+```
+
+> **What to notice:** Every tree splits on different features and thresholds. Tree #1 might root on `Petal.Width`, while Tree #60 roots on `Petal.Length`. This **structural diversity** is what makes the ensemble more robust — correlated errors cancel out when averaged.
+
+### Tree-to-Tree Correlation: Bagging vs. Random Forests
+
+The power of RF over plain Bagging comes from **reducing inter-tree correlation**. When trees are correlated, the variance of the average is:
+
+$$\text{Var}\!\left(\bar{T}\right) = \rho \sigma^2 + \frac{1-\rho}{B}\sigma^2$$
+
+As $B \to \infty$, the second term vanishes but $\rho \sigma^2$ remains. **Lower correlation → lower ensemble variance.**
+
+```{r tree-correlation, fig.height=5, fig.width=11}
+set.seed(MASTER_SEED)
+n_trees_corr <- 30
+
+# Bagging: all 4 features at each split (mtry = 4)
+rf_bag <- randomForest(Species ~ ., data = iris_train, ntree = n_trees_corr,
+                       mtry = ncol(iris_train) - 1, importance = FALSE)
+
+# RF: sqrt(4) = 2 features per split
+rf_rf  <- randomForest(Species ~ ., data = iris_train, ntree = n_trees_corr,
+                       mtry = 2, importance = FALSE)
+
+# Get numeric predictions (1/2/3) for each tree via votes
+get_tree_preds <- function(rf_obj, newdata) {
+  # Use individual tree predictions via predict(..., predict.all=TRUE)
+  p <- predict(rf_obj, newdata, predict.all = TRUE)
+  p$individual  # matrix: nrow = observations, ncol = ntree
+}
+
+bag_preds_mat <- get_tree_preds(rf_bag, iris_test)
+rf_preds_mat  <- get_tree_preds(rf_rf,  iris_test)
+
+# Pairwise correlation between tree prediction vectors
+compute_pair_corr <- function(pred_mat) {
+  n <- ncol(pred_mat)
+  cors <- matrix(NA, n, n)
+  for (i in 1:n) for (j in 1:n) {
+    cors[i,j] <- cor(as.numeric(pred_mat[,i]), as.numeric(pred_mat[,j]))
+  }
+  cors
+}
+
+bag_corr <- compute_pair_corr(bag_preds_mat)
+rf_corr  <- compute_pair_corr(rf_preds_mat)
+
+corr_to_df <- function(m, label) {
+  as.data.frame(m) %>%
+    mutate(Tree_i = 1:nrow(m)) %>%
+    pivot_longer(-Tree_i, names_to = "Tree_j_str", values_to = "Correlation") %>%
+    mutate(Tree_j = as.integer(gsub("V", "", Tree_j_str)), Model = label)
+}
+
+corr_df <- bind_rows(
+  corr_to_df(bag_corr, sprintf("Bagging (mtry=%d, all features)", ncol(iris_train)-1)),
+  corr_to_df(rf_corr,  "Random Forest (mtry=2)")
+)
+
+p_bag <- ggplot(filter(corr_df, Model == sprintf("Bagging (mtry=%d, all features)", ncol(iris_train)-1)),
+       aes(x = factor(Tree_i), y = factor(Tree_j), fill = Correlation)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#E15759", mid = "white", high = "#4E79A7",
+                       midpoint = 0.5, limits = c(0, 1)) +
+  labs(title = sprintf("Bagging (mtry=4)\nMean corr: %.3f",
+                       mean(bag_corr[upper.tri(bag_corr)])),
+       x = "Tree i", y = "Tree j") +
+  theme_minimal(base_size = 9) +
+  theme(axis.text = element_blank(), legend.position = "none")
+
+p_rf <- ggplot(filter(corr_df, Model == "Random Forest (mtry=2)"),
+       aes(x = factor(Tree_i), y = factor(Tree_j), fill = Correlation)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#E15759", mid = "white", high = "#4E79A7",
+                       midpoint = 0.5, limits = c(0, 1)) +
+  labs(title = sprintf("Random Forest (mtry=2)\nMean corr: %.3f",
+                       mean(rf_corr[upper.tri(rf_corr)])),
+       x = "Tree i", y = "Tree j", fill = "Correlation") +
+  theme_minimal(base_size = 9) +
+  theme(axis.text = element_blank())
+
+grid.arrange(p_bag, p_rf, ncol = 2,
+  top = "Inter-Tree Prediction Correlation — Bagging vs. Random Forest\n(Lower correlation = better variance reduction)")
+```
+
+> **Result:** Bagging trees are more correlated with each other (darker blue throughout) because they all tend to split on the same dominant features. RF trees have lower correlation — the random feature subsets force them to find different patterns, which is the source of RF's variance reduction advantage.
 
 ```{r rf-vs-bagging-diagram, echo=FALSE, fig.height=2.5, fig.width=9}
 par(mfrow = c(1, 2), mar = c(1, 1, 2, 1))
@@ -362,15 +563,7 @@ R's `randomForest` package is the standard tool. The key hyperparameters are:
 | `maxnodes` | Maximum number of leaf nodes | NULL (unlimited) |
 
 ```{r rf-basic}
-data(iris)
-set.seed(42)
-
-# Train-test split
-train_idx <- sample(1:nrow(iris), 0.7 * nrow(iris))
-iris_train <- iris[train_idx, ]
-iris_test  <- iris[-train_idx, ]
-
-# Fit Random Forest
+# Fit Random Forest (train_idx/iris_train/iris_test defined in rf-data-prep chunk)
 rf_iris <- randomForest(
   Species ~ .,
   data     = iris_train,
@@ -416,6 +609,104 @@ ggplot(oob_errors, aes(x = n_trees, y = error, color = class)) +
 
 > **How many trees do you need?** More trees never hurt accuracy (unlike deeper single trees), but they do increase computation time. A common strategy: plot the OOB error curve and stop when it flattens.
 
+## 3.2.1 Decision Boundary Evolution: 1 → 500 Trees
+
+This is one of the most revealing visualizations for understanding Random Forests. A single Decision Tree creates **hard, rectangular** boundaries. As we add more trees, the ensemble's boundary becomes **smoother and more accurate** — averaging out the idiosyncrasies of individual trees.
+
+```{r boundary-evolution, fig.height=9, fig.width=12}
+set.seed(MASTER_SEED)
+
+# Use 2-feature iris for a clean 2D boundary plot
+iris_2d_full <- iris[, c("Petal.Length", "Petal.Width", "Species")]
+train_2d <- iris_2d_full[train_idx, ]
+test_2d  <- iris_2d_full[-train_idx, ]
+
+# Create a fine prediction grid
+pl_rng <- range(iris$Petal.Length)
+pw_rng <- range(iris$Petal.Width)
+grid_2d <- expand.grid(
+  Petal.Length = seq(pl_rng[1] - 0.2, pl_rng[2] + 0.2, length.out = 150),
+  Petal.Width  = seq(pw_rng[1] - 0.1, pw_rng[2] + 0.1, length.out = 150)
+)
+
+# Build a large RF; we'll use predictions from the first k trees
+rf_big <- randomForest(
+  Species ~ .,
+  data    = train_2d,
+  ntree   = 500,
+  mtry    = 1,
+  importance = FALSE
+)
+
+# Boundary for a single decision tree
+single_dt <- rpart(Species ~ ., data = train_2d, control = rpart.control(maxdepth = 5))
+grid_2d$single_tree <- predict(single_dt, grid_2d, type = "class")
+
+# RF predictions at different ntree values (predict.all gives individual tree preds)
+all_preds <- predict(rf_big, grid_2d, predict.all = TRUE)$individual
+# all_preds: nrow(grid_2d) x 500 matrix of class codes (1/2/3)
+
+ntree_snapshots <- c(1, 5, 10, 50, 100, 500)
+species_levels  <- levels(iris$Species)
+
+snap_list <- lapply(ntree_snapshots, function(nt) {
+  subset_preds <- all_preds[, 1:nt, drop = FALSE]
+  maj_class <- apply(subset_preds, 1, function(row) {
+    tbl <- table(row)
+    as.integer(names(which.max(tbl)))
+  })
+  data.frame(
+    Petal.Length = grid_2d$Petal.Length,
+    Petal.Width  = grid_2d$Petal.Width,
+    pred_class   = factor(species_levels[maj_class], levels = species_levels),
+    ntree        = nt
+  )
+})
+boundary_df <- do.call(rbind, snap_list)
+
+palette_rf <- c(setosa = "#AED6F1", versicolor = "#A9DFBF", virginica = "#F9E79F")
+
+plots_bd <- lapply(ntree_snapshots, function(nt) {
+  bd_sub <- filter(boundary_df, ntree == nt)
+  acc_nt <- if (nt == 1) {
+    mean(predict(single_dt, test_2d, type = "class") == test_2d$Species)
+  } else {
+    preds_nt <- all_preds[1:nrow(test_2d), , drop = FALSE]
+    maj_test <- apply(all_preds[1:nrow(test_2d), 1:nt, drop = FALSE], 1, function(row) {
+      tbl <- table(row)
+      species_levels[as.integer(names(which.max(tbl)))]
+    })
+    mean(maj_test == as.character(test_2d$Species))
+  }
+  
+  ggplot() +
+    geom_tile(data = bd_sub, aes(x = Petal.Length, y = Petal.Width, fill = pred_class),
+              alpha = 0.65) +
+    geom_point(data = train_2d,
+               aes(x = Petal.Length, y = Petal.Width, color = Species, shape = Species),
+               size = 2) +
+    scale_fill_manual(values = palette_rf, guide = "none") +
+    scale_color_manual(values = c(setosa = "#1A5276", versicolor = "#1E8449",
+                                   virginica = "#922B21"), guide = "none") +
+    labs(
+      title    = if (nt == 1) "Single Tree" else sprintf("%d Trees", nt),
+      subtitle = sprintf("Test acc: %.1f%%", acc_nt * 100),
+      x = "Petal Length", y = "Petal Width"
+    ) +
+    theme_minimal(base_size = 9) +
+    theme(plot.title = element_text(face = "bold"))
+})
+
+do.call(grid.arrange, c(plots_bd, ncol = 3,
+  top = "Decision Boundary Evolution: Single Tree → 500-Tree Random Forest\n(Background = predicted region; Points = training instances)"))
+```
+
+> **What to observe:**
+> - **1 tree**: Jagged, axis-aligned boundaries — the tree memorizes noise.
+> - **5–10 trees**: Boundaries are still rough but visibly smoother.
+> - **50–100 trees**: Boundaries closely match the true class regions.
+> - **500 trees**: Very smooth — the "average" boundary has washed out all individual tree quirks.
+
 ## 3.3 Prediction and Evaluation
 
 ```{r rf-predict}
@@ -449,6 +740,76 @@ ggplot(prob_df, aes(x = class, y = obs, fill = prob)) +
   theme_minimal() +
   theme(strip.text.y = element_text(angle = 0))
 ```
+
+## 3.4 How Individual Trees Vote: A Closer Look
+
+For any given test observation, the RF prediction is simply the **majority vote** across all trees. But votes are rarely unanimous — some observations are confidently predicted while others are borderline. Let's visualize the vote distribution for several test points.
+
+```{r vote-distribution, fig.height=5, fig.width=11}
+set.seed(MASTER_SEED)
+
+# Use the 500-tree full iris RF
+all_test_votes <- predict(rf_iris, iris_test, predict.all = TRUE)$individual
+# all_test_votes: nrow(iris_test) x 500 matrix (values = 1/2/3 for species)
+species_map <- c("1" = "setosa", "2" = "versicolor", "3" = "virginica")
+
+# Select 6 representative observations: 2 easy (pure), 2 moderate, 2 borderline
+vote_summaries <- lapply(1:nrow(iris_test), function(i) {
+  votes <- all_test_votes[i, ]
+  tbl   <- table(votes)
+  max_frac <- max(tbl) / 500
+  data.frame(obs = i, max_frac = max_frac,
+             actual = as.character(iris_test$Species[i]))
+}) %>% do.call(rbind, .) %>%
+  arrange(max_frac)
+
+# Pick 2 from each confidence tier
+chosen_obs <- c(
+  tail(vote_summaries$obs, 2),         # most confident (near 100%)
+  vote_summaries$obs[c(                 # moderate
+    floor(nrow(vote_summaries) * 0.4),
+    floor(nrow(vote_summaries) * 0.6))],
+  head(vote_summaries$obs, 2)           # least confident (borderline)
+)
+
+vote_plots <- lapply(seq_along(chosen_obs), function(idx) {
+  i <- chosen_obs[idx]
+  votes     <- all_test_votes[i, ]
+  vote_df   <- as.data.frame(table(votes)) %>%
+    mutate(Species = species_map[as.character(votes)],
+           Fraction = Freq / 500)
+  true_sp   <- as.character(iris_test$Species[i])
+  predicted <- species_map[names(which.max(table(votes)))]
+  correct   <- (predicted == true_sp)
+  conf      <- max(table(votes)) / 500
+
+  ggplot(vote_df, aes(x = reorder(Species, -Fraction), y = Fraction, fill = Species)) +
+    geom_col(width = 0.6) +
+    geom_text(aes(label = scales::percent(Fraction, accuracy = 0.1)),
+              vjust = -0.4, fontface = "bold", size = 3) +
+    scale_fill_manual(values = c(setosa = "#1A5276", versicolor = "#1E8449",
+                                  virginica = "#922B21"), guide = "none") +
+    scale_y_continuous(labels = scales::percent, limits = c(0, 1.1)) +
+    labs(
+      title    = sprintf("Obs #%d  (Actual: %s)", i, true_sp),
+      subtitle = sprintf("Pred: %s %s | Conf: %.0f%%",
+                         predicted, ifelse(correct, "✓", "✗"), conf * 100),
+      x = NULL, y = "Fraction of 500 Trees"
+    ) +
+    theme_minimal(base_size = 9) +
+    theme(
+      plot.title    = element_text(face = "bold"),
+      plot.subtitle = element_text(color = ifelse(correct, "#1E8449", "#922B21"))
+    )
+})
+
+do.call(grid.arrange, c(vote_plots, ncol = 3,
+  top = "Per-Tree Vote Distribution for Selected Test Observations\n(High confidence: one class dominates; Low confidence: votes split across classes)"))
+```
+
+> **Reading the vote bars:**
+> - **High confidence (top row):** Nearly all 500 trees agree → the RF is very sure of its prediction. The confidence score maps directly to the predicted class probability.
+> - **Borderline cases (bottom row):** Votes are split — multiple classes get substantial fractions. The RF's probability estimate reflects genuine uncertainty, not overconfidence.
 
 ---
 
@@ -501,6 +862,178 @@ varImpPlot(rf_iris,
 
 > **Caution:** Gini importance can be biased toward features with many unique values (high cardinality). Permutation importance (MeanDecreaseAccuracy) is more reliable but slower to compute.
 
+## 4.1 Feature Usage Heatmap: Which Features Split Which Trees?
+
+Beyond *how important* features are, we can ask: *in which trees is each feature actually used?* This heatmap shows the **first-split feature** of each tree in the forest — revealing how the random subset mechanism distributes feature usage.
+
+```{r feature-usage-heatmap, fig.height=5, fig.width=10}
+set.seed(MASTER_SEED)
+n_show_trees <- 60
+
+# For each tree, find the root split variable
+root_features <- sapply(1:n_show_trees, function(k) {
+  tree_k <- getTree(rf_iris, k = k, labelVar = TRUE)
+  root_row <- tree_k[1, ]
+  as.character(root_row$`split var`)
+})
+
+root_df <- data.frame(
+  Tree    = 1:n_show_trees,
+  Feature = root_features
+)
+
+# Accumulate full feature usage per tree (any split, not just root)
+feature_usage <- lapply(1:n_show_trees, function(k) {
+  tree_k  <- getTree(rf_iris, k = k, labelVar = TRUE)
+  splits  <- tree_k[tree_k$status == 1, "split var"]
+  feats   <- names(iris)[-5]
+  counts  <- sapply(feats, function(f) sum(splits == f))
+  data.frame(Tree = k, Feature = feats, Count = counts)
+}) %>% do.call(rbind, .)
+
+ggplot(feature_usage, aes(x = Tree, y = Feature, fill = Count)) +
+  geom_tile(color = "white", linewidth = 0.3) +
+  scale_fill_gradient(low = "white", high = "#4E79A7",
+                      name = "Split\nCount") +
+  scale_x_continuous(breaks = seq(0, n_show_trees, 10)) +
+  labs(
+    title    = sprintf("Feature Usage Heatmap: First %d Trees of the Random Forest", n_show_trees),
+    subtitle = "Darker = feature used more splits in that tree. Random subsets → no feature dominates every tree.",
+    x = "Tree Index", y = NULL
+  ) +
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+```
+
+> **Reading the heatmap:** If a column (tree) is uniformly dark, that tree relied heavily on those features. The variation across columns shows that random feature subsetting achieves its goal — different trees learn from different aspects of the data.
+
+---
+
+# Part 4b: Bias-Variance Tradeoff — RF vs. Single Tree
+
+One of the most fundamental results in statistical learning theory is the **Bias-Variance tradeoff**:
+
+$$\text{Expected Error} = \text{Bias}^2 + \text{Variance} + \text{Irreducible Noise}$$
+
+A single deep Decision Tree has **low bias** (it fits training data well) but **high variance** (it changes wildly with different training sets). Random Forests dramatically **reduce variance** while keeping bias roughly constant. We can demonstrate this empirically:
+
+```{r bias-variance-sim, fig.height=6, fig.width=11}
+set.seed(MASTER_SEED)
+
+# Simulate a regression task: y = sin(2*pi*x) + noise
+n_train   <- 80
+n_test    <- 200
+n_repeats <- 50  # number of different training sets
+
+x_test  <- seq(0, 1, length.out = n_test)
+y_true  <- sin(2 * pi * x_test)
+
+# Storage for predictions from each model across repetitions
+preds_tree <- matrix(NA, nrow = n_test, ncol = n_repeats)
+preds_rf3  <- matrix(NA, nrow = n_test, ncol = n_repeats)
+preds_rf50 <- matrix(NA, nrow = n_test, ncol = n_repeats)
+
+for (r in 1:n_repeats) {
+  x_tr <- runif(n_train)
+  y_tr <- sin(2 * pi * x_tr) + rnorm(n_train, sd = 0.3)
+  df_tr <- data.frame(x = x_tr, y = y_tr)
+  df_te <- data.frame(x = x_test)
+
+  # Deep single tree
+  t_m <- rpart(y ~ x, data = df_tr,
+               control = rpart.control(maxdepth = 8, cp = 0, minsplit = 2))
+  preds_tree[, r] <- predict(t_m, df_te)
+
+  # RF with 3 trees (small — still high variance)
+  rf3 <- randomForest(y ~ x, data = df_tr, ntree = 3)
+  preds_rf3[, r] <- predict(rf3, df_te)
+
+  # RF with 50 trees (converged)
+  rf50 <- randomForest(y ~ x, data = df_tr, ntree = 50)
+  preds_rf50[, r] <- predict(rf50, df_te)
+}
+
+# Compute bias^2 and variance for each model
+bv_stats <- function(pred_mat, y_true) {
+  mean_pred <- rowMeans(pred_mat)
+  bias2     <- mean((mean_pred - y_true)^2)
+  variance  <- mean(apply(pred_mat, 1, var))
+  list(bias2 = bias2, variance = variance, total = bias2 + variance)
+}
+
+st_tree <- bv_stats(preds_tree, y_true)
+st_rf3  <- bv_stats(preds_rf3,  y_true)
+st_rf50 <- bv_stats(preds_rf50, y_true)
+
+# Plot: mean prediction ± 1 SD ribbon for each model
+make_ribbon_df <- function(pred_mat, label) {
+  data.frame(
+    x    = x_test,
+    mean = rowMeans(pred_mat),
+    sd   = apply(pred_mat, 1, sd),
+    model = label
+  )
+}
+
+ribbon_df <- bind_rows(
+  make_ribbon_df(preds_tree, "Deep Single Tree"),
+  make_ribbon_df(preds_rf3,  "RF (3 trees)"),
+  make_ribbon_df(preds_rf50, "RF (50 trees)")
+) %>%
+  mutate(model = factor(model, levels = c("Deep Single Tree", "RF (3 trees)", "RF (50 trees)")))
+
+cols_bv <- c("Deep Single Tree" = "#E15759", "RF (3 trees)" = "#F28E2B", "RF (50 trees)" = "#4E79A7")
+
+p_ribbon <- ggplot(ribbon_df, aes(x = x, color = model, fill = model)) +
+  geom_ribbon(aes(ymin = mean - sd, ymax = mean + sd), alpha = 0.15, color = NA) +
+  geom_line(aes(y = mean), linewidth = 1.1) +
+  geom_line(data = data.frame(x = x_test, y = y_true),
+            aes(x = x, y = y), color = "black", linetype = "dashed",
+            linewidth = 1, inherit.aes = FALSE) +
+  scale_color_manual(values = cols_bv) +
+  scale_fill_manual(values  = cols_bv) +
+  labs(
+    title    = "Bias-Variance Tradeoff: Mean Prediction ± 1 SD over 50 Training Sets",
+    subtitle = "Black dashed = true function; Ribbon = variance across 50 different training datasets",
+    x = "x", y = "y", color = NULL, fill = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# Bar chart of bias^2 vs variance
+bv_df <- data.frame(
+  Model    = rep(c("Deep Single Tree", "RF (3 trees)", "RF (50 trees)"), each = 2),
+  Component = rep(c("Bias²", "Variance"), 3),
+  Value    = c(st_tree$bias2, st_tree$variance,
+               st_rf3$bias2,  st_rf3$variance,
+               st_rf50$bias2, st_rf50$variance)
+) %>%
+  mutate(Model = factor(Model, levels = c("Deep Single Tree", "RF (3 trees)", "RF (50 trees)")))
+
+p_bar <- ggplot(bv_df, aes(x = Model, y = Value, fill = Component)) +
+  geom_col(position = "stack", width = 0.55) +
+  geom_text(aes(label = sprintf("%.4f", Value)),
+            position = position_stack(vjust = 0.5),
+            color = "white", fontface = "bold", size = 3.5) +
+  scale_fill_manual(values = c("Bias²" = "#E15759", "Variance" = "#4E79A7")) +
+  labs(
+    title = "Bias² + Variance Decomposition",
+    x = NULL, y = "Expected Error", fill = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom", axis.text.x = element_text(angle = 15, hjust = 1))
+
+grid.arrange(p_ribbon, p_bar, ncol = 2,
+  top = sprintf(
+    "Empirical Bias-Variance: Deep Tree (total=%.4f) | RF-3 (total=%.4f) | RF-50 (total=%.4f)",
+    st_tree$total, st_rf3$total, st_rf50$total))
+```
+
+> **The takeaway:**
+> - A **deep single tree** shows *high variance* (wide ribbon — each new training set gives very different predictions) with moderate bias.
+> - **RF with 3 trees** reduces variance significantly but is still noisy.
+> - **RF with 50 trees** has the *lowest variance* — the ribbon nearly collapses to the mean, and that mean closely tracks the true function. This is the power of ensemble averaging.
+
 ---
 
 # Part 5: Hyperparameter Tuning
@@ -533,7 +1066,7 @@ knitr::kable(params, col.names = c("Parameter", "Controls", "Default", "Tuning T
 ## 5.2 Tuning `mtry`
 
 ```{r tune-mtry, fig.height=4, fig.width=8}
-set.seed(42)
+set.seed(MASTER_SEED)
 mtry_vals <- 1:4
 oob_by_mtry <- sapply(mtry_vals, function(m) {
   rf_m <- randomForest(Species ~ ., data = iris_train, ntree = 300, mtry = m)
@@ -559,7 +1092,7 @@ cat("Best mtry:", best_mtry, "| OOB error:", round(min(oob_by_mtry), 4))
 ## 5.3 Effect of Tree Depth (nodesize)
 
 ```{r nodesize-comparison, fig.height=4, fig.width=10}
-set.seed(42)
+set.seed(MASTER_SEED)
 nodesizes <- c(1, 3, 5, 10, 20)
 results_ns <- lapply(nodesizes, function(ns) {
   rf_ns <- randomForest(Species ~ ., data = iris_train,
@@ -612,7 +1145,7 @@ The random thresholds act as an additional regularizer, often preventing overfit
 
 ```{r extra-trees-sim, fig.height=4, fig.width=8}
 # Simulate Extra-Trees: random splitter + random feature subset at each node
-set.seed(42)
+set.seed(MASTER_SEED)
 n_et <- 300
 et_preds <- matrix(NA, nrow = nrow(iris_test), ncol = n_et)
 
@@ -664,7 +1197,7 @@ $$\hat{y}(x) = \frac{1}{B} \sum_{b=1}^{B} T_b(x)$$
 
 ```{r rf-regression, fig.height=5, fig.width=10}
 data(mtcars)
-set.seed(42)
+set.seed(MASTER_SEED)
 
 # Predict mpg from car attributes
 tr_idx <- sample(1:nrow(mtcars), 22)
@@ -749,7 +1282,7 @@ AdaBoost focuses subsequent learners on the **hard examples** (those the previou
 
 ```{r adaboost-intuition, fig.height=4, fig.width=8}
 # Simulate AdaBoost weight evolution
-set.seed(42)
+set.seed(MASTER_SEED)
 n_obs <- 20
 true_labels <- rep(c(1, -1), each = 10)
 weights <- rep(1/n_obs, n_obs)
@@ -797,7 +1330,7 @@ where $h_m$ is a weak learner fit to the negative gradient of the loss function.
 The `learning_rate` ($\eta$) scales each tree's contribution — lower = more trees needed, but better generalization (**shrinkage** regularization).
 
 ```{r gradient-boosting, fig.height=5, fig.width=10}
-set.seed(42)
+set.seed(MASTER_SEED)
 
 # Simulate a noisy quadratic function
 n_pts <- 200
@@ -861,7 +1394,7 @@ do.call(grid.arrange, c(plot_list, ncol = 3,
 ## 8.3 Gradient Boosting in R with `gbm`
 
 ```{r gbm-example, fig.height=4, fig.width=8}
-set.seed(42)
+set.seed(MASTER_SEED)
 iris_gbm <- iris
 iris_gbm$Species_bin <- ifelse(iris$Species == "virginica", 1, 0)
 
@@ -897,7 +1430,7 @@ ggplot(imp_gbm, aes(x = reorder(var, rel.inf), y = rel.inf, fill = rel.inf)) +
 ## 8.4 Comparing Methods
 
 ```{r method-comparison}
-set.seed(42)
+set.seed(MASTER_SEED)
 # 5-fold CV comparison on iris (versicolor vs. other, binary)
 iris_bin_df <- iris
 iris_bin_df$target <- factor(ifelse(iris$Species == "versicolor", "yes", "no"))
@@ -999,7 +1532,7 @@ knitr::kable(when, col.names = c("Scenario", "Recommended Method"),
 4. Train a **meta-learner** (e.g., linear model, another RF) on the meta-features.
 
 ```{r stacking-example, fig.height=4, fig.width=8}
-set.seed(42)
+set.seed(MASTER_SEED)
 data(iris)
 iris_bin2 <- iris
 iris_bin2$target <- factor(ifelse(iris$Species == "virginica", 1, 0))
@@ -1125,3 +1658,5 @@ In this tutorial, we built from the instability problem of a single Decision Tre
 [7] J. H. Friedman, "Greedy Function Approximation: A Gradient Boosting Machine," *Annals of Statistics*, vol. 29, no. 5, pp. 1189–1232, 2001.
 
 [8] A. Liaw and M. Wiener, "Classification and Regression by randomForest," *R News*, vol. 2, no. 3, pp. 18–22, 2002. [Online]. Available: https://CRAN.R-project.org/package=randomForest
+
+[9] Z. Huang, "seedhash: Deterministic Seed Generation from String Inputs Using MD5 Hashing," R package, 2026. [Online]. Available: https://github.com/melhzy/seedhash
