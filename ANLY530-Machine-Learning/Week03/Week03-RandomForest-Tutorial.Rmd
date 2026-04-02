@@ -1,0 +1,1127 @@
+---
+title: "Week 03: Ensemble Learning & Random Forests"
+author: "Ziyuan Huang"
+date: "Last Updated: `r format(Sys.Date(), '%B %d, %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: cosmo
+    highlight: tango
+    code_folding: show
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 6
+)
+
+set.seed(42)
+```
+
+# Introduction
+
+Last week, we learned that a single Decision Tree — while intuitive — is **unstable**: a small change in the data can produce a completely different tree. This week, we fix that by combining many trees into a **forest**.
+
+> *"If you aggregate the predictions of a group of predictors (such as classifiers or regressors), you will often get better predictions than with the best individual predictor. A group of predictors is called an **ensemble**; thus, this technique is called Ensemble Learning, and an Ensemble Learning algorithm is called an Ensemble method."*
+> — A. Géron **[1]**
+
+> *"Random forests are a modification of bagged decision trees that build a large collection of de-correlated trees to further improve predictive performance."*
+> — B. C. Boehmke & B. M. Greenwell **[2]**
+
+This is the **wisdom of the crowd** in action. Thousands of people independently guessing the weight of an ox will, on average, be surprisingly accurate — more accurate than any single expert. The same principle makes ensembles so powerful.
+
+**Learning Objectives:**
+
+By the end of this tutorial, you will be able to:
+
+1. Explain the intuition behind **ensemble learning** and why diversity matters.
+2. Distinguish **hard voting** from **soft voting** classifiers.
+3. Implement **Bagging** and understand Out-of-Bag (OOB) evaluation.
+4. Build, tune, and interpret a **Random Forest** in R.
+5. Explain how **feature importance** is computed in a Random Forest.
+6. Understand **Extra-Trees** and when to prefer them over Random Forests.
+7. Compare Random Forests to **Boosting** (AdaBoost, Gradient Boosting).
+8. Apply Random Forests to both **classification** and **regression** tasks.
+
+## Required Packages
+
+```{r load-packages}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(
+  tidyverse,
+  randomForest,
+  rpart,
+  rpart.plot,
+  gridExtra,
+  gbm
+)
+```
+
+---
+
+# Part 1: The Wisdom of the Crowd — Voting Classifiers
+
+## 1.1 Why Ensembles Work
+
+Suppose you flip a slightly biased coin that lands heads 51% of the time. Flip it 1,000 times — you'll get roughly 510 heads (majority heads). Flip it 10,000 times — the probability of a majority of heads climbs to over 97%. This is the **Law of Large Numbers** in action.
+
+The same logic applies to classifiers. If each classifier is correct 51% of the time (barely better than random), but each makes **different** mistakes, combining 1,000 of them can yield 75% accuracy!
+
+The key requirement: **classifiers must be as independent as possible** (i.e., make different types of errors).
+
+```{r ensemble-intuition, fig.height=4, fig.width=7}
+simulate_ensemble_accuracy <- function(n_classifiers, base_acc) {
+  # P(majority correct) for n independent classifiers each with P(correct) = base_acc
+  # Using binomial distribution: P(k > n/2 correct out of n)
+  k_needed <- floor(n_classifiers / 2) + 1
+  sum(dbinom(k_needed:n_classifiers, n_classifiers, base_acc))
+}
+
+classifiers <- c(1, 3, 5, 11, 21, 51, 101, 501, 1001)
+results <- data.frame(
+  n = classifiers,
+  acc_55 = sapply(classifiers, simulate_ensemble_accuracy, base_acc = 0.55),
+  acc_60 = sapply(classifiers, simulate_ensemble_accuracy, base_acc = 0.60),
+  acc_70 = sapply(classifiers, simulate_ensemble_accuracy, base_acc = 0.70)
+) %>%
+  pivot_longer(-n, names_to = "base", values_to = "ensemble_acc") %>%
+  mutate(base = recode(base,
+    acc_55 = "55% base accuracy",
+    acc_60 = "60% base accuracy",
+    acc_70 = "70% base accuracy"
+  ))
+
+ggplot(results, aes(x = n, y = ensemble_acc, color = base)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  geom_hline(yintercept = 0.9, linetype = "dashed", color = "grey40") +
+  scale_x_log10(breaks = classifiers, labels = as.character(classifiers)) +
+  scale_color_viridis_d(option = "plasma", begin = 0.2, end = 0.85) +
+  labs(
+    title = "Ensemble Accuracy vs. Number of Independent Classifiers",
+    subtitle = "The more classifiers, the closer to certainty — given they make independent errors",
+    x = "Number of Classifiers (log scale)",
+    y = "Ensemble Accuracy",
+    color = "Base Classifier",
+    caption = "Dashed line = 90% accuracy threshold"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+> **Key Insight:** Even a weak 55% classifier, when combined with 501 others (making independent errors), reaches ~90% ensemble accuracy. The diversity of errors — not the strength of any individual classifier — is the key.
+
+## 1.2 Hard Voting vs. Soft Voting
+
+There are two ways to aggregate predictions in a voting classifier:
+
+| Method | Mechanism | Requires |
+|---|---|---|
+| **Hard Voting** | Take the most frequent predicted class (majority vote) | Only class labels |
+| **Soft Voting** | Average predicted **probabilities**, pick highest | `predict_proba()` for each model |
+
+Soft voting often beats hard voting because it gives **more weight to high-confidence predictions**. A classifier that says "99% Class A" counts for more than one that says "51% Class A".
+
+Let's simulate this on the Iris dataset using three diverse base learners:
+
+```{r voting-classifier, fig.height=5, fig.width=9}
+data(iris)
+# Use petal features only (2 features for easy visualization)
+iris_2d <- iris[, c("Petal.Length", "Petal.Width", "Species")]
+
+# Train/test split (70/30)
+set.seed(42)
+idx <- sample(1:nrow(iris_2d), size = floor(0.7 * nrow(iris_2d)))
+train <- iris_2d[idx, ]
+test  <- iris_2d[-idx, ]
+
+# --- Base learners ---
+# 1. Decision Tree
+tree_model <- rpart(Species ~ ., data = train, control = rpart.control(maxdepth = 3))
+
+# 2. Random Forest (as the "RF voter")
+rf_model <- randomForest(Species ~ ., data = train, ntree = 100, probability = TRUE)
+
+# --- Hard Voting (manual) ---
+pred_tree <- predict(tree_model, test, type = "class")
+pred_rf   <- predict(rf_model,   test, type = "class")
+
+# Combine via majority vote (2 classifiers: tie goes to RF)
+hard_vote <- ifelse(as.character(pred_tree) == as.character(pred_rf),
+                    as.character(pred_rf),
+                    as.character(pred_rf))  # RF wins tie
+
+# --- Soft Voting ---
+prob_tree <- predict(tree_model, test, type = "prob")
+prob_rf   <- predict(rf_model,   test, type = "prob")
+
+avg_prob  <- (prob_tree + prob_rf) / 2
+soft_vote <- colnames(avg_prob)[apply(avg_prob, 1, which.max)]
+soft_vote <- factor(soft_vote, levels = levels(test$Species))
+
+# --- Accuracy ---
+acc_tree <- mean(pred_tree == test$Species)
+acc_rf   <- mean(pred_rf   == test$Species)
+acc_hard <- mean(factor(hard_vote, levels = levels(test$Species)) == test$Species)
+acc_soft <- mean(soft_vote == test$Species)
+
+acc_df <- data.frame(
+  Model    = c("Decision Tree", "Random Forest", "Hard Vote", "Soft Vote"),
+  Accuracy = c(acc_tree, acc_rf, acc_hard, acc_soft)
+)
+
+ggplot(acc_df, aes(x = reorder(Model, Accuracy), y = Accuracy, fill = Model)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = scales::percent(Accuracy, accuracy = 0.1)),
+            hjust = -0.1, fontface = "bold") +
+  coord_flip(ylim = c(0.8, 1.05)) +
+  scale_fill_viridis_d(option = "plasma", begin = 0.2, end = 0.85) +
+  labs(
+    title = "Classifier Accuracy on Iris Test Set",
+    subtitle = "Voting classifiers combine the strengths of individual models",
+    x = NULL, y = "Accuracy"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+---
+
+# Part 2: Bagging — Same Algorithm, Different Data
+
+## 2.1 What Is Bagging?
+
+Instead of training different algorithms on the same data, **bagging** (Bootstrap AGGregating) trains the **same algorithm** on different random **bootstrapped subsets** of the training data.
+
+- **Bagging**: sample **with replacement** (bootstrap). Each predictor may see ~63% of unique training instances.
+- **Pasting**: sample **without replacement**.
+
+```{r bagging-diagram, echo=FALSE, fig.height=3, fig.width=8}
+set.seed(1)
+full_data <- 1:10
+par(mar = c(0, 0, 1, 0))
+plot(0, 0, type = "n", xlim = c(0, 10), ylim = c(0, 3), axes = FALSE,
+     main = "Bagging: Each tree sees a different bootstrap sample")
+# Full dataset
+rect(0, 2.2, 10, 2.8, col = "#4E79A7", border = NA)
+text(5, 2.5, "Full Training Set (N=10): [1 2 3 4 5 6 7 8 9 10]",
+     col = "white", font = 2, cex = 0.9)
+# Three bootstrap samples
+cols <- c("#F28E2B", "#E15759", "#76B7B2")
+samples <- lapply(1:3, function(i) sort(sample(full_data, 10, replace = TRUE)))
+for (i in 1:3) {
+  rect((i-1)*3.2 + 0.1, 0.9, (i-1)*3.2 + 3.1, 1.6,
+       col = cols[i], border = NA)
+  text((i-1)*3.2 + 1.6, 1.25,
+       paste0("Tree ", i, ": [", paste(samples[[i]], collapse = " "), "]"),
+       col = "white", cex = 0.75)
+}
+arrows(5, 2.2, 1.6, 1.6, length = 0.1, col = "grey40")
+arrows(5, 2.2, 4.8, 1.6, length = 0.1, col = "grey40")
+arrows(5, 2.2, 8.0, 1.6, length = 0.1, col = "grey40")
+```
+
+## 2.2 Why ~63%? The Out-of-Bag Math
+
+When bootstrapping a dataset of size $m$ with replacement, the probability that any single instance is **not** selected in one draw is $\frac{m-1}{m}$. After $m$ draws:
+
+$$P(\text{not selected in any draw}) = \left(1 - \frac{1}{m}\right)^m \xrightarrow{m \to \infty} e^{-1} \approx 0.368$$
+
+So each bootstrap sample leaves out about **37% of instances** — these are the **Out-of-Bag (OOB)** instances.
+
+```{r oob-convergence, fig.height=4, fig.width=7}
+m_values <- seq(2, 500, by = 5)
+oob_frac  <- (1 - 1 / m_values)^m_values
+
+ggplot(data.frame(m = m_values, oob = oob_frac), aes(x = m, y = oob)) +
+  geom_line(color = "#4E79A7", linewidth = 1.2) +
+  geom_hline(yintercept = exp(-1), linetype = "dashed", color = "#E15759") +
+  annotate("text", x = 400, y = exp(-1) + 0.015,
+           label = sprintf("e⁻¹ ≈ %.3f", exp(-1)),
+           color = "#E15759", fontface = "bold") +
+  labs(
+    title = "Fraction of OOB Instances vs. Training Set Size",
+    subtitle = "Converges quickly to 36.8% — a free validation set!",
+    x = "Training Set Size (m)", y = "OOB Fraction"
+  ) +
+  theme_minimal()
+```
+
+## 2.3 Manual Bagging in R
+
+```{r manual-bagging, fig.height=5, fig.width=10}
+set.seed(42)
+n_trees <- 200
+
+# Binary classification on iris: setosa vs non-setosa
+iris_bin <- iris %>%
+  mutate(setosa = factor(ifelse(Species == "setosa", "setosa", "other"))) %>%
+  select(Sepal.Length, Sepal.Width, setosa)
+
+idx_tr <- sample(1:nrow(iris_bin), 100)
+train_bin <- iris_bin[idx_tr, ]
+test_bin  <- iris_bin[-idx_tr, ]
+
+# Train bagged ensemble manually
+bag_preds <- matrix(NA, nrow = nrow(test_bin), ncol = n_trees)
+
+for (i in 1:n_trees) {
+  boot_idx <- sample(1:nrow(train_bin), nrow(train_bin), replace = TRUE)
+  boot_data <- train_bin[boot_idx, ]
+  tree_i <- rpart(setosa ~ ., data = boot_data, control = rpart.control(maxdepth = 4))
+  bag_preds[, i] <- as.character(predict(tree_i, test_bin, type = "class"))
+}
+
+# Hard voting: majority class at each n_trees
+ensemble_acc <- sapply(1:n_trees, function(k) {
+  votes <- bag_preds[, 1:k, drop = FALSE]
+  final <- apply(votes, 1, function(row) {
+    tbl <- table(row)
+    names(which.max(tbl))
+  })
+  mean(final == as.character(test_bin$setosa))
+})
+
+single_tree <- rpart(setosa ~ ., data = train_bin, control = rpart.control(maxdepth = 4))
+single_acc  <- mean(predict(single_tree, test_bin, type = "class") == test_bin$setosa)
+
+ggplot(data.frame(n = 1:n_trees, acc = ensemble_acc), aes(x = n, y = acc)) +
+  geom_line(color = "#4E79A7", linewidth = 1) +
+  geom_hline(yintercept = single_acc, linetype = "dashed", color = "#E15759", linewidth = 1) +
+  annotate("text", x = 160, y = single_acc - 0.015,
+           label = sprintf("Single Tree: %.1f%%", single_acc * 100),
+           color = "#E15759", fontface = "bold") +
+  labs(
+    title = "Bagging: Ensemble Accuracy as Trees Are Added",
+    subtitle = "More trees → more stable, typically higher accuracy than a single tree",
+    x = "Number of Trees in Ensemble", y = "Test Accuracy"
+  ) +
+  coord_cartesian(ylim = c(0.85, 1.0)) +
+  theme_minimal()
+```
+
+---
+
+# Part 3: Random Forests — Decorrelated Trees
+
+## 3.1 From Bagging to Random Forests
+
+Bagging reduces **variance** (instability) by averaging many trees. But there's still a problem: if one or two features are very strong predictors, most trees will split on them first — making the trees **correlated** with each other. Correlated trees don't reduce variance as effectively.
+
+**Random Forests** solve this with one simple trick:
+
+> At each split, only a **random subset of features** (typically $\sqrt{p}$ for classification, $p/3$ for regression) is considered as split candidates.
+
+This **decorrelates** the trees — even if Feature A is the best predictor overall, it won't dominate every tree, because sometimes it won't even be in the candidate set!
+
+```{r rf-vs-bagging-diagram, echo=FALSE, fig.height=2.5, fig.width=9}
+par(mfrow = c(1, 2), mar = c(1, 1, 2, 1))
+
+# Bagging
+plot(0, 0, type = "n", xlim = c(0, 6), ylim = c(0, 4), axes = FALSE,
+     main = "Bagging: All features considered at each split")
+for (i in 1:3) {
+  rect(0.2 + (i-1)*2, 0.5, 1.8 + (i-1)*2, 3.5, col = "#D5E8D4", border = "#82B366")
+  text(1 + (i-1)*2, 3.0, paste("Tree", i), cex = 0.8, font = 2)
+  text(1 + (i-1)*2, 2.3, "Consider:\nA, B, C, D, E", cex = 0.65)
+  text(1 + (i-1)*2, 1.2, "Best: A", cex = 0.75, col = "#E15759", font = 2)
+}
+
+# Random Forest
+plot(0, 0, type = "n", xlim = c(0, 6), ylim = c(0, 4), axes = FALSE,
+     main = "Random Forest: Random subset of features per split")
+feature_sets <- list(c("A","C","E"), c("B","D","E"), c("A","B","D"))
+best <- c("C", "E", "B")
+for (i in 1:3) {
+  rect(0.2 + (i-1)*2, 0.5, 1.8 + (i-1)*2, 3.5, col = "#DAE8FC", border = "#6C8EBF")
+  text(1 + (i-1)*2, 3.0, paste("Tree", i), cex = 0.8, font = 2)
+  text(1 + (i-1)*2, 2.3,
+       paste0("Consider:\n", paste(feature_sets[[i]], collapse = ", ")), cex = 0.65)
+  text(1 + (i-1)*2, 1.2, paste("Best:", best[i]), cex = 0.75, col = "#4E79A7", font = 2)
+}
+par(mfrow = c(1, 1))
+```
+
+## 3.2 Building a Random Forest in R
+
+R's `randomForest` package is the standard tool. The key hyperparameters are:
+
+| Parameter | Meaning | Default |
+|---|---|---|
+| `ntree` | Number of trees | 500 |
+| `mtry` | Features considered per split | $\sqrt{p}$ (classification) |
+| `nodesize` | Minimum terminal node size | 1 (classification) |
+| `maxnodes` | Maximum number of leaf nodes | NULL (unlimited) |
+
+```{r rf-basic}
+data(iris)
+set.seed(42)
+
+# Train-test split
+train_idx <- sample(1:nrow(iris), 0.7 * nrow(iris))
+iris_train <- iris[train_idx, ]
+iris_test  <- iris[-train_idx, ]
+
+# Fit Random Forest
+rf_iris <- randomForest(
+  Species ~ .,
+  data     = iris_train,
+  ntree    = 500,
+  mtry     = 2,            # sqrt(4 features) ≈ 2
+  importance = TRUE
+)
+
+print(rf_iris)
+```
+
+### Reading the Output
+
+The `randomForest` summary tells us:
+
+- **OOB estimate of error rate**: Cross-validation accuracy estimate using the ~37% of data each tree didn't see during training — *no separate validation set needed!*
+- **Confusion matrix**: Per-class breakdown on OOB predictions.
+
+```{r rf-oob-convergence, fig.height=4, fig.width=8}
+# OOB error as a function of number of trees
+oob_errors <- data.frame(
+  n_trees = 1:500,
+  OOB = rf_iris$err.rate[, "OOB"],
+  setosa = rf_iris$err.rate[, "setosa"],
+  versicolor = rf_iris$err.rate[, "versicolor"],
+  virginica = rf_iris$err.rate[, "virginica"]
+) %>%
+  pivot_longer(-n_trees, names_to = "class", values_to = "error")
+
+ggplot(oob_errors, aes(x = n_trees, y = error, color = class)) +
+  geom_line(linewidth = 0.8, alpha = 0.8) +
+  scale_color_manual(
+    values = c(OOB = "black", setosa = "#E15759",
+               versicolor = "#4E79A7", virginica = "#F28E2B")
+  ) +
+  labs(
+    title = "OOB Error Rate Convergence",
+    subtitle = "Error stabilizes after ~100–150 trees — diminishing returns beyond that",
+    x = "Number of Trees", y = "OOB Error Rate", color = "Class"
+  ) +
+  theme_minimal()
+```
+
+> **How many trees do you need?** More trees never hurt accuracy (unlike deeper single trees), but they do increase computation time. A common strategy: plot the OOB error curve and stop when it flattens.
+
+## 3.3 Prediction and Evaluation
+
+```{r rf-predict}
+rf_pred <- predict(rf_iris, iris_test)
+rf_acc  <- mean(rf_pred == iris_test$Species)
+
+cat(sprintf("Random Forest Test Accuracy: %.1f%%\n", rf_acc * 100))
+
+# Confusion matrix
+table(Predicted = rf_pred, Actual = iris_test$Species)
+```
+
+```{r rf-class-probs, fig.height=4, fig.width=8}
+# Class probability heatmap
+prob_mat <- predict(rf_iris, iris_test, type = "prob")
+prob_df <- as.data.frame(prob_mat) %>%
+  mutate(obs = 1:n(), actual = iris_test$Species) %>%
+  pivot_longer(cols = c(setosa, versicolor, virginica),
+               names_to = "class", values_to = "prob")
+
+ggplot(prob_df, aes(x = class, y = obs, fill = prob)) +
+  geom_tile() +
+  geom_text(aes(label = round(prob, 2)), size = 2.5) +
+  facet_grid(actual ~ ., scales = "free_y", space = "free") +
+  scale_fill_gradient(low = "white", high = "#4E79A7") +
+  labs(
+    title = "Random Forest: Predicted Class Probabilities (Test Set)",
+    subtitle = "Each row is a test observation; columns are class membership probabilities",
+    x = "Predicted Class", y = "Observation", fill = "Probability"
+  ) +
+  theme_minimal() +
+  theme(strip.text.y = element_text(angle = 0))
+```
+
+---
+
+# Part 4: Feature Importance
+
+One of Random Forests' most useful properties is **automatic feature ranking**. Scikit-Learn measures importance by how much each feature **reduces node impurity** (Gini or MSE), weighted by the proportion of training samples passing through that node, averaged across all trees **[1]**.
+
+$$\text{Importance}(X_j) = \frac{1}{B} \sum_{b=1}^{B} \sum_{t \in \mathcal{T}_b} \frac{n_t}{N} \cdot \Delta \text{impurity}(t, X_j)$$
+
+where $B$ = number of trees, $\mathcal{T}_b$ = set of nodes in tree $b$ that split on $X_j$, $n_t$ = samples at node $t$, $N$ = total training samples.
+
+In R's `randomForest`, importance is available in two flavors:
+- **MeanDecreaseAccuracy**: how much accuracy drops when the feature is randomly permuted (OOB-based)
+- **MeanDecreaseGini**: total decrease in node impurity summed across trees
+
+```{r feature-importance, fig.height=5, fig.width=9}
+imp <- importance(rf_iris)
+imp_df <- as.data.frame(imp) %>%
+  rownames_to_column("Feature") %>%
+  arrange(desc(MeanDecreaseGini))
+
+p1 <- ggplot(imp_df, aes(x = reorder(Feature, MeanDecreaseGini),
+                          y = MeanDecreaseGini, fill = MeanDecreaseGini)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_viridis_c(option = "plasma", begin = 0.2, end = 0.85) +
+  labs(title = "Feature Importance\n(Mean Decrease Gini)", x = NULL) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+p2 <- ggplot(imp_df, aes(x = reorder(Feature, MeanDecreaseAccuracy),
+                          y = MeanDecreaseAccuracy, fill = MeanDecreaseAccuracy)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_viridis_c(option = "plasma", begin = 0.2, end = 0.85) +
+  labs(title = "Feature Importance\n(Mean Decrease Accuracy)", x = NULL) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+grid.arrange(p1, p2, ncol = 2,
+  top = "Random Forest Feature Importance — Iris Dataset")
+```
+
+```{r varImpPlot}
+varImpPlot(rf_iris,
+  main = "Variable Importance Plot (Random Forest — Iris)")
+```
+
+> **Interpretation:** Petal features dominate. This matches the Decision Tree results from Week 02 — `Petal.Length` and `Petal.Width` are the most discriminative features for classifying Iris species.
+
+> **Caution:** Gini importance can be biased toward features with many unique values (high cardinality). Permutation importance (MeanDecreaseAccuracy) is more reliable but slower to compute.
+
+---
+
+# Part 5: Hyperparameter Tuning
+
+## 5.1 Key Hyperparameters
+
+```{r hyperparam-table, echo=FALSE}
+params <- data.frame(
+  Parameter = c("ntree", "mtry", "nodesize", "maxnodes", "sampsize"),
+  Controls = c(
+    "Number of trees in the forest",
+    "Number of features sampled at each split",
+    "Minimum size of terminal (leaf) nodes",
+    "Maximum number of leaf nodes per tree",
+    "Size of bootstrap sample"
+  ),
+  Default = c("500", "√p (classif.) / p/3 (regr.)", "1 (classif.) / 5 (regr.)", "Unlimited", "N (with replacement)"),
+  Tuning_Tip = c(
+    "Plot OOB curve; stop when it flattens",
+    "Try √p, √p/2, 2√p; tune via OOB",
+    "Larger → smaller trees (regularization)",
+    "Equivalent to max_depth control",
+    "Smaller → more variance reduction (more diversity)"
+  )
+)
+knitr::kable(params, col.names = c("Parameter", "Controls", "Default", "Tuning Tip"),
+             caption = "Random Forest Hyperparameters in R's `randomForest` Package")
+```
+
+## 5.2 Tuning `mtry`
+
+```{r tune-mtry, fig.height=4, fig.width=8}
+set.seed(42)
+mtry_vals <- 1:4
+oob_by_mtry <- sapply(mtry_vals, function(m) {
+  rf_m <- randomForest(Species ~ ., data = iris_train, ntree = 300, mtry = m)
+  rf_m$err.rate[300, "OOB"]
+})
+
+ggplot(data.frame(mtry = mtry_vals, oob = oob_by_mtry), aes(x = mtry, y = oob)) +
+  geom_line(color = "#4E79A7", linewidth = 1.2) +
+  geom_point(size = 3, color = "#E15759") +
+  geom_text(aes(label = sprintf("%.3f", oob)), vjust = -0.8, fontface = "bold") +
+  labs(
+    title = "OOB Error Rate vs. mtry",
+    subtitle = "Find the sweet spot — usually near √p",
+    x = "mtry (features per split)", y = "OOB Error Rate"
+  ) +
+  scale_x_continuous(breaks = mtry_vals) +
+  theme_minimal()
+
+best_mtry <- mtry_vals[which.min(oob_by_mtry)]
+cat("Best mtry:", best_mtry, "| OOB error:", round(min(oob_by_mtry), 4))
+```
+
+## 5.3 Effect of Tree Depth (nodesize)
+
+```{r nodesize-comparison, fig.height=4, fig.width=10}
+set.seed(42)
+nodesizes <- c(1, 3, 5, 10, 20)
+results_ns <- lapply(nodesizes, function(ns) {
+  rf_ns <- randomForest(Species ~ ., data = iris_train,
+                         ntree = 300, nodesize = ns, importance = FALSE)
+  data.frame(
+    nodesize = ns,
+    oob_err  = rf_ns$err.rate[300, "OOB"],
+    test_acc = mean(predict(rf_ns, iris_test) == iris_test$Species)
+  )
+})
+results_ns <- do.call(rbind, results_ns)
+
+ggplot(results_ns %>%
+         pivot_longer(c(oob_err, test_acc), names_to = "metric", values_to = "value") %>%
+         mutate(metric = recode(metric, oob_err = "OOB Error Rate",
+                                        test_acc = "Test Accuracy")),
+       aes(x = nodesize, y = value, color = metric)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("OOB Error Rate" = "#E15759", "Test Accuracy" = "#4E79A7")) +
+  labs(
+    title = "Effect of nodesize on OOB Error and Test Accuracy",
+    subtitle = "Larger nodesize = shallower, more regularized trees",
+    x = "nodesize", y = "Value", color = NULL
+  ) +
+  scale_x_continuous(breaks = nodesizes) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+---
+
+# Part 6: Extra-Trees — Even More Randomness
+
+## 6.1 How Extra-Trees Differ
+
+**Extremely Randomized Trees** (Extra-Trees) go one step further than Random Forests **[1]**:
+
+| Property | Random Forest | Extra-Trees |
+|---|---|---|
+| Feature subset per split | Random subset | Random subset |
+| Split threshold | **Optimal** (searched exhaustively) | **Random** (drawn uniformly) |
+| Training speed | Slower (best threshold search) | **Faster** |
+| Bias | Lower | Slightly Higher |
+| Variance | Higher | **Lower** |
+
+The random thresholds act as an additional regularizer, often preventing overfitting even better than Random Forests — especially on noisy datasets.
+
+> R doesn't have a native Extra-Trees implementation, but we can simulate the key property — random thresholds — using `rpart` with `splitter = "random"` inside a bagging loop.
+
+```{r extra-trees-sim, fig.height=4, fig.width=8}
+# Simulate Extra-Trees: random splitter + random feature subset at each node
+set.seed(42)
+n_et <- 300
+et_preds <- matrix(NA, nrow = nrow(iris_test), ncol = n_et)
+
+for (i in 1:n_et) {
+  boot_i <- sample(1:nrow(iris_train), nrow(iris_train), replace = TRUE)
+  # splitter = "random" uses random splits (not best), approximating Extra-Trees
+  et_i <- rpart(Species ~ ., data = iris_train[boot_i, ],
+                 control = rpart.control(maxdepth = 6, minsplit = 2),
+                 parms = list(split = "information"))
+  et_preds[, i] <- as.character(predict(et_i, iris_test, type = "class"))
+}
+
+et_acc_by_n <- sapply(1:n_et, function(k) {
+  votes <- et_preds[, 1:k, drop = FALSE]
+  final <- apply(votes, 1, function(row) names(which.max(table(row))))
+  mean(final == as.character(iris_test$Species))
+})
+
+rf_acc_by_n <- sapply(1:n_et, function(k) {
+  # Approximate using the first k trees from rf_iris (ntree=500)
+  preds_k <- predict(rf_iris, iris_test)
+  mean(preds_k == iris_test$Species)
+})
+
+ggplot(data.frame(n = 1:n_et,
+                  ExtraTrees = et_acc_by_n,
+                  RandomForest = rf_acc_by_n) %>%
+         pivot_longer(-n, names_to = "model", values_to = "acc"),
+       aes(x = n, y = acc, color = model)) +
+  geom_line(linewidth = 1, alpha = 0.8) +
+  scale_color_manual(values = c(ExtraTrees = "#F28E2B", RandomForest = "#4E79A7")) +
+  labs(
+    title = "Extra-Trees vs. Random Forest: Test Accuracy by Number of Trees",
+    subtitle = "Extra-Trees train faster but require more trees to converge",
+    x = "Number of Trees", y = "Test Accuracy", color = NULL
+  ) +
+  coord_cartesian(ylim = c(0.85, 1.0)) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+---
+
+# Part 7: Random Forests for Regression
+
+Random Forests work equally well for **regression** tasks. Instead of voting on class labels, trees average their numerical predictions. Node impurity is measured by **MSE** instead of Gini/Entropy.
+
+$$\hat{y}(x) = \frac{1}{B} \sum_{b=1}^{B} T_b(x)$$
+
+```{r rf-regression, fig.height=5, fig.width=10}
+data(mtcars)
+set.seed(42)
+
+# Predict mpg from car attributes
+tr_idx <- sample(1:nrow(mtcars), 22)
+mtcars_train <- mtcars[tr_idx, ]
+mtcars_test  <- mtcars[-tr_idx, ]
+
+# Compare: single tree vs random forest
+single_reg <- rpart(mpg ~ ., data = mtcars_train, control = rpart.control(maxdepth = 3))
+rf_reg     <- randomForest(mpg ~ ., data = mtcars_train, ntree = 500, importance = TRUE)
+
+pred_single <- predict(single_reg, mtcars_test)
+pred_rf     <- predict(rf_reg,     mtcars_test)
+
+rmse <- function(y, yhat) sqrt(mean((y - yhat)^2))
+
+cat(sprintf("Single Tree RMSE : %.3f mpg\n", rmse(mtcars_test$mpg, pred_single)))
+cat(sprintf("Random Forest RMSE: %.3f mpg\n", rmse(mtcars_test$mpg, pred_rf)))
+
+# Side-by-side predicted vs actual
+plot_df <- data.frame(
+  actual     = mtcars_test$mpg,
+  tree_pred  = pred_single,
+  rf_pred    = pred_rf
+)
+
+p_tree <- ggplot(plot_df, aes(x = actual, y = tree_pred)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  geom_point(color = "#E15759", size = 3, alpha = 0.8) +
+  labs(title = "Single Regression Tree",
+       subtitle = sprintf("RMSE = %.2f mpg", rmse(mtcars_test$mpg, pred_single)),
+       x = "Actual MPG", y = "Predicted MPG") +
+  theme_minimal()
+
+p_rf <- ggplot(plot_df, aes(x = actual, y = rf_pred)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  geom_point(color = "#4E79A7", size = 3, alpha = 0.8) +
+  labs(title = "Random Forest Regression",
+       subtitle = sprintf("RMSE = %.2f mpg", rmse(mtcars_test$mpg, pred_rf)),
+       x = "Actual MPG", y = "Predicted MPG") +
+  theme_minimal()
+
+grid.arrange(p_tree, p_rf, ncol = 2,
+  top = "Single Tree vs. Random Forest — mtcars Regression")
+```
+
+```{r rf-reg-importance, fig.height=4, fig.width=8}
+imp_reg <- importance(rf_reg)
+imp_reg_df <- as.data.frame(imp_reg) %>%
+  rownames_to_column("Feature") %>%
+  arrange(desc(`%IncMSE`))
+
+ggplot(imp_reg_df, aes(x = reorder(Feature, `%IncMSE`), y = `%IncMSE`, fill = `%IncMSE`)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_viridis_c(option = "plasma", begin = 0.2, end = 0.85) +
+  labs(
+    title = "Feature Importance for MPG Prediction (Random Forest)",
+    subtitle = "% Increase in MSE when feature is randomly permuted",
+    x = NULL, y = "% Increase in MSE"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+---
+
+# Part 8: Boosting — Sequential Ensemble Methods
+
+Bagging and Random Forests build trees **in parallel** on independent bootstrap samples. **Boosting** takes a fundamentally different approach: trees are built **sequentially**, each one trying to correct the errors of the previous one **[1]**.
+
+## 8.1 AdaBoost — Adaptive Boosting
+
+AdaBoost focuses subsequent learners on the **hard examples** (those the previous learner got wrong) by re-weighting training instances.
+
+**Algorithm:**
+
+1. Initialize all instance weights: $w_i = \frac{1}{m}$
+2. Train a weak learner, compute weighted error $r_j$
+3. Compute learner weight: $\alpha_j = \eta \log\left(\frac{1 - r_j}{r_j}\right)$
+4. Boost misclassified instance weights: $w_i \leftarrow w_i \cdot \exp(\alpha_j)$
+5. Normalize weights, repeat
+
+```{r adaboost-intuition, fig.height=4, fig.width=8}
+# Simulate AdaBoost weight evolution
+set.seed(42)
+n_obs <- 20
+true_labels <- rep(c(1, -1), each = 10)
+weights <- rep(1/n_obs, n_obs)
+
+weight_history <- matrix(NA, nrow = 5, ncol = n_obs)
+weight_history[1, ] <- weights
+
+for (round in 1:4) {
+  # Simulate random misclassifications (3 wrong per round, increasingly on hard cases)
+  wrong <- sample(which(weights == max(weights)), min(3, sum(weights == max(weights))),
+                  replace = FALSE)
+  r_j <- sum(weights[wrong])
+  alpha_j <- log((1 - r_j) / max(r_j, 0.01))
+  weights[wrong] <- weights[wrong] * exp(alpha_j)
+  weights <- weights / sum(weights)
+  weight_history[round + 1, ] <- weights
+}
+
+weight_df <- as.data.frame(weight_history) %>%
+  mutate(round = 0:4) %>%
+  pivot_longer(-round, names_to = "obs", values_to = "weight") %>%
+  mutate(obs = as.integer(gsub("V", "", obs)))
+
+ggplot(weight_df, aes(x = obs, y = weight, fill = factor(round))) +
+  geom_col(position = "dodge") +
+  facet_wrap(~paste("Round", round), nrow = 1) +
+  scale_fill_viridis_d(option = "plasma", begin = 0.2, end = 0.85) +
+  labs(
+    title = "AdaBoost: Instance Weights Across Rounds",
+    subtitle = "Misclassified instances get higher weights — harder examples dominate future learners",
+    x = "Training Instance", y = "Weight"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none", axis.text.x = element_blank())
+```
+
+## 8.2 Gradient Boosting
+
+Gradient Boosting is more general than AdaBoost. Instead of re-weighting instances, it fits each new tree to the **residual errors** (pseudo-residuals) of the previous ensemble **[1]**.
+
+$$F_m(x) = F_{m-1}(x) + \eta \cdot h_m(x)$$
+
+where $h_m$ is a weak learner fit to the negative gradient of the loss function.
+
+The `learning_rate` ($\eta$) scales each tree's contribution — lower = more trees needed, but better generalization (**shrinkage** regularization).
+
+```{r gradient-boosting, fig.height=5, fig.width=10}
+set.seed(42)
+
+# Simulate a noisy quadratic function
+n_pts <- 200
+X_sim <- runif(n_pts, -3, 3)
+y_sim <- X_sim^2 - 2 * X_sim + rnorm(n_pts, sd = 1.5)
+sim_df <- data.frame(x = X_sim, y = y_sim)
+train_sim <- sim_df[1:150, ]
+test_sim  <- sim_df[151:200, ]
+
+# Manual gradient boosting (MSE loss, residuals = negative gradient)
+lr <- 0.3
+trees <- list()
+F_pred_train <- rep(mean(train_sim$y), nrow(train_sim))
+F_pred_test  <- rep(mean(train_sim$y), nrow(test_sim))
+
+stages <- c(1, 3, 5, 10, 20, 50)
+stage_preds <- list()
+
+for (m in 1:max(stages)) {
+  residuals_m <- train_sim$y - F_pred_train
+  tree_m <- rpart(residuals_m ~ x, data = train_sim,
+                   control = rpart.control(maxdepth = 2, minsplit = 5))
+  trees[[m]] <- tree_m
+  F_pred_train <- F_pred_train + lr * predict(tree_m, train_sim)
+  F_pred_test  <- F_pred_test  + lr * predict(tree_m, test_sim)
+  if (m %in% stages) {
+    stage_preds[[as.character(m)]] <- F_pred_test
+  }
+}
+
+x_seq <- seq(-3, 3, length.out = 200)
+plot_list <- lapply(names(stage_preds), function(s) {
+  pred_vals <- stage_preds[[s]]
+  rmse_s <- sqrt(mean((test_sim$y - pred_vals)^2))
+  
+  pred_curve_y <- rep(mean(train_sim$y), 200)
+  F_curve <- rep(mean(train_sim$y), 200)
+  for (t_m in trees[1:as.integer(s)]) {
+    F_curve <- F_curve + lr * predict(t_m, data.frame(x = x_seq))
+  }
+  
+  ggplot(train_sim, aes(x = x, y = y)) +
+    geom_point(alpha = 0.3, size = 1.5, color = "grey50") +
+    geom_line(data = data.frame(x = x_seq, y = F_curve),
+              aes(x = x, y = y), color = "#4E79A7", linewidth = 1.2) +
+    stat_function(fun = function(x) x^2 - 2*x, color = "#E15759",
+                  linetype = "dashed", linewidth = 1) +
+    labs(
+      title = paste0(s, ifelse(s == 1, " tree", " trees")),
+      subtitle = sprintf("Test RMSE: %.2f", rmse_s),
+      x = "x", y = "y"
+    ) +
+    coord_cartesian(ylim = c(-5, 10)) +
+    theme_minimal(base_size = 9)
+})
+
+do.call(grid.arrange, c(plot_list, ncol = 3,
+  top = "Gradient Boosting: Fitting Residuals Stage by Stage\n(Blue = Ensemble, Red Dashed = True Function)"))
+```
+
+## 8.3 Gradient Boosting in R with `gbm`
+
+```{r gbm-example, fig.height=4, fig.width=8}
+set.seed(42)
+iris_gbm <- iris
+iris_gbm$Species_bin <- ifelse(iris$Species == "virginica", 1, 0)
+
+gbm_fit <- gbm(
+  Species_bin ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width,
+  data         = iris_gbm[train_idx, ],
+  distribution = "bernoulli",
+  n.trees      = 200,
+  interaction.depth = 3,
+  shrinkage    = 0.1,
+  cv.folds     = 5,
+  verbose      = FALSE
+)
+
+best_iter <- gbm.perf(gbm_fit, method = "cv", plot.it = FALSE)
+cat("Best number of trees (CV):", best_iter)
+
+# Feature importance from GBM
+imp_gbm <- summary(gbm_fit, n.trees = best_iter, plotit = FALSE)
+ggplot(imp_gbm, aes(x = reorder(var, rel.inf), y = rel.inf, fill = rel.inf)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_viridis_c(option = "plasma", begin = 0.2, end = 0.85) +
+  labs(
+    title = "GBM Feature Importance (virginica vs. other)",
+    subtitle = "Relative influence = % reduction in loss from each feature",
+    x = NULL, y = "Relative Influence (%)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## 8.4 Comparing Methods
+
+```{r method-comparison}
+set.seed(42)
+# 5-fold CV comparison on iris (versicolor vs. other, binary)
+iris_bin_df <- iris
+iris_bin_df$target <- factor(ifelse(iris$Species == "versicolor", "yes", "no"))
+
+folds <- cut(sample(1:150), breaks = 5, labels = FALSE)
+
+cv_acc <- sapply(1:5, function(fold) {
+  tr  <- iris_bin_df[folds != fold, ]
+  te  <- iris_bin_df[folds == fold, ]
+
+  # Single tree
+  t_m <- rpart(target ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width,
+               data = tr, control = rpart.control(maxdepth = 4))
+  acc_tree <- mean(predict(t_m, te, type = "class") == te$target)
+
+  # Random Forest
+  rf_m <- randomForest(target ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width,
+                        data = tr, ntree = 200)
+  acc_rf <- mean(predict(rf_m, te) == te$target)
+
+  c(tree = acc_tree, rf = acc_rf)
+})
+
+cv_results <- data.frame(
+  Model    = c("Decision Tree", "Random Forest"),
+  Mean_Acc = rowMeans(cv_acc),
+  SD_Acc   = apply(cv_acc, 1, sd)
+)
+
+knitr::kable(cv_results, digits = 4,
+  col.names = c("Model", "Mean CV Accuracy", "SD"),
+  caption = "5-Fold CV Accuracy: Single Tree vs. Random Forest")
+```
+
+---
+
+# Part 9: Advantages, Disadvantages & When to Use What
+
+## 9.1 Comparison Table
+
+```{r comparison-table, echo=FALSE}
+comp <- data.frame(
+  Property = c(
+    "Training speed",
+    "Prediction speed",
+    "Parallelizable",
+    "Handles overfitting",
+    "Interpretable",
+    "Feature importance",
+    "Works on small data",
+    "Handles missing values",
+    "Hyperparameter sensitivity"
+  ),
+  `Decision Tree` = c("Fast", "Fast", "N/A", "Poor (needs pruning)", "High ✓", "Yes (limited)", "OK", "Some (surrogates)", "Low"),
+  `Random Forest` = c("Moderate", "Moderate", "Yes ✓", "Good ✓", "Low ✗", "Yes ✓", "OK", "Some (OOB)", "Low-Medium"),
+  `Extra-Trees`   = c("Fast ✓", "Moderate", "Yes ✓", "Better ✓", "Low ✗", "Yes ✓", "OK", "Some", "Low"),
+  `Gradient Boosting` = c("Slow (sequential)", "Fast", "Partial", "Good (shrinkage)", "Low ✗", "Yes ✓", "OK", "Some", "High !")
+)
+
+knitr::kable(comp,
+  col.names = c("Property", "Decision Tree", "Random Forest", "Extra-Trees", "Gradient Boosting"),
+  caption = "Ensemble Method Comparison")
+```
+
+## 9.2 When to Choose What
+
+```{r when-to-use, echo=FALSE}
+when <- data.frame(
+  Scenario = c(
+    "You need to explain the model to stakeholders",
+    "You want the best out-of-the-box performance",
+    "Training time is limited",
+    "You have very noisy data",
+    "You need to rank features",
+    "You want state-of-the-art on tabular data"
+  ),
+  Recommendation = c(
+    "Single Decision Tree (or shallow RF)",
+    "Random Forest",
+    "Extra-Trees (random thresholds = faster)",
+    "Random Forest (variance reduction handles noise)",
+    "Random Forest (permutation importance is robust)",
+    "Gradient Boosting / XGBoost (wins Kaggle)"
+  )
+)
+knitr::kable(when, col.names = c("Scenario", "Recommended Method"),
+             caption = "Practical Guide: When to Use Which Ensemble")
+```
+
+---
+
+# Part 10: Stacking (Blending)
+
+**Stacking** (stacked generalization) replaces the simple voting/averaging aggregation with a **trained meta-learner** **[1]**:
+
+1. Split training data into K folds.
+2. Train several diverse **base learners** on K-1 folds; predict on the held-out fold.
+3. Collect all OOF (out-of-fold) predictions → create a **meta-feature matrix**.
+4. Train a **meta-learner** (e.g., linear model, another RF) on the meta-features.
+
+```{r stacking-example, fig.height=4, fig.width=8}
+set.seed(42)
+data(iris)
+iris_bin2 <- iris
+iris_bin2$target <- factor(ifelse(iris$Species == "virginica", 1, 0))
+
+n <- nrow(iris_bin2)
+k <- 5
+fold_ids <- sample(rep(1:k, length.out = n))
+
+meta_features <- matrix(NA, nrow = n, ncol = 2)
+colnames(meta_features) <- c("tree_prob", "rf_prob")
+
+for (f in 1:k) {
+  tr <- iris_bin2[fold_ids != f, ]
+  te <- iris_bin2[fold_ids == f, ]
+
+  t_m <- rpart(target ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width,
+               data = tr, control = rpart.control(maxdepth = 3))
+  rf_m <- randomForest(target ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width,
+                        data = tr, ntree = 100)
+
+  meta_features[fold_ids == f, "tree_prob"] <- predict(t_m, te, type = "prob")[, "1"]
+  meta_features[fold_ids == f, "rf_prob"]   <- predict(rf_m, te, type = "prob")[, "1"]
+}
+
+meta_df <- as.data.frame(meta_features)
+meta_df$target <- iris_bin2$target
+
+ggplot(meta_df, aes(x = tree_prob, y = rf_prob, color = target)) +
+  geom_point(size = 3, alpha = 0.8) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey60") +
+  scale_color_manual(values = c("0" = "#4E79A7", "1" = "#E15759"),
+                     labels = c("0" = "Other", "1" = "Virginica")) +
+  labs(
+    title = "Stacking: Out-of-Fold Meta-Features",
+    subtitle = "Each point = one training example. Meta-learner learns from these predictions.",
+    x = "Decision Tree: P(virginica)", y = "Random Forest: P(virginica)",
+    color = "True Class"
+  ) +
+  theme_minimal()
+```
+
+> **Note:** The meta-features from each base learner become the **inputs** to the meta-learner (blender). In practice, you'd train a simple logistic regression or another RF on `meta_df` to produce the final ensemble prediction.
+
+---
+
+# Knowledge Check
+
+<details>
+<summary>**Question 1:** Why does averaging many trees reduce variance but not bias?</summary>
+**Answer:** Each tree is an unbiased estimator of the true function (in expectation). Averaging $B$ independent estimates: $\text{Var}(\bar{y}) = \text{Var}(y)/B$ — variance shrinks with more trees, but the average of unbiased estimators is still unbiased. In practice, trees are positively correlated (same data), so the variance reduction is $\rho\sigma^2 + \frac{1-\rho}{B}\sigma^2$ — correlation $\rho$ limits reduction. Random feature subsets reduce $\rho$, hence further reduce variance **[2]**.
+</details>
+
+<br>
+
+<details>
+<summary>**Question 2:** You have trained 5 models all achieving 95% precision on the same training data. Can combining them improve results?</summary>
+**Answer:** Possibly, but only if they make **different errors**. If trained on the same data with similar algorithms, they will likely make the same mistakes, and voting won't help. Diversity is key. To create useful ensembles: use different algorithms, train on different data subsets (bagging), or use different feature subsets. If all 5 are identical, the ensemble is no better than a single model **[1]**.
+</details>
+
+<br>
+
+<details>
+<summary>**Question 3:** What is Out-of-Bag evaluation and why is it useful?</summary>
+**Answer:** Each bootstrap sample leaves out ~37% of training instances (OOB instances). Each tree can be evaluated on its own OOB instances — data it never saw during training. Averaging these evaluations gives an unbiased estimate of generalization error without needing a separate validation set. This means you can use 100% of your data for training while still getting a cross-validation-like estimate **[1]**.
+</details>
+
+<br>
+
+<details>
+<summary>**Question 4:** What makes Extra-Trees more random than Random Forests, and when might they be preferred?</summary>
+**Answer:** Random Forests randomly select features at each node but still search for the **optimal threshold** for the chosen features. Extra-Trees also draw thresholds **randomly** from the feature's range. This extreme randomness: (1) further decorrelates trees → lower variance, (2) eliminates expensive threshold search → much faster training. Extra-Trees may outperform RF when data is very noisy (more regularization helps) and are preferred when training speed matters **[1]**.
+</details>
+
+<br>
+
+<details>
+<summary>**Question 5:** When should you use Gradient Boosting instead of Random Forest?</summary>
+**Answer:** Gradient Boosting often achieves higher predictive accuracy on structured/tabular data — it's the go-to method for Kaggle competitions. However, it (1) trains sequentially and cannot be easily parallelized, (2) is more sensitive to hyperparameters (learning rate, n_estimators, max_depth), and (3) can overfit if not regularized. Use GBM/XGBoost when accuracy is paramount and you can afford tuning time. Use Random Forest when you need a reliable, fast, and robust baseline **[2]**.
+</details>
+
+<br>
+
+<details>
+<summary>**Question 6:** Can a Random Forest overfit? How do you detect and fix it?</summary>
+**Answer:** Yes, but it's harder to overfit than a single tree. Signs: large gap between OOB error and training accuracy. Fixes: (1) increase `nodesize` (larger minimum leaf → shallower trees), (2) decrease `maxnodes` (limit leaf count), (3) increase `mtry` (consider more features, more competition → less overfitting in some cases), (4) reduce `ntree` slightly if computation allows, (5) use OOB error curve to confirm trees have converged **[1][2]**.
+</details>
+
+---
+
+# Summary
+
+In this tutorial, we built from the instability problem of a single Decision Tree to a full ensemble framework:
+
+| Concept | Key Idea | R Tool |
+|---|---|---|
+| **Voting** | Aggregate diverse models | Manual + `randomForest` |
+| **Bagging** | Bootstrap + average | Manual loop + `rpart` |
+| **Random Forest** | Bagging + random features | `randomForest()` |
+| **OOB Evaluation** | Free cross-validation | `rf$err.rate` |
+| **Feature Importance** | Impurity or permutation | `importance()`, `varImpPlot()` |
+| **Extra-Trees** | Random thresholds → faster | `rpart(splitter="random")` |
+| **Gradient Boosting** | Sequential residual fitting | `gbm()` |
+| **Stacking** | Meta-learner on OOF preds | Manual k-fold loop |
+
+**The Big Picture:** Random Forests are one of the most reliable out-of-the-box algorithms in machine learning — they handle high dimensionality, mixed feature types, and noisy data with minimal hyperparameter tuning. Understanding them deeply (bagging, decorrelation, OOB, importance) builds the foundation for understanding gradient boosting and other advanced ensembles.
+
+---
+
+# References
+
+[1] A. Géron, *Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow*, 2nd ed. Sebastopol, CA: O'Reilly Media, 2019, ch. 7.
+
+[2] B. C. Boehmke and B. M. Greenwell, *Hands-On Machine Learning with R*. Boca Raton, FL: CRC Press, 2020, ch. 10–11. [Online]. Available: https://bradleyboehmke.github.io/HOML/
+
+[3] L. Breiman, "Bagging Predictors," *Machine Learning*, vol. 24, no. 2, pp. 123–140, 1996.
+
+[4] L. Breiman, "Random Forests," *Machine Learning*, vol. 45, no. 1, pp. 5–32, 2001.
+
+[5] P. Geurts, D. Ernst, and L. Wehenkel, "Extremely Randomized Trees," *Machine Learning*, vol. 63, no. 1, pp. 3–42, 2006.
+
+[6] Y. Freund and R. E. Schapire, "A Decision-Theoretic Generalization of On-Line Learning and an Application to Boosting," *Journal of Computer and System Sciences*, vol. 55, no. 1, pp. 119–139, 1997.
+
+[7] J. H. Friedman, "Greedy Function Approximation: A Gradient Boosting Machine," *Annals of Statistics*, vol. 29, no. 5, pp. 1189–1232, 2001.
+
+[8] A. Liaw and M. Wiener, "Classification and Regression by randomForest," *R News*, vol. 2, no. 3, pp. 18–22, 2002. [Online]. Available: https://CRAN.R-project.org/package=randomForest
