@@ -31,10 +31,17 @@ if (!requireNamespace("seedhash", quietly = TRUE)) {
   }
   pak::pkg_install("github::melhzy/seedhash/R", ask = FALSE)
 }
+```
+
+```{r seeds, include=TRUE}
 library(seedhash)
 gen <- SeedHashGenerator$new("ANLY530-Week03-RandomForest")
 MASTER_SEED <- gen$generate_seeds(1)
 set.seed(MASTER_SEED)
+```
+
+```{r seedhash-info, echo=FALSE, results='asis'}
+cat(sprintf("**Random Seed Source:** `seedhash` package — input string: `\"ANLY530-Week03-RandomForest\"` → seed: `%d`\n\n", MASTER_SEED))
 ```
 
 # Introduction
@@ -75,10 +82,6 @@ pacman::p_load(
   gbm,
   scales
 )
-```
-
-```{r seedhash-info, echo=FALSE, results='asis'}
-cat(sprintf("**Random Seed Source:** `seedhash` package — input string: `\"ANLY530-Week03-RandomForest\"` → seed: `%d`\n\n", MASTER_SEED))
 ```
 
 ---
