@@ -162,39 +162,49 @@ idx <- sample(1:nrow(iris_2d), size = floor(0.7 * nrow(iris_2d)))
 train <- iris_2d[idx, ]
 test  <- iris_2d[-idx, ]
 
-# --- Base learners ---
+# --- Three diverse base learners ---
 # 1. Decision Tree
 tree_model <- rpart(Species ~ ., data = train, control = rpart.control(maxdepth = 3))
 
-# 2. Random Forest (as the "RF voter")
-rf_model <- randomForest(Species ~ ., data = train, ntree = 100, probability = TRUE)
+# 2. Random Forest
+rf_model   <- randomForest(Species ~ ., data = train, ntree = 100)
 
-# --- Hard Voting (manual) ---
+# 3. LDA (Linear Discriminant Analysis) — from base R MASS package
+lda_model  <- MASS::lda(Species ~ ., data = train)
+
+# --- Individual predictions ---
 pred_tree <- predict(tree_model, test, type = "class")
 pred_rf   <- predict(rf_model,   test, type = "class")
+pred_lda  <- predict(lda_model,  test)$class
 
-# Combine via majority vote (2 classifiers: tie goes to RF)
-hard_vote <- ifelse(as.character(pred_tree) == as.character(pred_rf),
-                    as.character(pred_rf),
-                    as.character(pred_rf))  # RF wins tie
+# --- Hard Voting: true majority vote across 3 classifiers ---
+hard_vote_mat <- data.frame(
+  tree = as.character(pred_tree),
+  rf   = as.character(pred_rf),
+  lda  = as.character(pred_lda)
+)
+hard_vote <- apply(hard_vote_mat, 1, function(row) names(which.max(table(row))))
+hard_vote <- factor(hard_vote, levels = levels(test$Species))
 
-# --- Soft Voting ---
+# --- Soft Voting: average class probabilities across 3 classifiers ---
 prob_tree <- predict(tree_model, test, type = "prob")
 prob_rf   <- predict(rf_model,   test, type = "prob")
+prob_lda  <- predict(lda_model,  test)$posterior
 
-avg_prob  <- (prob_tree + prob_rf) / 2
-soft_vote <- colnames(avg_prob)[apply(avg_prob, 1, which.max)]
-soft_vote <- factor(soft_vote, levels = levels(test$Species))
+avg_prob  <- (prob_tree + prob_rf + prob_lda) / 3
+soft_vote <- factor(colnames(avg_prob)[apply(avg_prob, 1, which.max)],
+                    levels = levels(test$Species))
 
 # --- Accuracy ---
 acc_tree <- mean(pred_tree == test$Species)
 acc_rf   <- mean(pred_rf   == test$Species)
-acc_hard <- mean(factor(hard_vote, levels = levels(test$Species)) == test$Species)
+acc_lda  <- mean(pred_lda  == test$Species)
+acc_hard <- mean(hard_vote == test$Species)
 acc_soft <- mean(soft_vote == test$Species)
 
 acc_df <- data.frame(
-  Model    = c("Decision Tree", "Random Forest", "Hard Vote", "Soft Vote"),
-  Accuracy = c(acc_tree, acc_rf, acc_hard, acc_soft)
+  Model    = c("Decision Tree", "LDA", "Random Forest", "Hard Vote (3-way)", "Soft Vote (3-way)"),
+  Accuracy = c(acc_tree, acc_lda, acc_rf, acc_hard, acc_soft)
 )
 
 ggplot(acc_df, aes(x = reorder(Model, Accuracy), y = Accuracy, fill = Model)) +
@@ -645,15 +655,17 @@ rf_big <- randomForest(
 single_dt <- rpart(Species ~ ., data = train_2d, control = rpart.control(maxdepth = 5))
 grid_2d$single_tree <- predict(single_dt, grid_2d, type = "class")
 
-# RF predictions at different ntree values (predict.all gives individual tree preds)
-all_preds <- predict(rf_big, grid_2d, predict.all = TRUE)$individual
-# all_preds: nrow(grid_2d) x 500 matrix of class codes (1/2/3)
+# RF predictions on grid for boundary regions
+all_preds_grid <- predict(rf_big, grid_2d, predict.all = TRUE)$individual
+# Separately predict on the actual test set (must NOT slice grid rows)
+all_preds_test <- predict(rf_big, test_2d, predict.all = TRUE)$individual
+# all_preds_grid: nrow(grid_2d) x 500; all_preds_test: nrow(test_2d) x 500
 
 ntree_snapshots <- c(1, 5, 10, 50, 100, 500)
 species_levels  <- levels(iris$Species)
 
 snap_list <- lapply(ntree_snapshots, function(nt) {
-  subset_preds <- all_preds[, 1:nt, drop = FALSE]
+  subset_preds <- all_preds_grid[, 1:nt, drop = FALSE]
   maj_class <- apply(subset_preds, 1, function(row) {
     tbl <- table(row)
     as.integer(names(which.max(tbl)))
@@ -671,17 +683,13 @@ palette_rf <- c(setosa = "#AED6F1", versicolor = "#A9DFBF", virginica = "#F9E79F
 
 plots_bd <- lapply(ntree_snapshots, function(nt) {
   bd_sub <- filter(boundary_df, ntree == nt)
-  acc_nt <- if (nt == 1) {
-    mean(predict(single_dt, test_2d, type = "class") == test_2d$Species)
-  } else {
-    preds_nt <- all_preds[1:nrow(test_2d), , drop = FALSE]
-    maj_test <- apply(all_preds[1:nrow(test_2d), 1:nt, drop = FALSE], 1, function(row) {
-      tbl <- table(row)
-      species_levels[as.integer(names(which.max(tbl)))]
-    })
-    mean(maj_test == as.character(test_2d$Species))
-  }
-  
+  # Use test set predictions from rf_big (not the grid rows)
+  maj_test <- apply(all_preds_test[, 1:nt, drop = FALSE], 1, function(row) {
+    tbl <- table(row)
+    species_levels[as.integer(names(which.max(tbl)))]
+  })
+  acc_nt <- mean(maj_test == as.character(test_2d$Species))
+
   ggplot() +
     geom_tile(data = bd_sub, aes(x = Petal.Length, y = Petal.Width, fill = pred_class),
               alpha = 0.65) +
@@ -692,7 +700,7 @@ plots_bd <- lapply(ntree_snapshots, function(nt) {
     scale_color_manual(values = c(setosa = "#1A5276", versicolor = "#1E8449",
                                    virginica = "#922B21"), guide = "none") +
     labs(
-      title    = if (nt == 1) "Single Tree" else sprintf("%d Trees", nt),
+      title    = sprintf("%d %s", nt, if (nt == 1) "Tree" else "Trees"),
       subtitle = sprintf("Test acc: %.1f%%", acc_nt * 100),
       x = "Petal Length", y = "Petal Width"
     ) +
@@ -1167,10 +1175,15 @@ et_acc_by_n <- sapply(1:n_et, function(k) {
   mean(final == as.character(iris_test$Species))
 })
 
+# RF baseline: predict with first k trees from rf_iris (must use predict.all)
+all_rf_test_preds <- predict(rf_iris, iris_test, predict.all = TRUE)$individual
+n_rf_trees <- ncol(all_rf_test_preds)
+
 rf_acc_by_n <- sapply(1:n_et, function(k) {
-  # Approximate using the first k trees from rf_iris (ntree=500)
-  preds_k <- predict(rf_iris, iris_test)
-  mean(preds_k == iris_test$Species)
+  k_use <- min(k, n_rf_trees)
+  votes <- all_rf_test_preds[, 1:k_use, drop = FALSE]
+  final <- apply(votes, 1, function(row) names(which.max(table(row))))
+  mean(final == as.character(iris_test$Species))
 })
 
 ggplot(data.frame(n = 1:n_et,
