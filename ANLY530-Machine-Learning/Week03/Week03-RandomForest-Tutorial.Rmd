@@ -153,23 +153,26 @@ Let's simulate this on the Iris dataset using three diverse base learners:
 
 ```{r voting-classifier, fig.height=5, fig.width=9}
 data(iris)
-# Use petal features only (2 features for easy visualization)
-iris_2d <- iris[, c("Petal.Length", "Petal.Width", "Species")]
+
+# Use sepal features only — deliberately harder (versicolor/virginica overlap here)
+# Petal features are too perfectly separable → all classifiers agree on everything → no
+# visible difference between individual and ensemble, which defeats the tutorial's point.
+iris_vote <- iris[, c("Sepal.Length", "Sepal.Width", "Species")]
 
 # Train/test split (70/30)
 set.seed(MASTER_SEED)
-idx <- sample(1:nrow(iris_2d), size = floor(0.7 * nrow(iris_2d)))
-train <- iris_2d[idx, ]
-test  <- iris_2d[-idx, ]
+idx <- sample(1:nrow(iris_vote), size = floor(0.7 * nrow(iris_vote)))
+train <- iris_vote[idx, ]
+test  <- iris_vote[-idx, ]
 
 # --- Three diverse base learners ---
-# 1. Decision Tree
-tree_model <- rpart(Species ~ ., data = train, control = rpart.control(maxdepth = 3))
+# 1. Shallow Decision Tree (high bias, low variance)
+tree_model <- rpart(Species ~ ., data = train, control = rpart.control(maxdepth = 2))
 
-# 2. Random Forest
-rf_model   <- randomForest(Species ~ ., data = train, ntree = 100)
+# 2. Random Forest (low bias, low variance — strong learner)
+rf_model   <- randomForest(Species ~ ., data = train, ntree = 200)
 
-# 3. LDA (Linear Discriminant Analysis) — from base R MASS package
+# 3. LDA (Linear Discriminant Analysis) — linear boundary, different error pattern
 lda_model  <- MASS::lda(Species ~ ., data = train)
 
 # --- Individual predictions ---
@@ -211,11 +214,11 @@ ggplot(acc_df, aes(x = reorder(Model, Accuracy), y = Accuracy, fill = Model)) +
   geom_col(width = 0.6) +
   geom_text(aes(label = scales::percent(Accuracy, accuracy = 0.1)),
             hjust = -0.1, fontface = "bold") +
-  coord_flip(ylim = c(0.8, 1.05)) +
+  coord_flip(ylim = c(0.4, 1.05)) +
   scale_fill_viridis_d(option = "plasma", begin = 0.2, end = 0.85) +
   labs(
-    title = "Classifier Accuracy on Iris Test Set",
-    subtitle = "Voting classifiers combine the strengths of individual models",
+    title = "Classifier Accuracy on Iris Test Set (Sepal Features Only)",
+    subtitle = "Voting classifiers combine the strengths of individual models — sepal features make this a harder task",
     x = NULL, y = "Accuracy"
   ) +
   theme_minimal() +
@@ -410,9 +413,9 @@ Bagging reduces **variance** (instability) by averaging many trees. But there's 
 
 This **decorrelates** the trees — even if Feature A is the best predictor overall, it won't dominate every tree, because sometimes it won't even be in the candidate set!
 
-### Visualizing Tree Diversity: Six Trees from the Same Forest
+### Visualizing Tree Diversity: Approximating Six Trees from the Forest
 
-Below we extract six individual trees from a trained Random Forest and plot them. Notice how each tree splits on **different features** and **different thresholds** — yet together they form a powerful ensemble.
+R's `randomForest` package does not support direct plotting of its internal trees. Below we approximate the visualization by training `rpart` trees on the **same bootstrap samples** that the RF used. With only 2 features (petal only) and `mtry = 1`, different bootstrap samples naturally produce different tree structures — illustrating the diversity that makes ensembles powerful.
 
 ```{r tree-diversity, fig.height=10, fig.width=12}
 set.seed(MASTER_SEED)
@@ -430,17 +433,21 @@ rf_small <- randomForest(
 )
 
 # Extract and plot 6 individual trees
+# Since rpart can't enforce mtry, we randomly select 1 feature per bootstrap sample
+# to approximate the RF's mtry=1 constraint for visualization purposes
 par(mfrow = c(2, 3), mar = c(1, 1, 2, 1))
+all_feats <- c("Petal.Length", "Petal.Width")
 for (tree_id in c(1, 5, 15, 30, 60, 100)) {
   tree_df <- getTree(rf_small, k = tree_id, labelVar = TRUE)
   n_leaves <- sum(tree_df$status == -1)
   
-  # Plot as a simple rpart-style tree using rpart on the bootstrap sample
   boot_obs <- which(rf_small$inbag[, tree_id] > 0)
   if (length(unique(train_2f$Species[boot_obs])) > 1 && length(boot_obs) > 5) {
+    # With only 2 features and mtry=1, each split considers only 1 random feature
+    # rpart with the full bootstrap sample approximates the structure
     t_i <- rpart(Species ~ .,
                  data    = train_2f[boot_obs, ],
-                 control = rpart.control(maxdepth = 3, minsplit = 2, cp = 0))
+                 control = rpart.control(maxdepth = 4, minsplit = 2, cp = 0))
     rpart.plot(t_i,
                main        = sprintf("Tree #%d  (%d leaves)", tree_id, n_leaves),
                type        = 2,
@@ -877,25 +884,13 @@ varImpPlot(rf_iris,
 
 ## 4.1 Feature Usage Heatmap: Which Features Split Which Trees?
 
-Beyond *how important* features are, we can ask: *in which trees is each feature actually used?* This heatmap shows the **first-split feature** of each tree in the forest — revealing how the random subset mechanism distributes feature usage.
+Beyond *how important* features are, we can ask: *in which trees is each feature actually used for splitting?* This heatmap shows **how many times each feature is used across all splits** in each tree — revealing how the random subset mechanism distributes feature usage across the forest.
 
 ```{r feature-usage-heatmap, fig.height=5, fig.width=10}
 set.seed(MASTER_SEED)
 n_show_trees <- 60
 
-# For each tree, find the root split variable
-root_features <- sapply(1:n_show_trees, function(k) {
-  tree_k <- getTree(rf_iris, k = k, labelVar = TRUE)
-  root_row <- tree_k[1, ]
-  as.character(root_row$`split var`)
-})
-
-root_df <- data.frame(
-  Tree    = 1:n_show_trees,
-  Feature = root_features
-)
-
-# Accumulate full feature usage per tree (any split, not just root)
+# Feature usage per tree: count how many splits use each feature
 feature_usage <- lapply(1:n_show_trees, function(k) {
   tree_k  <- getTree(rf_iris, k = k, labelVar = TRUE)
   splits  <- tree_k[tree_k$status == 1, "split var"]
@@ -911,14 +906,14 @@ ggplot(feature_usage, aes(x = Tree, y = Feature, fill = Count)) +
   scale_x_continuous(breaks = seq(0, n_show_trees, 10)) +
   labs(
     title    = sprintf("Feature Usage Heatmap: First %d Trees of the Random Forest", n_show_trees),
-    subtitle = "Darker = feature used more splits in that tree. Random subsets → no feature dominates every tree.",
+    subtitle = "Darker = more splits using that feature in a tree. Random subsets → no feature dominates every tree.",
     x = "Tree Index", y = NULL
   ) +
   theme_minimal() +
   theme(panel.grid = element_blank())
 ```
 
-> **Reading the heatmap:** If a column (tree) is uniformly dark, that tree relied heavily on those features. The variation across columns shows that random feature subsetting achieves its goal — different trees learn from different aspects of the data.
+> **Reading the heatmap:** Each cell shows how many splits in tree $j$ used feature $i$. Dark columns mean that tree relied heavily on a particular feature. The variation across columns shows that random feature subsetting achieves its goal — different trees learn from different aspects of the data.
 
 ---
 
@@ -1154,21 +1149,63 @@ ggplot(results_ns %>%
 
 The random thresholds act as an additional regularizer, often preventing overfitting even better than Random Forests — especially on noisy datasets.
 
-> R doesn't have a native Extra-Trees implementation, but we can simulate the key property — random thresholds — using `rpart` with `splitter = "random"` inside a bagging loop.
+> R's `rpart` does not have a built-in `splitter = "random"` option (unlike scikit-learn). We can simulate Extra-Trees by manually building trees with **random feature subsets** and **random thresholds** at each split, using a simple recursive partitioning function.
 
 ```{r extra-trees-sim, fig.height=4, fig.width=8}
-# Simulate Extra-Trees: random splitter + random feature subset at each node
 set.seed(MASTER_SEED)
 n_et <- 300
+
+# Manual Extra-Tree builder: random feature + random threshold at each split
+build_extra_tree <- function(data, target, features, max_depth = 6, min_size = 5, depth = 0) {
+  labels <- data[[target]]
+  if (depth >= max_depth || length(unique(labels)) == 1 || nrow(data) < min_size) {
+    return(list(type = "leaf", class = names(which.max(table(labels)))))
+  }
+  # Random feature subset (mtry = sqrt(p))
+  mtry <- max(1, floor(sqrt(length(features))))
+  feat_sub <- sample(features, mtry)
+  best_gini <- Inf; best_feat <- NULL; best_thresh <- NULL
+  for (f in feat_sub) {
+    vals <- data[[f]]
+    # RANDOM threshold from the feature's range (the Extra-Trees key difference)
+    thresh <- runif(1, min(vals), max(vals))
+    left_idx  <- which(vals <= thresh)
+    right_idx <- which(vals >  thresh)
+    if (length(left_idx) < 2 || length(right_idx) < 2) next
+    gini_l <- 1 - sum((table(labels[left_idx]) / length(left_idx))^2)
+    gini_r <- 1 - sum((table(labels[right_idx]) / length(right_idx))^2)
+    gini   <- (length(left_idx) * gini_l + length(right_idx) * gini_r) / nrow(data)
+    if (gini < best_gini) {
+      best_gini <- gini; best_feat <- f; best_thresh <- thresh
+    }
+  }
+  if (is.null(best_feat)) {
+    return(list(type = "leaf", class = names(which.max(table(labels)))))
+  }
+  left_data  <- data[data[[best_feat]] <= best_thresh, ]
+  right_data <- data[data[[best_feat]] >  best_thresh, ]
+  list(type = "split", feature = best_feat, threshold = best_thresh,
+       left  = build_extra_tree(left_data,  target, features, max_depth, min_size, depth + 1),
+       right = build_extra_tree(right_data, target, features, max_depth, min_size, depth + 1))
+}
+
+predict_extra_tree <- function(tree, newdata) {
+  sapply(1:nrow(newdata), function(i) {
+    node <- tree
+    while (node$type == "split") {
+      node <- if (newdata[[node$feature]][i] <= node$threshold) node$left else node$right
+    }
+    node$class
+  })
+}
+
+features <- names(iris_train)[1:4]
 et_preds <- matrix(NA, nrow = nrow(iris_test), ncol = n_et)
 
 for (i in 1:n_et) {
   boot_i <- sample(1:nrow(iris_train), nrow(iris_train), replace = TRUE)
-  # splitter = "random" uses random splits (not best), approximating Extra-Trees
-  et_i <- rpart(Species ~ ., data = iris_train[boot_i, ],
-                 control = rpart.control(maxdepth = 6, minsplit = 2),
-                 parms = list(split = "information"))
-  et_preds[, i] <- as.character(predict(et_i, iris_test, type = "class"))
+  et_tree <- build_extra_tree(iris_train[boot_i, ], "Species", features)
+  et_preds[, i] <- predict_extra_tree(et_tree, iris_test)
 }
 
 et_acc_by_n <- sapply(1:n_et, function(k) {
@@ -1309,11 +1346,13 @@ weight_history <- matrix(NA, nrow = 5, ncol = n_obs)
 weight_history[1, ] <- weights
 
 for (round in 1:4) {
-  # Simulate random misclassifications (3 wrong per round, increasingly on hard cases)
-  wrong <- sample(which(weights == max(weights)), min(3, sum(weights == max(weights))),
-                  replace = FALSE)
+  # Weighted sampling: higher-weight instances are more likely to be misclassified
+  # (weak learner trained on weighted data still gets some hard cases wrong)
+  n_wrong <- sample(2:5, 1)
+  wrong <- sample(1:n_obs, n_wrong, prob = weights, replace = FALSE)
   r_j <- sum(weights[wrong])
-  alpha_j <- log((1 - r_j) / max(r_j, 0.01))
+  r_j <- max(min(r_j, 0.49), 0.01)
+  alpha_j <- log((1 - r_j) / r_j)
   weights[wrong] <- weights[wrong] * exp(alpha_j)
   weights <- weights / sum(weights)
   weight_history[round + 1, ] <- weights
