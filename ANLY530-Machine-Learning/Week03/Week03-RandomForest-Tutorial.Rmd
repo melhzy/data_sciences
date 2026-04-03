@@ -483,23 +483,26 @@ rf_bag <- randomForest(Species ~ ., data = iris_train, ntree = n_trees_corr,
 rf_rf  <- randomForest(Species ~ ., data = iris_train, ntree = n_trees_corr,
                        mtry = 2, importance = FALSE)
 
-# Get numeric predictions (1/2/3) for each tree via votes
+# Individual tree predictions: randomForest returns a CHARACTER matrix of class names.
+# as.numeric("setosa") is NA — must map to 1/2/3 first or cor() is all NA (grey heatmap).
 get_tree_preds <- function(rf_obj, newdata) {
-  # Use individual tree predictions via predict(..., predict.all=TRUE)
   p <- predict(rf_obj, newdata, predict.all = TRUE)
-  p$individual  # matrix: nrow = observations, ncol = ntree
+  ind <- p$individual
+  lv  <- levels(rf_obj$y)
+  matrix(match(as.vector(ind), lv), nrow = nrow(ind), ncol = ncol(ind))
 }
 
 bag_preds_mat <- get_tree_preds(rf_bag, iris_test)
 rf_preds_mat  <- get_tree_preds(rf_rf,  iris_test)
 
-# Pairwise correlation between tree prediction vectors
+# Pairwise Pearson correlation between trees' prediction vectors (numeric class codes)
 compute_pair_corr <- function(pred_mat) {
   n <- ncol(pred_mat)
-  cors <- matrix(NA, n, n)
-  for (i in 1:n) for (j in 1:n) {
-    cors[i,j] <- cor(as.numeric(pred_mat[,i]), as.numeric(pred_mat[,j]))
+  cors <- matrix(NA_real_, n, n)
+  for (i in seq_len(n)) for (j in seq_len(n)) {
+    cors[i, j] <- cor(pred_mat[, i], pred_mat[, j], use = "complete.obs")
   }
+  diag(cors) <- 1
   cors
 }
 
@@ -524,7 +527,7 @@ p_bag <- ggplot(filter(corr_df, Model == sprintf("Bagging (mtry=%d, all features
   scale_fill_gradient2(low = "#E15759", mid = "white", high = "#4E79A7",
                        midpoint = 0.5, limits = c(0, 1)) +
   labs(title = sprintf("Bagging (mtry=4)\nMean corr: %.3f",
-                       mean(bag_corr[upper.tri(bag_corr)])),
+                       mean(bag_corr[upper.tri(bag_corr)], na.rm = TRUE)),
        x = "Tree i", y = "Tree j") +
   theme_minimal(base_size = 9) +
   theme(axis.text = element_blank(), legend.position = "none")
@@ -535,7 +538,7 @@ p_rf <- ggplot(filter(corr_df, Model == "Random Forest (mtry=2)"),
   scale_fill_gradient2(low = "#E15759", mid = "white", high = "#4E79A7",
                        midpoint = 0.5, limits = c(0, 1)) +
   labs(title = sprintf("Random Forest (mtry=2)\nMean corr: %.3f",
-                       mean(rf_corr[upper.tri(rf_corr)])),
+                       mean(rf_corr[upper.tri(rf_corr)], na.rm = TRUE)),
        x = "Tree i", y = "Tree j", fill = "Correlation") +
   theme_minimal(base_size = 9) +
   theme(axis.text = element_blank())
@@ -543,6 +546,8 @@ p_rf <- ggplot(filter(corr_df, Model == "Random Forest (mtry=2)"),
 grid.arrange(p_bag, p_rf, ncol = 2,
   top = "Inter-Tree Prediction Correlation — Bagging vs. Random Forest\n(Lower correlation = better variance reduction)")
 ```
+
+> **Note:** `randomForest::predict(..., predict.all = TRUE)$individual` is a **character** matrix of class names. Pearson correlation needs numeric codes — we map levels to 1, 2, 3 (a common shortcut for comparing agreement between classifiers).
 
 > **Result:** Bagging trees are more correlated with each other (darker blue throughout) because they all tend to split on the same dominant features. RF trees have lower correlation — the random feature subsets force them to find different patterns, which is the source of RF's variance reduction advantage.
 
@@ -676,9 +681,10 @@ species_levels  <- levels(iris$Species)
 
 snap_list <- lapply(ntree_snapshots, function(nt) {
   subset_preds <- all_preds_grid[, 1:nt, drop = FALSE]
+  # $individual is a character matrix (class names), not 1/2/3 codes
   maj_class <- apply(subset_preds, 1, function(row) {
     tbl <- table(row)
-    as.integer(names(which.max(tbl)))
+    match(names(tbl)[which.max(tbl)], species_levels)
   })
   data.frame(
     Petal.Length = grid_2d$Petal.Length,
@@ -696,7 +702,7 @@ plots_bd <- lapply(ntree_snapshots, function(nt) {
   # Use test set predictions from rf_big (not the grid rows)
   maj_test <- apply(all_preds_test[, 1:nt, drop = FALSE], 1, function(row) {
     tbl <- table(row)
-    species_levels[as.integer(names(which.max(tbl)))]
+    names(tbl)[which.max(tbl)]
   })
   acc_nt <- mean(maj_test == as.character(test_2d$Species))
 
@@ -771,14 +777,13 @@ set.seed(MASTER_SEED)
 
 # Use the 500-tree full iris RF
 all_test_votes <- predict(rf_iris, iris_test, predict.all = TRUE)$individual
-# all_test_votes: nrow(iris_test) x 500 matrix (values = 1/2/3 for species)
-species_map <- c("1" = "setosa", "2" = "versicolor", "3" = "virginica")
+# randomForest returns class NAMES (character matrix), not numeric 1/2/3
 
 # Select 6 representative observations: 2 easy (pure), 2 moderate, 2 borderline
 vote_summaries <- lapply(1:nrow(iris_test), function(i) {
   votes <- all_test_votes[i, ]
   tbl   <- table(votes)
-  max_frac <- max(tbl) / 500
+  max_frac <- max(tbl) / ncol(all_test_votes)
   data.frame(obs = i, max_frac = max_frac,
              actual = as.character(iris_test$Species[i]))
 }) %>% do.call(rbind, .) %>%
@@ -797,12 +802,12 @@ vote_plots <- lapply(seq_along(chosen_obs), function(idx) {
   i <- chosen_obs[idx]
   votes     <- all_test_votes[i, ]
   vote_df   <- as.data.frame(table(votes)) %>%
-    mutate(Species = species_map[as.character(votes)],
-           Fraction = Freq / 500)
+    mutate(Species = as.character(votes),
+           Fraction = Freq / ncol(all_test_votes))
   true_sp   <- as.character(iris_test$Species[i])
-  predicted <- species_map[names(which.max(table(votes)))]
+  predicted <- names(which.max(table(votes)))
   correct   <- (predicted == true_sp)
-  conf      <- max(table(votes)) / 500
+  conf      <- max(table(votes)) / ncol(all_test_votes)
 
   ggplot(vote_df, aes(x = reorder(Species, -Fraction), y = Fraction, fill = Species)) +
     geom_col(width = 0.6) +
