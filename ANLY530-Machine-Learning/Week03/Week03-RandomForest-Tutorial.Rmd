@@ -338,12 +338,14 @@ ggplot(data.frame(m = m_values, oob = oob_frac), aes(x = m, y = oob)) +
 set.seed(MASTER_SEED)
 n_trees <- 200
 
-# Binary classification on iris: setosa vs non-setosa
+# Binary classification: versicolor vs virginica — deliberately hard (real sepal overlap)
+# Setosa vs other is nearly perfectly separable → all bootstrap trees identical → flat line
 iris_bin <- iris %>%
-  mutate(setosa = factor(ifelse(Species == "setosa", "setosa", "other"))) %>%
-  select(Sepal.Length, Sepal.Width, setosa)
+  filter(Species %in% c("versicolor", "virginica")) %>%
+  mutate(label = droplevels(Species)) %>%
+  select(Sepal.Length, Sepal.Width, label)
 
-idx_tr <- sample(1:nrow(iris_bin), 100)
+idx_tr    <- sample(1:nrow(iris_bin), 70)
 train_bin <- iris_bin[idx_tr, ]
 test_bin  <- iris_bin[-idx_tr, ]
 
@@ -351,37 +353,37 @@ test_bin  <- iris_bin[-idx_tr, ]
 bag_preds <- matrix(NA, nrow = nrow(test_bin), ncol = n_trees)
 
 for (i in 1:n_trees) {
-  boot_idx <- sample(1:nrow(train_bin), nrow(train_bin), replace = TRUE)
+  boot_idx  <- sample(1:nrow(train_bin), nrow(train_bin), replace = TRUE)
   boot_data <- train_bin[boot_idx, ]
-  tree_i <- rpart(setosa ~ ., data = boot_data, control = rpart.control(maxdepth = 4))
+  tree_i    <- rpart(label ~ ., data = boot_data, control = rpart.control(maxdepth = 4))
   bag_preds[, i] <- as.character(predict(tree_i, test_bin, type = "class"))
 }
 
-# Hard voting: majority class at each n_trees
+# Hard voting: majority class at each k trees
 ensemble_acc <- sapply(1:n_trees, function(k) {
   votes <- bag_preds[, 1:k, drop = FALSE]
   final <- apply(votes, 1, function(row) {
     tbl <- table(row)
     names(which.max(tbl))
   })
-  mean(final == as.character(test_bin$setosa))
+  mean(final == as.character(test_bin$label))
 })
 
-single_tree <- rpart(setosa ~ ., data = train_bin, control = rpart.control(maxdepth = 4))
-single_acc  <- mean(predict(single_tree, test_bin, type = "class") == test_bin$setosa)
+single_tree <- rpart(label ~ ., data = train_bin, control = rpart.control(maxdepth = 4))
+single_acc  <- mean(predict(single_tree, test_bin, type = "class") == test_bin$label)
 
 ggplot(data.frame(n = 1:n_trees, acc = ensemble_acc), aes(x = n, y = acc)) +
   geom_line(color = "#4E79A7", linewidth = 1) +
   geom_hline(yintercept = single_acc, linetype = "dashed", color = "#E15759", linewidth = 1) +
-  annotate("text", x = 160, y = single_acc - 0.015,
+  annotate("text", x = 155, y = single_acc - 0.02,
            label = sprintf("Single Tree: %.1f%%", single_acc * 100),
            color = "#E15759", fontface = "bold") +
   labs(
     title = "Bagging: Ensemble Accuracy as Trees Are Added",
-    subtitle = "More trees → more stable, typically higher accuracy than a single tree",
+    subtitle = "Versicolor vs Virginica (genuinely overlapping classes) — bagging reduces variance and beats the single tree",
     x = "Number of Trees in Ensemble", y = "Test Accuracy"
   ) +
-  coord_cartesian(ylim = c(0.85, 1.0)) +
+  coord_cartesian(ylim = c(0.6, 1.0)) +
   theme_minimal()
 ```
 
