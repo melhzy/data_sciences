@@ -24,6 +24,12 @@ Before your consultation, think through:
 3. What analytical methods are you most comfortable with?
 4. What do you want to get out of this course?
 
+## Course Materials
+
+### Tutorial
+- [`03_individual_consultation.html`](03_individual_consultation.html) — View in browser (GitHub Pages)
+- [`03_individual_consultation.Rmd`](03_individual_consultation.Rmd) — Source file
+
 ## No Assignments This Week
 
 There are no graded deliverables due this week. Your consultation meeting itself is the activity.

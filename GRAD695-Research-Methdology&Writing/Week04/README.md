@@ -13,7 +13,8 @@ Research ethics, human subjects protection, and the Institutional Review Board (
 - `Ethics.pptx`
 
 ### Tutorial
-- `04_ethics_in_research.Rmd` / `04_ethics_in_research.html`
+- [`04_ethics_in_research.html`](04_ethics_in_research.html) — View in browser (GitHub Pages)
+- [`04_ethics_in_research.Rmd`](04_ethics_in_research.Rmd) — Source file
 
 ### Resources
 - IRB SharePoint Hub - Access to HU's IRB submission and approval process
