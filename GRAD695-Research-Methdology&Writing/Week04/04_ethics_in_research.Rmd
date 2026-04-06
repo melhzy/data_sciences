@@ -1,0 +1,423 @@
+---
+title: "Week 4: Doing Good Science — Ethics in Research"
+author: "Ziyuan Huang"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    theme: united
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(DiagrammeR)
+library(ggplot2)
+```
+
+# Introduction
+
+Research is a powerful activity. The data you collect, the models you build, and the conclusions you publish can influence decisions that affect real people — in healthcare, education, hiring, policy, and beyond. That power comes with responsibility.
+
+**Ethics in research** is the set of principles and rules that guide researchers toward conducting their work in a way that is honest, fair, and respectful of the people and society around them.
+
+This week we break research ethics into three overlapping areas:
+
+1. **Human Subjects Research** — formal regulations protecting people who participate in research
+2. **Professional Ethics** — the norms and habits of an honest, competent scientist
+3. **Data and AI Ethics** — an emerging and evolving area focused on the societal impacts of data-driven systems
+
+```{r ethics-overview, fig.align='center'}
+grViz("
+digraph ethics_overview {
+  graph [layout = dot, rankdir = LR, label = 'Three Components of Research Ethics', labelloc = t, fontsize = 20, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 13]
+  edge [fontname = Helvetica]
+
+  E [label = 'Research\\nEthics', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  A [label = 'Human Subjects\\nResearch', fillcolor = '#5BA85B', fontcolor = white]
+  B [label = 'Professional Ethics\\n& Scientific Values', fillcolor = '#D97B4A', fontcolor = white]
+  C [label = 'Data &\\nAI Ethics', fillcolor = '#9B59B6', fontcolor = white]
+
+  A1 [label = 'Well-defined &\\nwell-regulated', fillcolor = '#D5EDD5']
+  B1 [label = 'Mix of norms\\nand regulations', fillcolor = '#FDDFC8']
+  C1 [label = 'Still evolving;\\nnot fully regulated', fillcolor = '#E8D5F5']
+
+  E -> A; E -> B; E -> C;
+  A -> A1; B -> B1; C -> C1;
+}
+")
+```
+
+Think of the three areas as a spectrum from **highly regulated** (human subjects) to **still being defined** (data and AI ethics). All three matter for your capstone project.
+
+---
+
+# Part 1: Human Subjects Research
+
+## What Is Human Subjects Research?
+
+When your research involves **collecting data from or about people** — or using animals as research subjects — you are conducting regulated research. Human and animal subjects research is the most strictly regulated area of research ethics — for good reason. History has produced serious abuses when researchers prioritized their results over the wellbeing of participants (e.g., the Tuskegee Syphilis Study).
+
+In the United States, human subjects research is regulated by **45 CFR 46**, a federal rule first enacted in 1974. Any research involving human participants at a university must be reviewed and approved before data collection begins.
+
+## The Three Core Principles
+
+These principles come from the **Belmont Report** (1979), which is the foundation of modern research ethics in the US:
+
+| Principle | Plain English |
+|---|---|
+| **Informed Consent** | Before participating, people must know what the study involves and voluntarily agree to take part. You cannot trick or pressure anyone into participating. |
+| **Fairness & Equity** | The burdens and benefits of research should be distributed fairly. You should not target vulnerable populations simply because they are convenient. |
+| **Do No Harm** | Minimize risks to participants. If there are risks, they must be justified by the benefits of the research. Participants' wellbeing comes first. |
+
+## The Institutional Review Board (IRB)
+
+At the university level, these federal rules are enforced by the **Institutional Review Board (IRB)** — a committee that reviews research proposals before any data is collected. The IRB's job is to make sure researchers have thought through the risks to participants and have plans to protect them.
+
+HarrisburgUniversity's IRB resources — including submission guides, templates, and approval documentation — are available through the **HU IRB SharePoint Hub**. This is your first stop when determining whether your capstone project requires IRB review.
+
+```{r irb-process, fig.align='center'}
+grViz("
+digraph irb_process {
+  graph [layout = dot, rankdir = LR, label = 'IRB Review Process', labelloc = t, fontsize = 18, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  R [label = 'Researcher\\nDesigns Study', fillcolor = '#AED6F1']
+  S [label = 'Submit IRB\\nApplication', fillcolor = '#A9DFBF']
+  
+  subgraph cluster_review {
+    label = 'IRB Review';
+    style = filled; color = '#ECECEC';
+    E [label = 'Exempt\\nReview', fillcolor = '#D5EDD5']
+    EX [label = 'Expedited\\nReview', fillcolor = '#FDDFC8']
+    F [label = 'Full Board\\nReview', fillcolor = '#F1948A']
+  }
+
+  A [label = 'Approved\\nto Collect Data', fillcolor = '#5BA85B', fontcolor = white]
+  
+  R -> S -> E
+  S -> EX
+  S -> F
+  E -> A; EX -> A; F -> A;
+}
+")
+```
+
+**Key point for your capstone:** Whether IRB approval is required depends on the nature of your data. Working with fully anonymous, publicly available datasets often qualifies for an **exempt** review (the lowest level). Working with identifiable data about individuals, or directly collecting data from people via surveys or interviews, typically requires at minimum an **expedited** review. Start thinking about this early.
+
+## Animal Research and the IACUC
+
+If your research involves animals rather than human participants, the parallel oversight body is the **Institutional Animal Care and Use Committee (IACUC)**. Like the IRB, the IACUC must review and approve any proposed animal research *before* work begins. It is responsible for ensuring that animal use is scientifically justified, that pain and distress are minimized, and that housing and care meet federal standards under the **PHS Policy on Humane Care and Use of Laboratory Animals** and the **Animal Welfare Act**.
+
+For analytics and data science capstone projects, direct animal research is uncommon. However, if you are working with biomedical data that was originally collected from animal studies — or if your research design involves any species — you should check with your advisor about whether IACUC review is required.
+
+## CITI Training
+
+Before you can submit an IRB application — and before you can ethically collect any data from people — you must complete **CITI Program** training. Harrisburg University requires this.
+
+CITI training covers the principles above in more depth and provides practical guidance for research scenarios. There are three groups:
+
+| Group | Who It's For |
+|---|---|
+| **Group 1 — Biomedical Research** | Research collecting health data; covers HIPAA and health-specific rules |
+| **Group 2 — Social and Behavioral Research** | The recommended group for analytics students. Covers surveys, interviews, and working with secondary individual-level data such as social media records |
+| **Group 3 — Data and Lab Specimens** | For research that involves aggregate data or specimens only tangentially related to humans — for example, many AI or supply chain studies |
+
+> **Bottom line:** If you are not sure which group applies to you, choose Group 2. It covers the broadest range of analytics research scenarios.
+
+> **Already completed CITI in a previous course?** You do not need to redo the training. Simply locate your completion certificate and submit it for the assignment.
+
+---
+
+# Part 2: Professional Ethics
+
+## Why Professional Ethics Matter
+
+Beyond protecting research participants, being an ethical researcher means being an **honest, rigorous, and respectful** scientist. These norms are not enforced by a federal agency — they are the standards of your professional community. Violating them damages your reputation, misleads other researchers who build on your work, and ultimately harms the people your research is supposed to help.
+
+```{r pro-ethics-diagram, fig.align='center'}
+grViz("
+digraph pro_ethics {
+  graph [layout = dot, rankdir = TB, label = 'Professional Ethics in Research', labelloc = t, fontsize = 18]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  P [label = 'Professional Ethics', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  A [label = 'Intellectual\\nProperty', fillcolor = '#5BA85B', fontcolor = white]
+  B [label = 'Proper Data\\nHandling', fillcolor = '#D97B4A', fontcolor = white]
+  C [label = 'Non-Discrimination\\n& Respect', fillcolor = '#9B59B6', fontcolor = white]
+  D [label = 'Competence', fillcolor = '#2E86C1', fontcolor = white]
+
+  P -> A; P -> B; P -> C; P -> D;
+}
+")
+```
+
+## Intellectual Property
+
+**The rule is simple:** if an idea, a dataset, a method, or any other piece of work came from someone else, you cite it.
+
+This applies to:
+
+- Academic papers and books you read and use as background
+- Datasets you downloaded from a public repository
+- Code you found on GitHub or Stack Overflow
+- Methods (statistical tests, algorithms) that were developed by others
+
+The legal basis for this obligation comes from **copyright, trademark, and intellectual property law**. When you use someone else's work without attribution, you may be violating not just professional norms but also legal agreements.
+
+Practically, always check the **terms of use** before relying on any dataset or open-source tool. Many resources are available only for **non-commercial use**, which means you could not legally use them in a commercial product or paid consulting project without seeking explicit permission. Failing to respect these terms can expose you — and your institution — to legal liability.
+
+## Proper Data Handling
+
+Honest science requires that you report your work **exactly as it was done**, even if the results are disappointing.
+
+**Things you must NOT do:**
+
+| Bad Practice | What It Means | Why It's Wrong |
+|---|---|---|
+| **Data falsification** | Making up, altering, or selectively deleting data points | Produces results that are not real; misleads everyone who reads your work |
+| **Result cherry-picking** | Running many analyses and only reporting the ones that "worked" | Inflates apparent success; models don't generalize as claimed |
+| **p-hacking** | Tweaking your analysis until you reach p < 0.05 | Exploits statistical chance; the finding is almost certainly false |
+| **Selective reporting** | Reporting only favorable comparisons or metrics | Misleads readers about actual performance |
+
+**Things you MUST do:**
+
+- Document every preprocessing decision, even the ones that didn't improve performance
+- Report all metrics you set out to measure, not just the impressive ones
+- Clearly describe your methodology so that another researcher could replicate your work
+- Keep records of your raw data and original code
+
+> **The key insight:** As long as something is documented, it can be debated and the field can learn from it. Undocumented decisions become invisible — and invisible flaws corrupt the scientific record.
+
+## Non-Discrimination and Respect for Persons
+
+Even if your research does not involve human subjects in the IRB sense, you should consider **whose data you are working with** and whether the individuals represented in that data would consider your use of it appropriate.
+
+This principle is especially active today in debates over AI: When is it acceptable to train a model on data that individuals posted publicly without anticipating it would be used for research? There is no definitive legal answer in the US yet — but as a researcher, you should think carefully about autonomy and privacy.
+
+## Competence
+
+Being an ethical researcher also means being a **good** researcher.
+
+- Use the most appropriate methods for your problem — not just the ones you already know
+- Keep up with advances in your field
+- Design research with clear, logical justification for every major decision
+- Do not publish work that adds noise to the field without adding knowledge
+
+> There is no ethical obligation to produce brilliant results. There *is* an ethical obligation to do careful work and report it honestly.
+
+---
+
+# Part 3: Scientific Values
+
+## Beyond Rules — The Culture of Science
+
+Professional ethics describes what you must not do. Scientific values describe what a *good* scientist aspires to do. These values are especially important in academic and non-commercial research. They may be less universally practiced in corporate settings, where profit motives can create conflicts — but even then, they are worth understanding and advocating for.
+
+```{r sci-values-diagram, fig.align='center'}
+grViz("
+digraph sci_values {
+  graph [layout = dot, rankdir = LR, label = 'Core Scientific Values', labelloc = t, fontsize = 18, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  S [label = 'Scientific Values', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  A [label = 'Open-Source\\nPractices', fillcolor = '#5BA85B', fontcolor = white]
+  B [label = 'Objectivity', fillcolor = '#D97B4A', fontcolor = white]
+  C [label = 'Social\\nResponsibility', fillcolor = '#9B59B6', fontcolor = white]
+
+  A1 [label = 'Share data, code,\\nand methods freely\\n(when safe to do so)', fillcolor = '#D5EDD5']
+  B1 [label = 'Identify your biases.\\nDisclose conflicts\\nof interest.', fillcolor = '#FDDFC8']
+  C1 [label = 'Design research\\nthat benefits society.\\nMitigate harm.', fillcolor = '#E8D5F5']
+
+  S -> A; S -> B; S -> C;
+  A -> A1; B -> B1; C -> C1;
+}
+")
+```
+
+## Open-Source Practices
+
+Whenever possible, share your data, code, and materials publicly. Open science accelerates knowledge — other researchers can replicate your study, build on your work, and catch your errors. It also makes results more trustworthy because others can independently verify them.
+
+**Practical limits:** Open sharing is not always possible. If your data contains personally identifiable information, releasing it publicly would violate the privacy of the individuals in it. Security or proprietary data may also have contractual restrictions. In those cases, document your methodology as completely as possible so others could replicate the study design even if not the exact data.
+
+## Objectivity
+
+No one is perfectly objective. Every researcher carries assumptions, preferences, and blind spots shaped by their background and experiences. **Objectivity, as a value, is not the absence of bias — it is the active effort to identify and manage your biases.**
+
+Practical steps toward objectivity include:
+
+- Pre-registering your analysis plan before you see the results (prevents unconscious post-hoc tweaking)
+- Using hold-out test sets that you do not look at until the very end
+- Having your work reviewed by colleagues with different perspectives
+- Disclosing any financial or personal stake you have in a particular outcome
+
+Conflicts of interest are required to be disclosed in most academic publications. If a pharmaceutical company funded a drug study, readers deserve to know that. The same logic applies to any setting where the funder or researcher stands to gain from a particular result.
+
+## Social Responsibility
+
+Research is not conducted in a vacuum. Science should contribute to human wellbeing, and researchers should make a good-faith effort to **anticipate and mitigate social harms** that might result from their work.
+
+This does not mean that individual researchers can or should solve every problem their tools create. But it does mean that thinking about consequences — even uncomfortable ones — is part of doing the job well.
+
+---
+
+# Part 4: Data Science Ethics
+
+## Why Data Science Needs Its Own Ethics Discussion
+
+Traditional research ethics was built around a relatively clear model: a scientist proposes a study, an IRB reviews it, participants consent, data is collected and analyzed. Data science often does not fit that model.
+
+Modern analytics frequently involves:
+
+- **Massive secondary datasets** — data collected for one purpose and reused for another
+- **Automated decisions** — algorithms making or informing decisions about people without those people knowing
+- **Feedback loops** — systems whose outputs influence future data inputs, amplifying early biases over time
+- **Opaque models** — deep learning systems whose logic is difficult to explain, audit, or challenge
+
+These features create ethical challenges that the existing IRB framework was not designed to address.
+
+It is easy to assume that data science ethics only applies when you are directly working with data about people. In practice, it extends much further. **Even supply chain or logistics models impact humans** — because humans depend on the systems those models optimize, and humans bear the consequences when those systems fail or are designed around the wrong objectives. At the end of the day, nearly every data system touches human lives.
+
+## The Regulatory Landscape
+
+```{r regulatory-landscape, fig.align='center'}
+grViz("
+digraph regulatory {
+  graph [layout = dot, rankdir = LR, label = 'Data Ethics Regulatory Landscape (2024)', labelloc = t, fontsize = 16, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  R [label = 'Regulations', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  EU [label = 'European Union', fillcolor = '#D97B4A', fontcolor = white]
+  US [label = 'United States', fillcolor = '#5BA85B', fontcolor = white]
+
+  E1 [label = 'GDPR (2018)\\nData privacy &\\nconsent requirements', fillcolor = '#FDDFC8']
+  E2 [label = 'EU AI Act (2024)\\nRisk-based regulations\\nfor AI systems', fillcolor = '#FDDFC8']
+
+  U1 [label = 'No comprehensive\\nfederal law yet', fillcolor = '#D5EDD5']
+  U2 [label = 'State-level laws\\n(CA, VA, CO, TX,\\nand others)', fillcolor = '#D5EDD5']
+  U3 [label = 'Sector-specific rules\\n(HIPAA, FERPA,\\nFCRA)', fillcolor = '#D5EDD5']
+
+  R -> EU; R -> US;
+  EU -> E1; EU -> E2;
+  US -> U1; US -> U2; US -> U3;
+}
+")
+```
+
+The EU has taken the most aggressive regulatory stance with the General Data Protection Regulation (**GDPR**) and the **EU AI Act**. The US has not yet passed comprehensive federal legislation, but state-level laws are rapidly multiplying, moving in a GDPR-like direction. Regardless of where you work, understanding this regulatory environment is increasingly a professional requirement.
+
+## The Bias Problem in Machine Learning
+
+One of the most concrete and important ethical issues in data science is **algorithmic bias**: when a model's predictions are systematically unfair to certain groups of people.
+
+Bias can enter a model at multiple stages. The diagram below shows the pipeline; the table that follows explains the specific risk at each stage.
+
+```{r bias-pipeline, fig.align='center', fig.width=3, fig.height=6}
+grViz("
+digraph bias_pipeline {
+  graph [layout = dot, rankdir = TB, label = 'ML Pipeline Bias Entry Points', labelloc = t, fontsize = 16]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 13, width = 2.2]
+
+  D  [label = '1. Data Collection',         fillcolor = '#AED6F1']
+  P  [label = '2. Data Preprocessing',       fillcolor = '#A9DFBF']
+  M  [label = '3. Model Training',            fillcolor = '#FAD7A0']
+  E  [label = '4. Model Evaluation',          fillcolor = '#F1948A']
+  De [label = '5. Deployment &\nDecisions',  fillcolor = '#D7BDE2']
+
+  D -> P -> M -> E -> De
+}
+")
+```
+
+| Pipeline Stage | How Bias Enters | What to Do About It |
+|---|---|---|
+| **1. Data Collection** | Sampling bias — the dataset over- or under-represents certain groups relative to the real population | Audit your data source; check class balance across protected attributes (race, gender, age, etc.) |
+| **2. Data Preprocessing** | Imputation, encoding, or feature engineering choices can encode historical discrimination into the model's inputs | Review every preprocessing decision for disparate impact; document all transformations |
+| **3. Model Training** | The model learns spurious correlations between features and protected attributes (e.g., zip code as a proxy for race) | Check feature importance; consider fairness-aware training objectives |
+| **4. Model Evaluation** | Aggregate metrics (e.g., overall accuracy) can look strong while the model performs poorly on minority subgroups | Always report disaggregated metrics by subgroup, not just overall performance |
+| **5. Deployment & Decisions** | Human reviewers may selectively override model outputs in biased ways, or the model's outputs may be used in contexts it was not designed for | Define and enforce acceptable use; monitor real-world outcomes over time |
+
+**A real-world example:** A healthcare algorithm designed to predict which patients need extra support was found to recommend less support for Black patients than for equally sick white patients — not because the model was explicitly trained to discriminate, but because it used healthcare *spending* as a proxy for healthcare *need*. Since Black patients historically received less care due to systemic inequities, the model learned to recommend less additional care for them. The model was, in a narrow technical sense, accurate. But its real-world effect was to perpetuate inequality.
+
+> **The lesson:** Well-intentioned models can cause unintended harm if the analyst does not critically examine the assumptions in their data and methodology. Checking aggregate performance metrics is not enough. You must also examine how the model performs **across different groups**.
+
+It is also worth noting that the same model can be **repurposed for harmful ends** even when it was built with good intentions. A healthcare model designed to improve access to care could be taken and applied by an insurance company to *deny* coverage based on predicted probabilities of illness. The original researcher may have had no control over that outcome — but thinking through foreseeable misuse is still part of responsible research practice.
+
+## Questions to Ask About Any Model You Build
+
+Before considering a model "done," ask:
+
+1. **Who is in my data?** Are certain groups over- or under-represented, and how might that affect predictions for those groups?
+2. **What is my model predicting, and what will it be used for?** Is there a plausible way this prediction could be used to harm people?
+3. **What proxy variables am I using?** Are any of my features a stand-in for a protected characteristic like race, gender, or disability?
+4. **How does model performance vary across subgroups?** A model with 90% overall accuracy might perform at 70% on a minority subgroup.
+5. **Could this model be repurposed for a negative use?** Even if you build it with good intentions, can someone else use the same logic to deny services or discriminate?
+
+---
+
+# Summary: Ethics Is a Practice, Not a Checklist
+
+Ethics in research is not a box to check before you start collecting data. It is an ongoing orientation toward honesty, care, and responsibility that should shape every decision you make throughout a project.
+
+```{r ethics-summary, fig.align='center'}
+grViz("
+digraph summary {
+  graph [layout = dot, rankdir = TB, label = 'Ethics Across the Research Lifecycle', labelloc = t, fontsize = 16]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 11]
+
+  A [label = 'Research Design', fillcolor = '#AED6F1']
+  B [label = 'Data Collection', fillcolor = '#A9DFBF']
+  C [label = 'Analysis', fillcolor = '#FAD7A0']
+  D [label = 'Reporting & Publishing', fillcolor = '#F1948A']
+  E [label = 'Deployment &\\nReal-World Use', fillcolor = '#D7BDE2']
+
+  A1 [label = 'IRB approval if needed.\\nJustify your research question.\\nDo not harm participants.', fillcolor = '#D6EAF8', shape = note]
+  B1 [label = 'Informed consent.\\nProtect participant privacy.\\nDocument all steps.', fillcolor = '#D5F5E3', shape = note]
+  C1 [label = 'Do not cherry-pick results.\\nCheck for bias across subgroups.\\nDocument all decisions.', fillcolor = '#FEF9E7', shape = note]
+  D1 [label = 'Report all methods honestly.\\nCite everything you used.\\nDisclose conflicts of interest.', fillcolor = '#FDEDEC', shape = note]
+  E1 [label = 'Monitor for real-world harm.\\nBe transparent about limitations.\\nAdvocate for responsible use.', fillcolor = '#F5EEF8', shape = note]
+
+  A -> B -> C -> D -> E
+  A -> A1; B -> B1; C -> C1; D -> D1; E -> E1;
+}
+")
+```
+
+For your capstone project, you will be expected to:
+
+- Identify whether your project involves human subjects and describe the steps you will take to address that
+- Describe any potential biases in your data and how you will mitigate them
+- Report your methods and results completely and honestly
+- Consider how your results could be used or misused
+
+Ethics is not about being perfect. It is about being thoughtful, intentional, and honest about the limitations and implications of your work.
+
+---
+
+# Key Terms
+
+| Term | Definition |
+|---|---|
+| **45 CFR 46** | The US federal regulation governing human subjects research in institutions receiving federal funding |
+| **Informed Consent** | A participant's voluntary, knowledgeable agreement to take part in a study |
+| **IRB (Institutional Review Board)** | A committee at a university or research institution that reviews and approves human subjects research |
+| **CITI Training** | An online ethics training program required before conducting regulated research |
+| **p-hacking** | Running many analyses and reporting only the statistically significant results, inflating the false positive rate |
+| **GDPR** | General Data Protection Regulation; EU law governing how personal data may be collected, stored, and used |
+| **EU AI Act** | EU regulation creating risk-based oversight of artificial intelligence systems |
+| **Algorithmic Bias** | Systematic unfairness in model predictions that disadvantages certain groups of people |
+| **Conflict of Interest** | A financial or personal stake that could influence the objectivity of a researcher |
+| **Open Science** | The practice of making data, code, and methods publicly available to enable transparency and reproducibility |

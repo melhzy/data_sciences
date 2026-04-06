@@ -1,0 +1,185 @@
+---
+title: "Week 3: Individual Consultation"
+author: "Ziyuan Huang"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    theme: united
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(DiagrammeR)
+```
+
+# What This Week Is About
+
+Week 3 has no lecture, no group session, and no graded assignment. Instead, the instructor meets individually with each student for a **one-on-one consultation**.
+
+The purpose is straightforward: before the course moves into research writing and methodology, the instructor needs to understand *you* — your background, what you already know, what you want to accomplish, and where you might need support. This conversation shapes how the instructor engages with your work for the rest of the semester.
+
+---
+
+# The Mission of the Individual Consultation
+
+The consultation has three goals:
+
+```{r consultation-goals, fig.align='center'}
+grViz("
+digraph goals {
+  graph [layout = dot, rankdir = LR, label = 'Three Goals of the Individual Consultation', labelloc = t, fontsize = 18, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 13]
+
+  G [label = 'Individual\\nConsultation', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  A [label = 'Understand\\nYou', fillcolor = '#5BA85B', fontcolor = white]
+  B [label = 'Align\\nExpectations', fillcolor = '#D97B4A', fontcolor = white]
+  C [label = 'Begin Planning\\nYour Research', fillcolor = '#9B59B6', fontcolor = white]
+
+  A1 [label = 'Background, strengths,\\nand areas for growth', fillcolor = '#D5EDD5']
+  B1 [label = 'What you want from\\nGRAD 695 & ANLY 699', fillcolor = '#FDDFC8']
+  C1 [label = 'Research topic,\\ndata, and direction', fillcolor = '#E8D5F5']
+
+  G -> A; G -> B; G -> C;
+  A -> A1; B -> B1; C -> C1;
+}
+")
+```
+
+---
+
+# Part 1: Understanding You
+
+## Your Background
+
+The instructor wants to understand where you are coming from academically and professionally. This is not an evaluation — it is context that helps the instructor give you more relevant guidance.
+
+**Things to reflect on before your meeting:**
+
+- What degree program are you in, and what stage are you at?
+- What is your professional background or field of work?
+- What courses have you completed that are relevant to research methods or analytics?
+- How comfortable are you with **statistics and quantitative analysis**?
+- How comfortable are you with **academic writing**?
+
+## Your Strengths and Growth Areas
+
+Every student comes in with a different mix of skills. Being honest about both your strengths and the areas where you want to grow helps the instructor tailor feedback and support.
+
+| Area | Example Strengths | Example Growth Areas |
+|---|---|---|
+| **Technical** | Python, R, SQL, machine learning, data visualization | Statistical inference, model evaluation, working with new data types |
+| **Analytical** | Identifying patterns, interpreting results, critical thinking | Connecting findings to theory, evaluating study design |
+| **Writing** | Clear communication, structure, grammar | Academic style, APA formatting, literature synthesis |
+| **Research Process** | Literature searching, problem framing | Methodology selection, IRB/ethics considerations |
+
+---
+
+# Part 2: Aligning Expectations
+
+## What Do You Want from This Course?
+
+GRAD 695 and ANLY 699 serve different purposes for different students. Some students are building toward a purely applied industry career; others are considering doctoral study or academic research. Your goals shape what "success" looks like.
+
+**Questions to think through:**
+
+1. What does a successful capstone project look like to you?
+2. Are you hoping to publish your work, present it at a conference, or use it in a portfolio?
+3. How much time can you realistically dedicate each week?
+4. Do you have a topic in mind, or are you still exploring?
+
+## Course Expectations from the Instructor's Side
+
+| Expectation | What It Means in Practice |
+|---|---|
+| **Consistent engagement** | Show up, complete readings, and respond to feedback |
+| **Original thinking** | Your capstone must reflect your own analysis and interpretation |
+| **Honest self-assessment** | If you are struggling, say so early — not after a deadline |
+| **APA standards** | All written work follows APA 7th edition format |
+| **Academic integrity** | AI tools may assist your thinking but not replace your writing or analysis |
+
+---
+
+# Part 3: Beginning to Plan Your Research
+
+## Finding Your Topic
+
+If you do not yet have a research topic, the consultation is a good time to start narrowing one down with the instructor's help. A good capstone topic has three qualities:
+
+```{r topic-criteria, fig.align='center'}
+grViz("
+digraph topic {
+  graph [layout = dot, rankdir = TB, label = 'Qualities of a Good Capstone Topic', labelloc = t, fontsize = 16]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  T [label = 'Good\\nCapstone Topic', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  A [label = 'Feasible', fillcolor = '#5BA85B', fontcolor = white]
+  B [label = 'Meaningful', fillcolor = '#D97B4A', fontcolor = white]
+  C [label = 'Researchable', fillcolor = '#9B59B6', fontcolor = white]
+
+  A1 [label = 'Data exists and is\\naccessible to you', fillcolor = '#D5EDD5']
+  B1 [label = 'Answers a real question\\nyou or others care about', fillcolor = '#FDDFC8']
+  C1 [label = 'Can be addressed with\\nmethods you can learn', fillcolor = '#E8D5F5']
+
+  T -> A; T -> B; T -> C;
+  A -> A1; B -> B1; C -> C1;
+}
+")
+```
+
+## The Research Planning Questions
+
+Bring tentative answers to these questions to your consultation. You are not expected to have everything figured out — rough thinking is fine:
+
+| Question | Why It Matters |
+|---|---|
+| **What problem or question do you want to investigate?** | Defines the scope and direction of your entire project |
+| **Who would care about the answer?** | Helps establish the significance and audience for your research |
+| **What data do you have in mind?** | Determines what methods are possible and what IRB considerations may apply |
+| **What methods are you considering?** | Gives the instructor a sense of what technical support you may need |
+| **What does "done" look like?** | Sets a concrete target for your capstone deliverable |
+
+## Common Starting Points for Analytics Capstones
+
+If you are still looking for inspiration, common starting domains include:
+
+- **Healthcare** — patient outcomes, hospital readmissions, early disease detection
+- **Education** — student success prediction, retention modeling, learning analytics
+- **Business** — customer churn, demand forecasting, fraud detection
+- **Finance** — risk modeling, portfolio optimization, market prediction
+- **Social science** — survey data analysis, demographic trends, policy impact evaluation
+- **Sports analytics** — performance modeling, injury prediction, draft analysis
+- **Environmental** — climate data, energy consumption, resource allocation
+
+The best topics connect your professional experience or personal interest to a researchable problem with accessible data.
+
+---
+
+# How to Prepare for Your Meeting
+
+Before your scheduled consultation slot:
+
+1. **Spend 15–20 minutes** reflecting on the questions in Parts 1–3 above
+2. **Write brief notes** — even a few bullet points per section is enough
+3. **Bring at least one topic idea** — even vague is fine; it gives the conversation a starting point
+4. **Write down your questions** for the instructor — about the course, the capstone process, or anything else
+
+> You do not need to have polished answers. The consultation is a conversation, not a presentation. Come prepared to think out loud.
+
+---
+
+# What Happens After the Consultation
+
+The instructor will take notes from your meeting and use them to:
+
+- Calibrate feedback on your written work to your writing background
+- Flag topics or methods that may need extra attention in your case
+- Connect you with relevant resources (datasets, papers, tools) for your topic
+- Keep an eye on how your research plan develops week by week
+
+Starting in **Week 4**, the course moves into ethics and the IRB — but your consultation notes will already be informing how the instructor responds to your individual project work throughout the semester.

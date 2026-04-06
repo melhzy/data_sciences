@@ -1,52 +1,35 @@
-# Week 3 - Doing Good Science: Ethics and the IRB
+# Week 3 - Individual Consultation
 
-**Date:** March 30 - April 3, 2026  
-**Virtual Session:** Monday, March 30, 7:00-8:30 PM EST
+**Date:** March 23 - March 27, 2026  
+**Virtual Session:** Monday, March 23, 7:00-8:30 PM EST
 
 ## Weekly Topic
 
-Research ethics, human subjects protection, and the Institutional Review Board (IRB) process. Understanding ethical considerations in research design and data collection.
+One-on-one individual consultations between the instructor and each student. This week has no lecture or group content. The focus is on understanding each student's background, expectations, and research direction for both GRAD 695 and ANLY 699.
 
-## Course Materials
+## Purpose
 
-### Presentations
-- `Ethics.pptx`
+The individual consultation is an opportunity to:
+- Discuss your **academic and professional background** and how it connects to your research interests
+- Identify your **strengths** (technical, analytical, writing) and areas for growth
+- Clarify your **expectations** for the course and for your capstone research
+- Begin sketching a **research direction and plan** for ANLY 699
+- Ask any early questions about course requirements or the research process
 
-### Resources
-- IRB Sharepoint - Access to HU's IRB submission and approval process
-- CITI Training portal access
+## What to Prepare
 
-## Assignments
+Before your consultation, think through:
+1. What topic or problem area interests you for your capstone project?
+2. What data sources or datasets have you considered?
+3. What analytical methods are you most comfortable with?
+4. What do you want to get out of this course?
 
-### IRB Overview
-- **Due:** April 3, 2026
-- **Points:** 50 points
-- **Description:** Complete overview of IRB process and requirements for capstone project
-- **Multiple attempts allowed**
+## No Assignments This Week
 
-### CITI Ethics Training
-- **Due:** March 30, 2026
-- **Points:** 60 points
-- **Description:** Complete required CITI Program ethics training modules
-- **Important:** Certificate required for IRB approval
-
-## Learning Objectives
-
-By the end of this week, students will be able to:
-1. Understand fundamental principles of research ethics
-2. Identify when IRB approval is required
-3. Navigate the IRB submission process
-4. Complete required ethics training
-5. Recognize ethical considerations in their research design
-
-## Key Deliverables
-
-- CITI Training completion certificate
-- Understanding of IRB requirements for capstone project
-- Initial consideration of ethical issues in research design
+There are no graded deliverables due this week. Your consultation meeting itself is the activity.
 
 ## Important Notes
 
-- CITI training completion is **required** before collecting any data
-- IRB approval may be needed depending on research design
-- Start IRB process early if human subjects are involved
+- Consultations are scheduled individually — check with the instructor for your time slot
+- Come prepared with ideas, questions, and an open mind
+- This conversation will inform how the instructor supports your work throughout the semester
