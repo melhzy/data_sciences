@@ -14,6 +14,7 @@ Research ethics, human subjects protection, and the Institutional Review Board (
 
 ### Tutorial
 - [`04_ethics_in_research.html`](04_ethics_in_research.html) — View in browser (GitHub Pages)
+- GitHub Pages: https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week04/04_ethics_in_research.html
 - [`04_ethics_in_research.Rmd`](04_ethics_in_research.Rmd) — Source file
 
 ### Resources
