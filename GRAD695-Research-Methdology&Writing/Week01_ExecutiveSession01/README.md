@@ -18,8 +18,7 @@
 ## Course Materials
 
 ### Tutorial
-- [`01_executive_session01_research_foundations.html`](01_executive_session01_research_foundations.html) — View in browser (GitHub Pages)
-- GitHub Pages: https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week01_ExecutiveSession01/01_executive_session01_research_foundations.html
+- [📄 View Tutorial (GitHub Pages)](https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week01_ExecutiveSession01/01_executive_session01_research_foundations.html)
 - [`01_executive_session01_research_foundations.rmd`](01_executive_session01_research_foundations.rmd) — Source file
 
 ### Presentations

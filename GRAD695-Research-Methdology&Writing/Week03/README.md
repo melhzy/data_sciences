@@ -27,8 +27,7 @@ Before your consultation, think through:
 ## Course Materials
 
 ### Tutorial
-- [`03_individual_consultation.html`](03_individual_consultation.html) — View in browser (GitHub Pages)
-- GitHub Pages: https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week03/03_individual_consultation.html
+- [📄 View Tutorial (GitHub Pages)](https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week03/03_individual_consultation.html)
 - [`03_individual_consultation.Rmd`](03_individual_consultation.Rmd) — Source file
 
 ## No Assignments This Week
