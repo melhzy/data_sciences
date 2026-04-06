@@ -17,6 +17,10 @@
 
 ## Course Materials
 
+### Tutorial
+- [`01_executive_session01_research_foundations.html`](01_executive_session01_research_foundations.html) — View in browser (GitHub Pages)
+- [`01_executive_session01_research_foundations.rmd`](01_executive_session01_research_foundations.rmd) — Source file
+
 ### Presentations
 - `Analytics Research Overview.pptx`
 - `Problem Definition.pptx`

@@ -9,6 +9,10 @@ Finding and comparing frameworks and benchmarks for research projects. Understan
 
 ## Course Materials
 
+### Tutorial
+- [`02_frameworks_benchmarks.html`](02_frameworks_benchmarks.html) — View in browser (GitHub Pages)
+- [`02_frameworks_benchmarks.Rmd`](02_frameworks_benchmarks.Rmd) — Source file
+
 ### Presentations
 - `Finding Frameworks and Benchmarks.pptx`
 
