@@ -1,5 +1,7 @@
 # GRAD 695: Research Methodology and Writing
 
+**Course Page:** [https://melhzy.github.io/data_sciences/#695](https://melhzy.github.io/data_sciences/#695)
+
 **Late Spring 2026**  
 **Instructor:** Dr. Ziyuan Huang (zhuang7@harrisburgu.edu)  
 **Course Duration:** March 14 - June 18, 2026
