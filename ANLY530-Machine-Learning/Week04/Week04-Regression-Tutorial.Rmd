@@ -70,15 +70,18 @@ We will use a few key packages for this tutorial.
 *   `rpart` & `rpart.plot`: For Decision Trees.
 *   `e1071`: For Support Vector Machines.
 *   `randomForest`: For Random Forest models.
+*   `gridExtra`: For multi-panel plot layouts.
 
 ```{r load-packages}
-# install.packages(c("tidyverse", "rpart", "rpart.plot", "e1071", "randomForest"))
+# install.packages(c("tidyverse", "rpart", "rpart.plot", "e1071", "randomForest", "gridExtra"))
 
 library(tidyverse)
 library(rpart)
 library(rpart.plot)
 library(e1071)
 library(randomForest)
+library(gridExtra)
+library(scales)
 ```
 
 ---
@@ -115,6 +118,47 @@ ggplot(linear_data, aes(x = X, y = y)) +
   geom_point(alpha = 0.7) +
   labs(title = "Sample Data for Linear Regression", x = "Feature (X)", y = "Target (y)")
 ```
+
+## What is a Residual?
+
+Before we fit a model, we need to understand what we are trying to minimize. A **residual** is the vertical distance between a data point and the model's prediction — the error the model makes on a single observation.
+
+$$e_i = y_i - \hat{y}_i$$
+
+```{r residuals-annotated}
+# Fit the model first so we can show residuals
+model_lm_tmp <- lm(y ~ X, data = linear_data)
+fitted_tmp   <- predict(model_lm_tmp)
+
+set.seed(MASTER_SEED)
+resid_show <- data.frame(
+  X       = linear_data$X,
+  y       = linear_data$y,
+  fitted  = fitted_tmp,
+  resid   = linear_data$y - fitted_tmp
+) %>% slice_sample(n = 18)  # highlight 18 representative points
+
+ggplot(linear_data, aes(x = X, y = y)) +
+  geom_point(alpha = 0.25, color = "grey60", size = 1.5) +
+  geom_smooth(method = "lm", se = FALSE, color = "#1976D2", linewidth = 1.3) +
+  geom_segment(data = resid_show,
+    aes(x = X, xend = X, y = y, yend = fitted),
+    color = "firebrick", linewidth = 0.8, alpha = 0.85) +
+  geom_point(data = resid_show, aes(x = X, y = y),
+    color = "firebrick", size = 2.5) +
+  labs(
+    title    = "Visualising Residuals",
+    subtitle = "Red vertical segments = residuals (actual − predicted). OLS minimises the sum of their squares.",
+    x = "Feature (X)", y = "Target (y)"
+  ) +
+  theme_minimal()
+```
+
+The **Ordinary Least Squares (OLS)** criterion finds the unique line that minimises the **Mean Squared Error (MSE)**:
+
+$$\text{MSE}(\theta) = \frac{1}{m} \sum_{i=1}^{m} \left( \hat{y}_i - y_i \right)^2$$
+
+Squaring the residuals has two benefits: it penalises large errors more heavily, and it makes the objective differentiable so we can solve it analytically.
 
 ## How to Find the "Best-Fit" Line?
 
@@ -155,6 +199,53 @@ print(summary(model_lm))
 ```
 
 The Normal Equation is fast and precise for smaller datasets. However, it can become very slow if you have a huge number of features, as inverting a large matrix is computationally expensive.
+
+### Visualising the MSE Cost Surface
+
+It is easy to understand *why* Gradient Descent works when you can see the landscape it is navigating. For two parameters ($\theta_0$ and $\theta_1$), the MSE is a **bowl-shaped surface** — also called a convex function. Gradient Descent always finds the global minimum.
+
+```{r cost-surface, fig.height=5, fig.width=9}
+# Build MSE grid over a range around the optimal parameters
+t0_seq <- seq(theta_best[1] - 3,   theta_best[1] + 3,   length.out = 120)
+t1_seq <- seq(theta_best[2] - 1.8, theta_best[2] + 1.8, length.out = 120)
+
+cost_grid <- expand.grid(theta0 = t0_seq, theta1 = t1_seq)
+cost_grid$mse <- apply(cost_grid, 1, function(row) {
+  pred <- row["theta0"] + row["theta1"] * linear_data$X
+  mean((linear_data$y - pred)^2)
+})
+
+# Simulate a GD path starting from a fixed off-minimum point
+th_path <- c(theta_best[1] - 2.6, theta_best[2] - 1.5)
+gd_path <- data.frame(t0 = th_path[1], t1 = th_path[2])
+m_cs <- nrow(linear_data)
+for (i in 1:60) {
+  X_b_cs <- cbind(1, linear_data$X)
+  th_mat  <- matrix(th_path, ncol = 1)
+  grad    <- 2 / m_cs * t(X_b_cs) %*% (X_b_cs %*% th_mat - linear_data$y)
+  th_path <- th_path - 0.1 * as.vector(grad)
+  gd_path <- rbind(gd_path, data.frame(t0 = th_path[1], t1 = th_path[2]))
+}
+
+ggplot(cost_grid, aes(x = theta0, y = theta1, z = mse)) +
+  geom_contour_filled(bins = 18, alpha = 0.85) +
+  geom_path(data = gd_path, aes(x = t0, y = t1, z = NULL),
+    color = "white", linewidth = 1.1,
+    arrow = arrow(length = unit(0.18, "cm"), ends = "last", type = "closed")) +
+  geom_point(data = data.frame(t0 = theta_best[1], t1 = theta_best[2]),
+    aes(x = t0, y = t1, z = NULL), color = "red", size = 5, shape = 8) +
+  labs(
+    title    = "MSE Cost Surface — the Bowl that Gradient Descent Navigates",
+    subtitle = "Each contour is a level of equal MSE. White path = GD trajectory. Red star = optimum.",
+    x        = expression(theta[0]~"(intercept)"),
+    y        = expression(theta[1]~"(slope)"),
+    fill     = "MSE"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "right")
+```
+
+The concentric rings (contour lines) represent equal levels of MSE. The algorithm starts far from the centre and follows the steepest downhill direction at each step, spiralling inward to the red-star minimum.
 
 ### Method 2: Gradient Descent
 
@@ -208,6 +299,54 @@ cat(paste("Final Coefficient:", round(theta[2], 2), "\n"))
 
 As you can see, the algorithm starts with a random line and iteratively adjusts it until it converges on the best-fit line, which is identical to the one found by the Normal Equation.
 
+### Effect of the Learning Rate
+
+The learning rate $\eta$ is perhaps the most important hyperparameter to tune. The plot below shows what happens with three very different values.
+
+```{r learning-rate-compare, fig.height=4, fig.width=10}
+simulate_gd_mse <- function(eta, n_iter = 80, start_offset = c(-2.6, -1.5)) {
+  th <- matrix(theta_best + start_offset, ncol = 1)
+  X_b_lr <- cbind(1, linear_data$X)
+  m_lr   <- nrow(linear_data)
+  path   <- numeric(n_iter + 1)
+  path[1] <- mean((linear_data$y - (X_b_lr %*% th))^2)
+  for (i in seq_len(n_iter)) {
+    grad   <- 2 / m_lr * t(X_b_lr) %*% (X_b_lr %*% th - linear_data$y)
+    th     <- th - eta * grad
+    path[i + 1] <- mean((linear_data$y - (X_b_lr %*% th))^2)
+  }
+  data.frame(Iteration = 0:n_iter, MSE = path,
+             Rate = paste0("η = ", eta))
+}
+
+lr_df <- bind_rows(
+  simulate_gd_mse(0.02),
+  simulate_gd_mse(0.10),
+  simulate_gd_mse(0.50)
+) %>%
+  mutate(MSE = pmin(MSE, 500))    # cap diverging values for readability
+
+ggplot(lr_df, aes(x = Iteration, y = MSE, color = Rate)) +
+  geom_line(linewidth = 1.2) +
+  scale_color_manual(values = c(
+    "η = 0.02" = "#FF9800",
+    "η = 0.10" = "#4CAF50",
+    "η = 0.50" = "#E91E63"
+  )) +
+  scale_y_log10(labels = scales::comma) +
+  geom_hline(yintercept = min(lr_df$MSE[lr_df$Rate == "η = 0.10"]),
+    linetype = "dashed", color = "grey50") +
+  labs(
+    title    = "Learning Rate Effect on Gradient Descent Convergence",
+    subtitle = "Too small (orange) → slow. Just right (green) → fast. Too large (pink) → overshoots and diverges.",
+    x = "Iteration", y = "MSE (log scale)", color = "Learning Rate"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+> **Rule of thumb:** Start with $\eta = 0.1$ and halve it if training loss oscillates; double it if convergence is too slow. Modern optimisers like Adam adapt $\eta$ automatically.
+
 ## Evaluating a Regression Model
 
 Once we have a model, how do we know if it's any good?
@@ -230,6 +369,86 @@ cat(paste("R-squared:", round(r_squared, 3), "\n"))
 cat(paste("MSE:", round(mse, 3), "\n"))
 cat(paste("RMSE:", round(rmse, 3), "\n"))
 ```
+
+## Confidence vs. Prediction Intervals
+
+A fitted regression line is just an *estimate*. There are two distinct types of uncertainty we can quantify:
+
+*   **Confidence Interval**: Where does the **true mean response** lie? This is uncertainty about the line itself.
+*   **Prediction Interval**: Where will a **single new observation** fall? This is always wider because it also includes the natural scatter of individual points around the mean.
+
+$$\text{CI:}\quad \hat{y} \pm t^* \cdot \text{SE}(\hat{y}) \qquad \text{PI:}\quad \hat{y} \pm t^* \cdot \sqrt{\text{SE}(\hat{y})^2 + \hat{\sigma}^2}$$
+
+```{r confidence-bands, fig.height=5}
+# compute both intervals over a fine prediction grid
+pred_grid  <- data.frame(X = seq(min(linear_data$X), max(linear_data$X), length.out = 300))
+ci_mat     <- predict(model_lm, newdata = pred_grid, interval = "confidence", level = 0.95)
+pi_mat     <- predict(model_lm, newdata = pred_grid, interval = "prediction", level = 0.95)
+
+band_df <- data.frame(pred_grid,
+  fit    = ci_mat[, "fit"],
+  ci_lwr = ci_mat[, "lwr"], ci_upr = ci_mat[, "upr"],
+  pi_lwr = pi_mat[, "lwr"], pi_upr = pi_mat[, "upr"]
+)
+
+ggplot(band_df, aes(x = X)) +
+  geom_ribbon(aes(ymin = pi_lwr, ymax = pi_upr), fill = "#BBDEFB", alpha = 0.55) +
+  geom_ribbon(aes(ymin = ci_lwr, ymax = ci_upr), fill = "#1976D2", alpha = 0.40) +
+  geom_line(aes(y = fit), color = "#0D47A1", linewidth = 1.3) +
+  geom_point(data = linear_data, aes(x = X, y = y), alpha = 0.35, color = "grey40", size = 1.5) +
+  annotate("text", x = 2.8, y = 16.5,
+    label = "95 % Prediction Interval\n(where a new observation will land)",
+    color = "#1565C0", size = 3.4, hjust = 0) +
+  annotate("text", x = 2.8, y = 14.5,
+    label = "95 % Confidence Interval\n(uncertainty in the true mean line)",
+    color = "#0D47A1", size = 3.4, hjust = 0) +
+  labs(
+    title    = "Confidence Band vs. Prediction Band",
+    subtitle = "The prediction band is always wider — it accounts for individual-level noise on top of line-estimation uncertainty.",
+    x = "Feature (X)", y = "Target (y)"
+  ) +
+  theme_minimal()
+```
+
+## Residual Diagnostics
+
+After fitting any model, always examine the residuals. Three key assumptions of linear regression can be checked visually:
+
+| Plot | What to look for | Violation signal |
+|---|---|---|
+| **Residuals vs. Fitted** | Horizontal band around zero — no pattern | Funnel shape → heteroscedasticity; curve → non-linearity |
+| **Normal Q-Q** | Points on the diagonal line | Heavy tails or S-curve → non-normal errors |
+
+```{r residual-diagnostics, fig.height=4, fig.width=10}
+diag_df <- data.frame(
+  fitted   = fitted(model_lm),
+  residual = residuals(model_lm),
+  std_res  = rstandard(model_lm)
+)
+
+p_rv_f <- ggplot(diag_df, aes(x = fitted, y = residual)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_point(alpha = 0.55, color = "#1976D2", size = 1.8) +
+  geom_smooth(method = "loess", se = FALSE, color = "firebrick",
+    linewidth = 0.9, formula = y ~ x) +
+  labs(title = "Residuals vs. Fitted",
+       subtitle = "Good: points randomly scattered around 0",
+       x = "Fitted values", y = "Residuals") +
+  theme_minimal()
+
+p_qq <- ggplot(diag_df, aes(sample = std_res)) +
+  stat_qq(alpha = 0.55, color = "#1976D2", size = 1.8) +
+  stat_qq_line(color = "firebrick", linewidth = 0.9) +
+  labs(title = "Normal Q-Q",
+       subtitle = "Good: points hug the diagonal line",
+       x = "Theoretical Quantiles", y = "Standardised Residuals") +
+  theme_minimal()
+
+grid.arrange(p_rv_f, p_qq, ncol = 2,
+  top = "Residual Diagnostics — Checking Linear Regression Assumptions")
+```
+
+Both plots look healthy for our synthetic data: residuals scatter randomly around zero (no pattern) and closely follow the normal diagonal.
 
 ---
 
@@ -273,6 +492,52 @@ ggplot(linear_data, aes(x = X, y = y)) +
 
 SVR is powerful because it can use the **kernel trick** (just like for classification) to model complex, non-linear relationships by changing the `kernel` parameter from `linear` to something like `radial` (RBF).
 
+## The Kernel Trick: Linear vs. RBF SVR
+
+The **kernel trick** implicitly maps the data into a much higher-dimensional feature space where a linear boundary *becomes* non-linear in the original space. Let us demonstrate on data that follows a sine curve — something a linear kernel obviously cannot fit.
+
+```{r svr-kernel-compare, fig.height=5}
+set.seed(MASTER_SEED + 2)
+X_nl  <- sort(runif(90, 0, 4 * pi))
+y_nl  <- sin(X_nl) + rnorm(90, sd = 0.25)
+nl_df <- data.frame(X = X_nl, y = y_nl)
+
+svr_lin <- svm(y ~ X, data = nl_df, type = "eps-regression",
+               kernel = "linear", epsilon = 0.1, cost = 1)
+svr_rbf <- svm(y ~ X, data = nl_df, type = "eps-regression",
+               kernel = "radial", epsilon = 0.1, cost = 5, gamma = 0.3)
+
+pred_grid_nl <- data.frame(X = seq(0, 4 * pi, length.out = 400))
+pred_grid_nl$linear <- predict(svr_lin, pred_grid_nl)
+pred_grid_nl$rbf    <- predict(svr_rbf, pred_grid_nl)
+
+pred_long <- pred_grid_nl %>%
+  pivot_longer(-X, names_to = "kernel", values_to = "pred") %>%
+  mutate(kernel = recode(kernel,
+    linear = "Linear Kernel  —  fits a straight line only",
+    rbf    = "RBF Kernel  —  captures the sine curve"
+  ))
+
+ggplot(nl_df, aes(x = X, y = y)) +
+  geom_point(alpha = 0.45, color = "grey50", size = 1.8) +
+  geom_line(data = pred_long, aes(y = pred, color = kernel), linewidth = 1.2) +
+  scale_color_manual(values = c(
+    "Linear Kernel  —  fits a straight line only" = "#FF5722",
+    "RBF Kernel  —  captures the sine curve"      = "#009688"
+  )) +
+  scale_x_continuous(breaks = c(0, pi, 2*pi, 3*pi, 4*pi),
+    labels = c("0", "π", "2π", "3π", "4π")) +
+  labs(
+    title    = "SVR Kernel Trick: Linear vs. Radial Basis Function (RBF)",
+    subtitle = "Data follows y = sin(x) + noise. The linear kernel cannot bend; RBF maps it into infinite dimensions.",
+    x = "X", y = "y", color = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+The RBF (Gaussian) kernel effectively gives SVR the ability to fit *any* smooth curve. The `gamma` parameter controls how tightly the model follows individual points — larger values risk overfitting.
+
 ---
 
 # Part 3: Decision Tree Regression
@@ -306,6 +571,59 @@ rpart.plot(dt_model, main = "Structure of the Regression Tree")
 ```
 
 Decision Trees naturally capture non-linearities but are prone to overfitting. The predictions create a step-function, which might not be ideal for all problems. We control overfitting by **pruning** the tree or setting hyperparameters like `maxdepth` or `minsplit`.
+
+## Underfitting vs. Overfitting: Tree Depth
+
+The `maxdepth` hyperparameter directly controls the complexity (and therefore the bias-variance trade-off) of a regression tree. Let us fit four trees at increasing depths and compare their prediction curves.
+
+```{r tree-depth-overfit, fig.height=6, fig.width=11}
+depths <- c(1, 2, 4, 20)
+
+depth_df <- map_dfr(depths, function(d) {
+  mdl  <- rpart(y ~ X, data = linear_data, method = "anova",
+                control = rpart.control(maxdepth = d, minsplit = 2, cp = -1))
+  pred_g <- data.frame(X = seq(min(linear_data$X), max(linear_data$X), length.out = 400))
+  pred_g$pred  <- predict(mdl, newdata = pred_g)
+  pred_g$depth <- factor(paste0("Max Depth = ", d),
+                          levels = paste0("Max Depth = ", depths))
+  pred_g
+})
+
+# Training RMSE per depth for subtitle annotation
+rmse_per_depth <- map_dfr(depths, function(d) {
+  mdl  <- rpart(y ~ X, data = linear_data, method = "anova",
+                control = rpart.control(maxdepth = d, minsplit = 2, cp = -1))
+  data.frame(depth = d,
+             rmse  = round(sqrt(mean((linear_data$y - predict(mdl, linear_data))^2)), 3))
+})
+
+depth_labels <- paste0("Depth ", rmse_per_depth$depth,
+                        " (train RMSE = ", rmse_per_depth$rmse, ")")
+
+ggplot() +
+  geom_point(data = linear_data, aes(x = X, y = y),
+    alpha = 0.25, color = "grey55", size = 1.2) +
+  geom_line(data = depth_df, aes(x = X, y = pred),
+    color = "#E91E63", linewidth = 1.05) +
+  geom_smooth(data = linear_data, aes(x = X, y = y),
+    method = "lm", se = FALSE, color = "#607D8B",
+    linewidth = 0.6, linetype = "dashed", formula = y ~ x) +
+  facet_wrap(~ depth, nrow = 2) +
+  labs(
+    title    = "Decision Tree Depth: Underfitting → Overfitting",
+    subtitle = "Shallow trees are too simple (high bias); deep trees memorise every data point (high variance). Dashed = linear baseline.",
+    x = "Feature (X)", y = "Target (y)"
+  ) +
+  theme_minimal() +
+  theme(strip.text = element_text(face = "bold", size = 11))
+```
+
+```{r depth-rmse-table, echo=FALSE}
+knitr::kable(rmse_per_depth, col.names = c("Max Depth", "Training RMSE"),
+  caption = "Training RMSE drops as depth increases — but deep trees overfit and will generalise poorly.")
+```
+
+> The tree with `maxdepth = 20` achieves near-zero training RMSE by memorising the data. On unseen data it would perform much worse. This is the classic **overfitting** trap. A depth of 2–4 is usually a sensible starting point for regression trees.
 
 ---
 
@@ -344,6 +662,45 @@ ggplot(linear_data, aes(x = X, y = y)) +
 Notice how the Random Forest prediction is much smoother than the single Decision Tree. It captures the underlying trend of the data without the jagged steps.
 
 Random Forests are one of the most powerful and widely used "out-of-the-box" models for both regression and classification because they are robust, highly accurate, and require less hyperparameter tuning than models like SVR.
+
+## OOB Error vs. Number of Trees
+
+One of the most useful diagnostics for a Random Forest is the **Out-of-Bag (OOB) error curve**. Because each tree is trained on a bootstrap sample, roughly 37% of the data is *not* used to train each tree. This held-out portion can be used to estimate test error **for free**, without a separate validation set.
+
+```{r rf-oob-convergence, fig.height=4.5}
+set.seed(MASTER_SEED)
+rf_oob <- randomForest(y ~ X, data = linear_data, ntree = 300, keep.forest = FALSE)
+
+oob_df <- data.frame(
+  ntree   = seq_len(300),
+  oob_mse = rf_oob$mse,
+  oob_r2  = rf_oob$rsq
+)
+
+best_n   <- which.min(oob_df$oob_mse)
+best_mse <- round(min(oob_df$oob_mse), 4)
+
+p_oob_mse <- ggplot(oob_df, aes(x = ntree, y = oob_mse)) +
+  geom_line(color = "#9C27B0", linewidth = 1.1) +
+  geom_vline(xintercept = best_n, linetype = "dashed", color = "firebrick") +
+  annotate("text", x = best_n + 8, y = max(oob_df$oob_mse) * 0.92,
+    label = sprintf("min OOB MSE ≈ %.4f\n(at %d trees)", best_mse, best_n),
+    color = "firebrick", size = 3.2, hjust = 0) +
+  labs(title = "OOB MSE vs. Number of Trees",
+       x = "ntree", y = "OOB MSE") +
+  theme_minimal()
+
+p_oob_r2 <- ggplot(oob_df, aes(x = ntree, y = oob_r2)) +
+  geom_line(color = "#00796B", linewidth = 1.1) +
+  labs(title = "OOB R² vs. Number of Trees",
+       x = "ntree", y = "OOB R²") +
+  theme_minimal()
+
+grid.arrange(p_oob_mse, p_oob_r2, ncol = 2,
+  top = "Random Forest: Out-of-Bag Error Convergence (no test set needed)")
+```
+
+The OOB error drops rapidly for the first 50–100 trees and then plateaus. Adding more trees beyond this point wastes computation without improving accuracy. The OOB curve is a free convergence diagnostic — use it to choose `ntree` without a separate validation split.
 
 ## Feature Importance
 
