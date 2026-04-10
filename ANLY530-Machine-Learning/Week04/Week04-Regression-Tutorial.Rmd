@@ -1,0 +1,497 @@
+---
+title: "Week 04: A Beginner's Guide to Regression Models"
+author: "Ziyuan Huang"
+date: "Last Updated: `r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: cosmo
+    highlight: tango
+    code_folding: show
+    df_print: paged
+    mathjax: "https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 6
+)
+
+# Deterministic seed via seedhash — reproducible across machines
+if (!requireNamespace("seedhash", quietly = TRUE)) {
+  if (!requireNamespace("pak", quietly = TRUE)) {
+    install.packages("pak", repos = "https://r-lib.github.io/p/pak/stable/")
+  }
+  pak::pkg_install("github::melhzy/seedhash/R", ask = FALSE)
+}
+```
+
+```{r seeds, include=TRUE}
+library(seedhash)
+gen <- SeedHashGenerator$new("ANLY530-Week04-Regression")
+MASTER_SEED <- gen$generate_seeds(1)
+set.seed(MASTER_SEED)
+```
+
+```{r seedhash-info, echo=FALSE, results='asis'}
+cat(sprintf("**Random Seed Source:** `seedhash` package — input string: `\"ANLY530-Week04-Regression\"` → seed: `%d`\n\n", MASTER_SEED))
+```
+
+# Introduction to Regression
+
+Welcome to the world of regression! Regression analysis is a cornerstone of predictive modeling. At its heart, it's about understanding and predicting a **continuous** value. Unlike classification, where we predict a category (like "Yes/No" or "Cat/Dog"), regression helps us answer questions like:
+
+*   How much will a house sell for?
+*   What will the temperature be tomorrow?
+*   How many units will we sell next quarter?
+
+The goal is to find a mathematical relationship between a set of **predictor variables** (features) and a **target variable** (the continuous value we want to predict).
+
+**Learning Objectives:**
+
+1.  Understand and implement **Linear Regression**, the foundational regression model.
+2.  Explore different training methods like the **Normal Equation** and **Gradient Descent**.
+3.  Learn to evaluate regression models using metrics like **MSE** and **RMSE**.
+4.  Build more advanced models like **Support Vector Regression (SVR)**, **Decision Tree Regressors**, and **Random Forest Regressors**.
+5.  Appreciate the trade-offs between different regression models.
+
+## Required Packages
+
+We will use a few key packages for this tutorial.
+
+*   `tidyverse`: For data manipulation and visualization (`ggplot2`, `dplyr`).
+*   `rpart` & `rpart.plot`: For Decision Trees.
+*   `e1071`: For Support Vector Machines.
+*   `randomForest`: For Random Forest models.
+
+```{r load-packages}
+# install.packages(c("tidyverse", "rpart", "rpart.plot", "e1071", "randomForest"))
+
+library(tidyverse)
+library(rpart)
+library(rpart.plot)
+library(e1071)
+library(randomForest)
+```
+
+---
+
+# Part 1: Linear Regression - The Foundation
+
+Linear Regression is the simplest and most famous regression model. It assumes a linear relationship between the features and the target variable. In the case of a single feature, this means fitting a straight line to the data.
+
+**The Equation of a Line:**
+
+$$ \hat{y} = \theta_0 + \theta_1 x_1 $$
+
+*   `\(\hat{y}\)` (y-hat) is the **predicted value**.
+*   `x_1` is the **feature value**.
+*   `\(\theta_0\)` is the **intercept** (the value of y when x=0).
+*   `\(\theta_1\)` is the **coefficient** or **slope** (how much y changes for a one-unit increase in x).
+
+Our goal is to find the best values for \(\theta_0\) and \(\theta_1\) that make our line fit the data as closely as possible.
+
+## Generating Sample Data
+
+Let's create some data that has a clear linear trend, but with some random noise, which is typical of real-world data.
+
+```{r generate-linear-data}
+set.seed(MASTER_SEED)
+# Create a dataset with a clear linear trend + noise
+X <- 2 * runif(100, 0, 2) # 100 data points
+y <- 4 + 3 * X + rnorm(100) # y = 4 + 3x + noise
+
+linear_data <- data.frame(X, y)
+
+# Plot the data
+ggplot(linear_data, aes(x = X, y = y)) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Sample Data for Linear Regression", x = "Feature (X)", y = "Target (y)")
+```
+
+## How to Find the "Best-Fit" Line?
+
+We need a way to measure how well our line fits the data. The most common method is **Ordinary Least Squares (OLS)**, where we minimize the **Sum of Squared Errors (SSE)** or **Mean Squared Error (MSE)**.
+
+*   **Error (or Residual)**: The vertical distance between a data point and the regression line.
+*   **MSE**: The average of the squared errors.
+
+We want to find the line (the \(\theta\) values) that makes this MSE as small as possible.
+
+There are two main ways to do this:
+
+1.  **The Normal Equation**: A direct, analytical formula.
+2.  **Gradient Descent**: An iterative optimization algorithm.
+
+### Method 1: The Normal Equation
+
+The Normal Equation is a mathematical formula that gives you the optimal \(\theta\) values directly.
+
+**Formula:** `\(\hat{\theta} = (X^T X)^{-1} X^T y\)`
+
+This looks intimidating, but it's just a series of matrix operations that R can handle easily.
+
+```{r normal-equation}
+# Add x0 = 1 to each instance for the intercept term
+X_b <- cbind(1, linear_data$X) 
+
+# Calculate theta using the Normal Equation
+theta_best <- solve(t(X_b) %*% X_b) %*% t(X_b) %*% linear_data$y
+
+# Print the results
+cat(paste("Intercept (theta0):", round(theta_best[1], 2), "\n"))
+cat(paste("Coefficient (theta1):", round(theta_best[2], 2), "\n"))
+
+# R's built-in lm() function does the same thing
+model_lm <- lm(y ~ X, data = linear_data)
+print(summary(model_lm))
+```
+
+The Normal Equation is fast and precise for smaller datasets. However, it can become very slow if you have a huge number of features, as inverting a large matrix is computationally expensive.
+
+### Method 2: Gradient Descent
+
+Gradient Descent is a more general-purpose optimization algorithm. Imagine you are on a mountain in thick fog and you want to get to the bottom. A good strategy would be to feel the slope of the ground beneath your feet and take a step in the steepest downhill direction. You repeat this until you reach the valley floor.
+
+That's exactly what Gradient Descent does:
+
+1.  It starts with random values for \(\theta\).
+2.  It measures the **gradient (slope)** of the cost function (MSE) with respect to each \(\theta\).
+3.  It updates each \(\theta\) by taking a small step in the direction of the negative gradient.
+4.  It repeats this process until it converges to the minimum.
+
+**The Learning Rate (`\(\eta\)`)**: This is a critical hyperparameter that controls the size of the steps. Too small, and the algorithm will take too long to converge. Too large, and it might overshoot the minimum and diverge.
+
+### Visualizing Gradient Descent
+
+Let's visualize the process of finding the best line.
+
+```{r gradient-descent-visual, fig.height=7}
+set.seed(MASTER_SEED + 1)
+# A simplified manual implementation for visualization
+eta <- 0.1 # Learning rate
+n_iterations <- 1000
+m <- nrow(linear_data)
+
+theta <- matrix(rnorm(2), ncol=1) # Random initialization
+
+# Create a plot object
+p <- ggplot(linear_data, aes(x = X, y = y)) + geom_point(alpha=0.6)
+
+# Run Gradient Descent and plot the first few lines
+for (iteration in 1:n_iterations) {
+  gradients <- 2/m * t(X_b) %*% (X_b %*% theta - y)
+  theta <- theta - eta * gradients
+  
+  # Plot first 10 iterations
+  if(iteration <= 10) {
+    p <- p + geom_abline(intercept = theta[1], slope = theta[2], color=rainbow(10)[iteration], alpha=0.5)
+  }
+}
+
+# Add the final line
+p <- p + geom_abline(intercept = theta[1], slope = theta[2], color = "black", linewidth = 1.2) +
+        labs(title = "Gradient Descent: Finding the Best Line", 
+             subtitle = "Colored lines show first 10 iterations, black line is the final fit")
+print(p)
+
+cat(paste("Final Intercept:", round(theta[1], 2), "\n"))
+cat(paste("Final Coefficient:", round(theta[2], 2), "\n"))
+```
+
+As you can see, the algorithm starts with a random line and iteratively adjusts it until it converges on the best-fit line, which is identical to the one found by the Normal Equation.
+
+## Evaluating a Regression Model
+
+Once we have a model, how do we know if it's any good?
+
+*   **R-squared (R²)**: The proportion of the variance in the target variable that is predictable from the feature(s). It ranges from 0 to 1, with higher values being better. An R² of 0.85 means that 85% of the variation in `y` can be explained by `X`.
+*   **Mean Squared Error (MSE)**: The average of the squared differences between the actual and predicted values. It's in squared units, so it's hard to interpret directly.
+*   **Root Mean Squared Error (RMSE)**: The square root of the MSE. This is a great metric because it's in the same units as the target variable. An RMSE of 5.0 means the model is, on average, off by about 5.0 units.
+
+```{r evaluate-model}
+# Get summary of our lm() model
+model_summary <- summary(model_lm)
+
+# Extract metrics
+r_squared <- model_summary$r.squared
+residuals <- model_summary$residuals
+mse <- mean(residuals^2)
+rmse <- sqrt(mse)
+
+cat(paste("R-squared:", round(r_squared, 3), "\n"))
+cat(paste("MSE:", round(mse, 3), "\n"))
+cat(paste("RMSE:", round(rmse, 3), "\n"))
+```
+
+---
+
+# Part 2: Support Vector Regression (SVR)
+
+Support Vector Machines (SVMs) are famous for classification, but they can be cleverly adapted for regression. This is called **Support Vector Regression (SVR)**.
+
+Instead of trying to find a line that minimizes the error for *all* points, SVR tries to fit as many data points as possible *inside* a "street" or "tube" while limiting margin violations.
+
+*   **The Epsilon (ε) Tube**: The width of the street. Points inside the tube do not contribute to the error. This is why SVR is called **epsilon-insensitive**.
+*   **Support Vectors**: The points that lie on the edge of or outside the tube. These are the critical points that "support" or define the regression line.
+*   **The `C` Hyperparameter**: Controls the trade-off between having a wide street and limiting the number of margin violations (points outside the street). A small `C` creates a wider street but allows more violations. A large `C` creates a narrower street and is less tolerant of violations.
+
+## Visualizing SVR
+
+Let's visualize how SVR works on our data.
+
+```{r build-svr}
+# Build an SVR model
+# We use the e1071 package
+# Note: SVR can be sensitive to the scale of the data, but we'll ignore that for this simple example
+svr_model <- svm(y ~ X, data = linear_data, type = 'eps-regression', kernel = 'linear', epsilon = 0.5, cost = 1)
+
+linear_data$svr_pred <- predict(svr_model, linear_data)
+
+# Identify support vectors
+support_vectors <- linear_data[svr_model$index,]
+
+# Plot the results
+ggplot(linear_data, aes(x = X, y = y)) +
+  geom_point(alpha = 0.5) +
+  geom_line(aes(y = svr_pred), color = "blue", linewidth = 1) +
+  geom_ribbon(aes(ymin = svr_pred - svr_model$epsilon, ymax = svr_pred + svr_model$epsilon), 
+              fill = "blue", alpha = 0.2) + # The epsilon tube
+  geom_point(data = support_vectors, aes(x=X, y=y), color = "red", size = 4, shape = 1) + # Highlight support vectors
+  labs(
+    title = "Support Vector Regression (SVR)",
+    subtitle = "The model fits a line inside the blue Epsilon-Insensitive Tube. Red points are Support Vectors."
+  )
+```
+
+SVR is powerful because it can use the **kernel trick** (just like for classification) to model complex, non-linear relationships by changing the `kernel` parameter from `linear` to something like `radial` (RBF).
+
+---
+
+# Part 3: Decision Tree Regression
+
+As we saw in a previous tutorial, Decision Trees can also perform regression. Instead of predicting a class at each leaf node, a regression tree predicts a single continuous value.
+
+*   **How it Works**: The tree recursively partitions the data into smaller and smaller regions. The goal at each split is to find the feature and split point that results in the greatest reduction in the **Mean Squared Error (MSE)** of the resulting child nodes.
+*   **Prediction**: The final prediction for any data point is simply the **average (mean)** of all the training data points that fall into the same leaf node.
+
+## Visualizing a Regression Tree
+
+Let's use the `rpart` package to build a regression tree.
+
+```{r build-dt-regressor}
+# Build a regression tree
+dt_model <- rpart(y ~ X, data = linear_data, method = "anova")
+
+linear_data$dt_pred <- predict(dt_model, linear_data)
+
+# Plot the tree's predictions
+ggplot(linear_data, aes(x = X, y = y)) +
+  geom_point(alpha = 0.4, color="gray") +
+  geom_step(aes(y = dt_pred), color = "darkgreen", linewidth = 1.2) +
+  labs(
+    title = "Decision Tree Regression",
+    subtitle = "The tree approximates the data with constant, step-wise predictions"
+  )
+
+# Plot the tree structure itself
+rpart.plot(dt_model, main = "Structure of the Regression Tree")
+```
+
+Decision Trees naturally capture non-linearities but are prone to overfitting. The predictions create a step-function, which might not be ideal for all problems. We control overfitting by **pruning** the tree or setting hyperparameters like `maxdepth` or `minsplit`.
+
+---
+
+# Part 4: Random Forest Regression
+
+Random Forests are an **ensemble method** that fixes many of the problems of individual Decision Trees, especially their instability and tendency to overfit.
+
+**How it Works:**
+
+1.  **Bootstrapping**: It creates many (e.g., 500) slightly different versions of the training dataset by sampling *with replacement*.
+2.  **Random Feature Selection**: It builds a Decision Tree on each of these new datasets. However, at each split in the tree, it only considers a random subset of the features.
+3.  **Averaging**: To make a prediction, it gets a prediction from every tree in the forest and **averages** them. This "wisdom of the crowd" approach results in a much smoother and more robust prediction.
+
+## Visualizing a Random Forest
+
+Let's build a Random Forest and see how its predictions compare.
+
+```{r build-rf-regressor}
+set.seed(MASTER_SEED)
+# Build a Random Forest model
+# ntree is the number of trees in the forest
+rf_model <- randomForest(y ~ X, data = linear_data, ntree = 500)
+
+linear_data$rf_pred <- predict(rf_model, linear_data)
+
+# Plot the results
+ggplot(linear_data, aes(x = X, y = y)) +
+  geom_point(alpha = 0.4, color="gray") +
+  geom_line(aes(y = rf_pred), color = "purple", linewidth = 1.2) +
+  labs(
+    title = "Random Forest Regression",
+    subtitle = "Averaging 500 trees results in a much smoother and more robust fit"
+  )
+```
+
+Notice how the Random Forest prediction is much smoother than the single Decision Tree. It captures the underlying trend of the data without the jagged steps.
+
+Random Forests are one of the most powerful and widely used "out-of-the-box" models for both regression and classification because they are robust, highly accurate, and require less hyperparameter tuning than models like SVR.
+
+## Feature Importance
+
+An added benefit of Random Forests is that they can tell you which features were most important for making predictions.
+
+```{r rf-importance}
+set.seed(MASTER_SEED)
+# For a multi-feature dataset, this would be more interesting
+# Let's add a random, useless feature to see what happens
+linear_data$random_feature <- rnorm(nrow(linear_data))
+
+rf_model_2 <- randomForest(y ~ X + random_feature, data = linear_data, ntree = 500, importance = TRUE)
+
+# Get and plot importance
+importance(rf_model_2) 
+varImpPlot(rf_model_2)
+```
+
+The plot clearly shows that our original feature `X` is far more important than the `random_feature` we added, which is exactly what we would expect.
+
+---
+
+# Part 5: Model Comparison
+
+Let us put all four models side by side on the same data and compare their predictions visually and numerically.
+
+```{r model-comparison, fig.height=5, fig.width=11}
+# Collect all predictions on the original data (sorted for smooth lines)
+compare_df <- linear_data %>%
+  select(X, y, svr_pred, dt_pred, rf_pred) %>%
+  arrange(X) %>%
+  pivot_longer(cols = c(svr_pred, dt_pred, rf_pred),
+               names_to = "model", values_to = "pred") %>%
+  mutate(model = recode(model,
+    svr_pred = "SVR (linear)",
+    dt_pred  = "Decision Tree",
+    rf_pred  = "Random Forest"
+  ))
+
+# Also add lm predictions
+lm_preds <- data.frame(
+  X     = linear_data$X,
+  y     = linear_data$y,
+  pred  = predict(model_lm),
+  model = "Linear Regression"
+)
+
+compare_all <- bind_rows(
+  compare_df %>% rename(pred = pred),
+  lm_preds %>% select(X, y, pred, model)
+)
+
+ggplot(compare_all %>% filter(!is.na(pred)),
+       aes(x = X, y = y)) +
+  geom_point(alpha = 0.3, color = "grey50", size = 1.5) +
+  geom_line(aes(y = pred, color = model), linewidth = 1.1) +
+  scale_color_manual(values = c(
+    "Linear Regression" = "#2196F3",
+    "SVR (linear)"      = "#4CAF50",
+    "Decision Tree"     = "#FF9800",
+    "Random Forest"     = "#9C27B0"
+  )) +
+  labs(
+    title    = "All Four Regression Models on the Same Data",
+    subtitle = "Linear models produce straight lines; tree-based models are non-parametric",
+    x = "Feature (X)", y = "Target (y)", color = "Model"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+```{r metric-table, echo=FALSE}
+rmse <- function(actual, pred) sqrt(mean((actual - pred)^2))
+
+metrics <- data.frame(
+  Model = c("Linear Regression", "SVR (linear)", "Decision Tree", "Random Forest"),
+  RMSE  = round(c(
+    rmse(linear_data$y, predict(model_lm)),
+    rmse(linear_data$y, linear_data$svr_pred),
+    rmse(linear_data$y, linear_data$dt_pred),
+    rmse(linear_data$y, linear_data$rf_pred)
+  ), 4)
+)
+
+knitr::kable(metrics, col.names = c("Model", "Training RMSE"),
+  caption = "Training RMSE of each regression model (lower is better)")
+```
+
+> **Note:** Training RMSE is shown here for illustration only. In practice, always evaluate on a **held-out test set** or use cross-validation to get an unbiased estimate of generalization performance.
+
+---
+
+# Knowledge Check
+
+<details>
+<summary>**Question 1:** What does the Normal Equation compute directly, and when would you prefer Gradient Descent?</summary>
+**Answer:** The Normal Equation computes the optimal parameter vector $\hat{\theta} = (X^T X)^{-1} X^T y$ in closed form — no iteration needed. It is exact and instant for small datasets. However, inverting an $n \times n$ matrix is $O(n^3)$, so it becomes prohibitively slow when the number of features $n$ is large (e.g., > 10,000). Gradient Descent scales to millions of features because each update is just a dot product.
+</details>
+
+<br>
+
+<details>
+<summary>**Question 2:** What is the epsilon-insensitive tube in SVR, and what role does the C parameter play?</summary>
+**Answer:** The epsilon tube defines a margin of width $2\varepsilon$ around the regression line. Points inside the tube incur **zero loss** — SVR doesn't try to fit them more precisely than $\varepsilon$. Points outside the tube (margin violations) are penalised. The `C` parameter controls the trade-off: small `C` → wide tube, tolerates violations, simpler model; large `C` → narrow tube, less tolerant, can overfit.
+</details>
+
+<br>
+
+<details>
+<summary>**Question 3:** Why does a Decision Tree produce step-function predictions for regression?</summary>
+**Answer:** Each leaf node of a regression tree predicts the **mean** of all training observations that fall into it. Since the tree recursively splits the feature space into rectangular regions (axis-aligned partitions), the predicted value is constant within each region — resulting in a step function. Deeper trees produce more (smaller) steps and can overfit; shallower trees produce fewer steps and may underfit.
+</details>
+
+<br>
+
+<details>
+<summary>**Question 4:** How does a Random Forest reduce variance compared to a single Decision Tree?</summary>
+**Answer:** A single tree has high variance — small changes in training data lead to very different trees. Random Forests average predictions from `ntree` trees each trained on a bootstrap sample with random feature subsets. By the bias-variance decomposition, if trees have variance $\sigma^2$ and pairwise correlation $\rho$, the ensemble variance is $\rho\sigma^2 + \frac{1-\rho}{B}\sigma^2$. The second term shrinks with more trees; the random feature subsets reduce $\rho$, further reducing variance.
+</details>
+
+---
+
+# Summary
+
+| Model | Assumption | Strengths | Weaknesses |
+|---|---|---|---|
+| **Linear Regression** | Linear relationship | Fast, interpretable, no tuning | Fails on non-linear patterns |
+| **SVR** | Margin + kernel trick | Works in high dimensions, kernel flexibility | Sensitive to feature scaling, slow on large $n$ |
+| **Decision Tree** | Recursive partitions | Non-linear, no scaling needed | High variance, step-wise predictions, overfits |
+| **Random Forest** | Ensemble of trees | Low variance, robust, built-in feature importance | Less interpretable, slower prediction |
+
+The right model depends on your data and problem:
+
+- Start with **Linear Regression** as a baseline — it is fast and interpretable.
+- Use **SVR** when you have a small-to-medium dataset with complex, potentially non-linear patterns (switch `kernel = "radial"`).
+- Use **Decision Trees** when interpretability is essential.
+- Use **Random Forests** when you want the best out-of-the-box accuracy with minimal hyperparameter tuning.
+
+---
+
+# References
+
+[1] A. Géron, *Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow*, 2nd ed. O'Reilly Media, 2019, ch. 4–7.
+
+[2] B. C. Boehmke and B. M. Greenwell, *Hands-On Machine Learning with R*. CRC Press, 2020, ch. 7–10. Available: https://bradleyboehmke.github.io/HOML/
+
+[3] C. Chang and C. Lin, "LIBSVM: A Library for Support Vector Machines," *ACM Transactions on Intelligent Systems and Technology*, vol. 2, no. 3, pp. 1–27, 2011.
+
+[4] L. Breiman, "Random Forests," *Machine Learning*, vol. 45, no. 1, pp. 5–32, 2001.
+
+[5] Z. Huang, "seedhash: Deterministic Seed Generation from String Inputs Using MD5 Hashing," R package, 2026. Available: https://github.com/melhzy/seedhash
