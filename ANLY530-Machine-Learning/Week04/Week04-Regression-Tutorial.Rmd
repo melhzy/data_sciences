@@ -91,12 +91,12 @@ Linear Regression is the simplest and most famous regression model. It assumes a
 
 $$ \hat{y} = \theta_0 + \theta_1 x_1 $$
 
-*   `\(\hat{y}\)` (y-hat) is the **predicted value**.
-*   `x_1` is the **feature value**.
-*   `\(\theta_0\)` is the **intercept** (the value of y when x=0).
-*   `\(\theta_1\)` is the **coefficient** or **slope** (how much y changes for a one-unit increase in x).
+*   $\hat{y}$ (y-hat) is the **predicted value**.
+*   $x_1$ is the **feature value**.
+*   $\theta_0$ is the **intercept** (the value of y when x=0).
+*   $\theta_1$ is the **coefficient** or **slope** (how much y changes for a one-unit increase in x).
 
-Our goal is to find the best values for \(\theta_0\) and \(\theta_1\) that make our line fit the data as closely as possible.
+Our goal is to find the best values for $\theta_0$ and $\theta_1$ that make our line fit the data as closely as possible.
 
 ## Generating Sample Data
 
@@ -123,7 +123,7 @@ We need a way to measure how well our line fits the data. The most common method
 *   **Error (or Residual)**: The vertical distance between a data point and the regression line.
 *   **MSE**: The average of the squared errors.
 
-We want to find the line (the \(\theta\) values) that makes this MSE as small as possible.
+We want to find the line (the $\theta$ values) that makes this MSE as small as possible.
 
 There are two main ways to do this:
 
@@ -132,9 +132,9 @@ There are two main ways to do this:
 
 ### Method 1: The Normal Equation
 
-The Normal Equation is a mathematical formula that gives you the optimal \(\theta\) values directly.
+The Normal Equation is a mathematical formula that gives you the optimal $\theta$ values directly.
 
-**Formula:** `\(\hat{\theta} = (X^T X)^{-1} X^T y\)`
+$$\hat{\theta} = (X^T X)^{-1} X^T y$$
 
 This looks intimidating, but it's just a series of matrix operations that R can handle easily.
 
@@ -162,12 +162,12 @@ Gradient Descent is a more general-purpose optimization algorithm. Imagine you a
 
 That's exactly what Gradient Descent does:
 
-1.  It starts with random values for \(\theta\).
-2.  It measures the **gradient (slope)** of the cost function (MSE) with respect to each \(\theta\).
-3.  It updates each \(\theta\) by taking a small step in the direction of the negative gradient.
+1.  It starts with random values for $\theta$.
+2.  It measures the **gradient (slope)** of the cost function (MSE) with respect to each $\theta$.
+3.  It updates each $\theta$ by taking a small step in the direction of the negative gradient.
 4.  It repeats this process until it converges to the minimum.
 
-**The Learning Rate (`\(\eta\)`)**: This is a critical hyperparameter that controls the size of the steps. Too small, and the algorithm will take too long to converge. Too large, and it might overshoot the minimum and diverge.
+**The Learning Rate ($\eta$)**: This is a critical hyperparameter that controls the size of the steps. Too small, and the algorithm will take too long to converge. Too large, and it might overshoot the minimum and diverge.
 
 ### Visualizing Gradient Descent
 

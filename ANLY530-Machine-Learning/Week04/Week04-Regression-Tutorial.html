@@ -3010,14 +3010,15 @@ line to the data.</p>
 <p><span class="math display">\[ \hat{y} = \theta_0 + \theta_1 x_1
 \]</span></p>
 <ul>
-<li><code>\(\hat{y}\)</code> (y-hat) is the <strong>predicted
+<li><span class="math inline">\(\hat{y}\)</span> (y-hat) is the
+<strong>predicted value</strong>.</li>
+<li><span class="math inline">\(x_1\)</span> is the <strong>feature
 value</strong>.</li>
-<li><code>x_1</code> is the <strong>feature value</strong>.</li>
-<li><code>\(\theta_0\)</code> is the <strong>intercept</strong> (the
-value of y when x=0).</li>
-<li><code>\(\theta_1\)</code> is the <strong>coefficient</strong> or
-<strong>slope</strong> (how much y changes for a one-unit increase in
-x).</li>
+<li><span class="math inline">\(\theta_0\)</span> is the
+<strong>intercept</strong> (the value of y when x=0).</li>
+<li><span class="math inline">\(\theta_1\)</span> is the
+<strong>coefficient</strong> or <strong>slope</strong> (how much y
+changes for a one-unit increase in x).</li>
 </ul>
 <p>Our goal is to find the best values for <span class="math inline">\(\theta_0\)</span> and <span class="math inline">\(\theta_1\)</span> that make our line fit the data
 as closely as possible.</p>
@@ -3062,8 +3063,8 @@ algorithm.</li>
 <h3>Method 1: The Normal Equation</h3>
 <p>The Normal Equation is a mathematical formula that gives you the
 optimal <span class="math inline">\(\theta\)</span> values directly.</p>
-<p><strong>Formula:</strong>
-<code>\(\hat{\theta} = (X^T X)^{-1} X^T y\)</code></p>
+<p><span class="math display">\[\hat{\theta} = (X^T X)^{-1} X^T
+y\]</span></p>
 <p>This looks intimidating, but it’s just a series of matrix operations
 that R can handle easily.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># Add x0 = 1 to each instance for the intercept term</span></span>
@@ -3118,10 +3119,10 @@ function (MSE) with respect to each <span class="math inline">\(\theta\)</span>.
 taking a small step in the direction of the negative gradient.</li>
 <li>It repeats this process until it converges to the minimum.</li>
 </ol>
-<p><strong>The Learning Rate (<code>\(\eta\)</code>)</strong>: This is a
-critical hyperparameter that controls the size of the steps. Too small,
-and the algorithm will take too long to converge. Too large, and it
-might overshoot the minimum and diverge.</p>
+<p><strong>The Learning Rate (<span class="math inline">\(\eta\)</span>)</strong>: This is a critical
+hyperparameter that controls the size of the steps. Too small, and the
+algorithm will take too long to converge. Too large, and it might
+overshoot the minimum and diverge.</p>
 </div>
 <div id="visualizing-gradient-descent" class="section level3">
 <h3>Visualizing Gradient Descent</h3>
