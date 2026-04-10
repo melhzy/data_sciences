@@ -316,7 +316,7 @@ simulate_gd_mse <- function(eta, n_iter = 80, start_offset = c(-2.6, -1.5)) {
     path[i + 1] <- mean((linear_data$y - (X_b_lr %*% th))^2)
   }
   data.frame(Iteration = 0:n_iter, MSE = path,
-             Rate = paste0("η = ", eta))
+             Rate = sprintf("η = %.2f", eta))   # sprintf keeps trailing zeros
 }
 
 lr_df <- bind_rows(
@@ -324,7 +324,10 @@ lr_df <- bind_rows(
   simulate_gd_mse(0.10),
   simulate_gd_mse(0.50)
 ) %>%
-  mutate(MSE = pmin(MSE, 500))    # cap diverging values for readability
+  mutate(
+    MSE  = pmin(MSE, 500),         # cap diverging values for readability
+    Rate = factor(Rate, levels = c("η = 0.02", "η = 0.10", "η = 0.50"))
+  )
 
 ggplot(lr_df, aes(x = Iteration, y = MSE, color = Rate)) +
   geom_line(linewidth = 1.2) +
