@@ -1,0 +1,1334 @@
+---
+title: "Week 5: Research Basics — Introduction to Research Questions"
+author: "Ziyuan Huang"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    theme: united
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center",
+  fig.width = 8,
+  fig.height = 4.2
+)
+library(DiagrammeR)
+library(ggplot2)
+
+# Shared styling for ggplot figures in this tutorial
+.theme_grad695 <- function(base_size = 12) {
+  theme_minimal(base_size = base_size) +
+    theme(
+      plot.title = element_text(face = "bold", margin = margin(b = 6)),
+      plot.subtitle = element_text(color = "gray35", size = base_size * 0.92),
+      panel.grid.minor = element_blank(),
+      panel.grid.major.x = element_blank(),
+      legend.position = "none"
+    )
+}
+
+grad695_palette <- c(
+  "#4A90D9", "#5BA85B", "#D97B4A", "#9B59B6", "#2E86C1",
+  "#AED6F1", "#A9DFBF", "#FAD7A0", "#D7BDE2", "#FADBD8"
+)
+```
+
+# Introduction
+
+This week we zoom out to see the **full scope of the research proposal** — what sections it requires, what each section must accomplish, and how they all connect into one coherent argument. Starting from the very first sentence a reader encounters to the final analytic plan, every part of a proposal serves a deliberate purpose.
+
+## If you are new to research
+
+You do not need prior experience writing a full proposal. Treat this document as a **tutorial**: read in order, skim the diagrams first if you prefer visuals, then return to the prose. Each part ends with a short **recap** so you can check whether the ideas stuck before moving on.
+
+**How to read this week:**
+
+1. **Skim the roadmap figure below** — it is the same story the whole lecture tells, in one picture.
+2. **Read Parts 1–4 in order** — later sections assume you understand the vocabulary from earlier sections (for example, *construct* before *operational definition*).
+3. **Keep one concrete project in mind** (your capstone idea or a placeholder topic) and mentally swap in your variables as you read the examples.
+
+The lecture covers the four major sections of a research proposal:
+
+1. **Introduction** — sets up the problem, its context, and a broad goal statement
+2. **Literature Review** — connects existing work to your specific approach and ends with a research question or hypothesis
+3. **Purpose Statement & Research Questions** — translates the goal into a testable, specific question
+4. **Methods / Research Design** — lays out the plan for data, measurement, and analysis
+
+Each section builds directly on the previous one. The introduction names the problem; the literature review justifies why your approach to it matters; the research question specifies exactly what you will learn; and the methods section explains how you will learn it.
+
+```{r proposal-roadmap, fig.width = 10, fig.height = 5.5}
+proposal_steps <- data.frame(
+  order = 1:4,
+  section = c(
+    "Introduction",
+    "Literature\nreview",
+    "Purpose &\nresearch question",
+    "Methods /\ndesign"
+  ),
+  you_write = c(
+    "Problem + hook +\nwhy it matters +\nbroad goal",
+    "What is known,\ngaps, citations\n(use Zotero)",
+    "Purpose verb +\none clear, testable\nquestion",
+    "Data source,\nvariables, how\nyou will analyze"
+  )
+)
+
+ggplot(proposal_steps, aes(x = order, y = 0)) +
+  geom_segment(
+    x = 1, xend = 4, y = 0, yend = 0,
+    linewidth = 1.1,
+    color = grad695_palette[1],
+    lineend = "round"
+  ) +
+  geom_point(aes(color = section), size = 10, shape = 21, fill = "white", stroke = 1.6) +
+  geom_text(aes(label = order), size = 4.5, fontface = "bold", color = grad695_palette[1]) +
+  geom_text(
+    aes(label = section, y = 0.35),
+    fontface = "bold",
+    size = 3.8,
+    vjust = 0,
+    lineheight = 0.95
+  ) +
+  geom_label(
+    aes(label = you_write, y = -0.38),
+    size = 3.0,
+    color = "gray25",
+    lineheight = 0.95,
+    fill = "gray96",
+    label.size = 0.3,
+    label.padding = unit(0.35, "lines"),
+    label.r = unit(0.15, "lines")
+  ) +
+  scale_x_continuous(breaks = 1:4, expand = expansion(mult = c(0.12, 0.12))) +
+  scale_color_manual(values = grad695_palette[2:5]) +
+  coord_cartesian(ylim = c(-0.75, 0.65), clip = "off") +
+  labs(
+    title = "Tutorial roadmap: four sections of your proposal",
+    subtitle = "Read left to right — each box is what you owe the reader at that stage"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, margin = margin(b = 4)),
+    plot.subtitle = element_text(color = "gray35", size = 11, margin = margin(b = 14)),
+    plot.margin = margin(10, 30, 16, 30),
+    legend.position = "none"
+  )
+```
+
+### Goal vs purpose vs research question (beginner crosswalk)
+
+Students often mix up three sentences that sound similar. They answer **different reader questions**:
+
+| Sentence type | Reader question it answers | Level of detail | Typical location |
+|---|---|---|---|
+| **Goal** | "What big thing are you trying to learn or build?" | Broad; uses *constructs* (ideas), not column names | End of the **introduction** |
+| **Purpose** | "What kind of study is this?" | Names the *design intent* (describe, explore, explain, predict) | End of the **literature review**, before the RQ |
+| **Research question** | "What exactly will your data answer?" | Narrow; often names comparisons or baselines | Immediately after purpose, same closing section |
+
+> **Memory aid:** Goal = *why this project exists*. Purpose = *what kind of scientific move you are making*. Research question = *what your analysis will decide*.
+
+---
+
+# Part 1: The Introduction
+
+## What Is an Introduction?
+
+The introduction is the **first page (or so)** of a research paper or proposal. It does three things simultaneously: it grabs the reader's attention, orients them to the topic, and ends with a clear statement of the project's broad goal.
+
+For this course, the introduction should be approximately **2–3 paragraphs** — never more than a page. Brevity is intentional: the introduction is a setup, not a summary. The real substance comes in the literature review.
+
+> **Key point:** The introduction is not labeled with subheadings. The four components below should be woven together naturally across two to three paragraphs.
+
+## Four Components of an Introduction
+
+```{r intro-components, fig.align='center'}
+grViz("
+digraph intro_parts {
+  graph [layout = dot, rankdir = LR, label = 'Four Components of a Research Introduction', labelloc = t, fontsize = 20, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 13]
+  edge [fontname = Helvetica]
+
+  I [label = 'Introduction', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  A [label = 'Narrative Hook', fillcolor = '#5BA85B', fontcolor = white]
+  B [label = 'Background on\nthe Topic', fillcolor = '#D97B4A', fontcolor = white]
+  C [label = 'Importance of\nthe Topic', fillcolor = '#9B59B6', fontcolor = white]
+  D [label = 'Goal Statement', fillcolor = '#2E86C1', fontcolor = white]
+
+  I -> A; I -> B; I -> C; I -> D;
+}
+")
+```
+
+```{r intro-writing-sequence, fig.width = 10, fig.height = 5}
+intro_bits <- data.frame(
+  step = factor(
+    c("1. Hook", "2. Background", "3. Importance", "4. Goal statement"),
+    levels = c("1. Hook", "2. Background", "3. Importance", "4. Goal statement")
+  ),
+  hint = c(
+    "1-3 sentences:\ngrab attention",
+    "Define the topic\nfor a non-expert",
+    "Why should anyone\nfund or read this?",
+    "One sentence:\n\"The goal of the\ncurrent project is to...\""
+  ),
+  typical_paragraphs = c(0.40, 0.35, 0.35, 0.25)
+)
+
+ggplot(intro_bits, aes(x = step, y = typical_paragraphs, fill = step)) +
+  geom_col(width = 0.65, alpha = 0.92) +
+  geom_text(
+    aes(label = hint),
+    vjust = -0.3,
+    size = 3.3,
+    color = "gray20",
+    lineheight = 0.92
+  ) +
+  scale_fill_manual(values = grad695_palette[c(2, 3, 4, 5)]) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.45)),
+    breaks = seq(0, 0.4, 0.1)
+  ) +
+  labs(
+    title = "Suggested balance inside the introduction (one page max)",
+    subtitle = "Taller bars = spend more sentences there (illustrative weights, not a rigid formula)",
+    x = NULL,
+    y = "Relative emphasis"
+  ) +
+  .theme_grad695() +
+  theme(axis.text.x = element_text(size = 11, face = "bold"))
+```
+
+### Narrative Hook
+
+The narrative hook opens the introduction with something that **grabs the reader's attention** and makes the topic feel real and consequential. It should appear in the first few sentences.
+
+Effective types of hooks include:
+
+| Hook Type | Description | Example |
+|---|---|---|
+| **Statistics** | A striking number that shows the scale of the problem | "Over 40 million Americans carry student loan debt exceeding $1.7 trillion." |
+| **Anecdote / Story** | A real-world event that illustrates the problem | A news story about a hiring algorithm found to discriminate against women |
+| **Interesting Finding** | A surprising or counterintuitive result from prior research | "Despite widespread use, chatbot therapy has been validated in fewer than a dozen controlled trials." |
+| **Real-World Phenomenon** | A concrete situation readers can recognize | The GameStop short squeeze as an entry point to studying social media's influence on stock prices |
+
+> **Note on sources:** The introduction is the only section of a research paper where you may cite non-academic sources such as news articles, reputable blogs, or Pew/Gallup polls. Flexibility here is intentional — but you must still cite whatever you reference.
+
+### Background on the Topic
+
+Following the hook, provide **basic orientation** to your topic:
+
+- What is the thing you are studying — what does it look like, how is it typically defined?
+- What are the key terms a reader needs to understand your project?
+- How long has this problem been studied, or how do researchers generally approach it?
+
+This background does not need to be long. A few sentences is sufficient. Its purpose is to ensure a reader unfamiliar with your specific domain understands the context before the literature review fills in the scholarly detail.
+
+### Importance of the Topic
+
+Explicitly state **why the topic matters**. Give the reader a reason to care. This may overlap with your narrative hook, but here you make the stakes concrete:
+
+- What could be learned if this problem is studied well?
+- What are the real-world implications — in money, time, health, policy, or quality of life?
+- Who is affected, and how broadly?
+
+The importance statement prevents your project from feeling like a thought exercise. It grounds the research question in something that has real consequences.
+
+### Goal Statement
+
+The introduction should close with a **goal statement** — a single, broad sentence that tells the reader what the entire project aims to accomplish. At this stage, the goal uses *constructs*, not specific variables. The goal statement answers: *"What will I know — or have built — by the time I finish this project?"*
+
+```{r goal-statement, fig.align='center'}
+grViz("
+digraph goal {
+  graph [layout = dot, rankdir = LR, label = 'Goal Statement Structure', labelloc = t, fontsize = 18, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 13]
+
+  A [label = 'The goal of the\ncurrent project is to...', fillcolor = '#AED6F1']
+  B [label = 'explore / examine /\ndetermine / build / develop', fillcolor = '#A9DFBF']
+  C [label = '[the constructs and\nrelationships you will study]', fillcolor = '#FAD7A0']
+
+  A -> B -> C
+}
+")
+```
+
+**Example goal statements:**
+
+> *"The goal of the current project is to explore how COVID-19 has impacted healthcare industry stocks."*
+
+> *"The goal of the current study is to determine how political candidates use Twitter to push specific messaging during campaigns."*
+
+> *"The goal of the current study is to examine how negative reviews of companies impact stock prices."*
+
+Use **explore** or **determine** when you are deriving insights. Use **examine** when you are understanding relationships between variables. Use **build** or **develop** when you are constructing a model or tool.
+
+> **A common mistake:** Beginning writers sometimes structure their introduction as three separate paragraphs — one per component. This creates a choppy, formulaic document. Instead, read well-written introductions in research articles in your area and model the *flow* of ideas rather than its paragraph count.
+
+### Part 1 recap — check your understanding
+
+Before moving on, you should be able to answer **without looking up**:
+
+1. Name the **four jobs** of the introduction in your own words.
+2. Explain why **constructs** belong in the goal statement but **variable names** belong later.
+3. Name **one** hook type you could realistically use for *your* topic.
+
+If any answer feels fuzzy, skim **Narrative Hook** through **Goal Statement** again — Part 2 assumes this vocabulary is comfortable.
+
+---
+
+# Part 2: The Literature Review
+
+## What the Literature Review Does
+
+Once the introduction sets up the problem and broad goal, the **literature review** takes over to connect that goal to your specific approach. It has four closely related functions:
+
+- Connects the general problem to your specific analytic strategy
+- Shows what has been done in the field and what the accepted approaches are
+- Provides support and justification for your methodological and analytic choices
+- Leads directly to the purpose of the study and to your research questions or hypotheses
+
+```{r lit-review-flow, fig.align='center'}
+grViz("
+digraph lit_flow {
+  graph [layout = dot, rankdir = TB, label = 'The Logic of a Literature Review', labelloc = t, fontsize = 18]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  A [label = 'Broad: What is known\nabout this field?', fillcolor = '#AED6F1']
+  B [label = 'Established: What methods\nand approaches exist?', fillcolor = '#A9DFBF']
+  C [label = 'Critical: What are the\ngaps and limitations?', fillcolor = '#FAD7A0']
+  D [label = 'Specific: What is the\npurpose of this study?', fillcolor = '#F1948A']
+  E [label = 'Testable: What is your\nresearch question or hypothesis?', fillcolor = '#D7BDE2']
+
+  A -> B [label = ' narrows to ']
+  B -> C [label = ' reveals ']
+  C -> D [label = ' motivates ']
+  D -> E [label = ' leads to ']
+}
+")
+```
+
+The literature review moves from **broad to specific**. Begin with what the field knows in general, narrow progressively to the specific problem you are addressing, and arrive at your research question naturally — so that by the time the reader reaches your RQ, it feels inevitable and well-motivated.
+
+```{r lit-review-funnel, fig.width = 10, fig.height = 5}
+funnel <- data.frame(
+  stage = factor(
+    c(
+      "Broad context",
+      "Established methods",
+      "Gaps & critiques",
+      "Your niche",
+      "Purpose + RQ"
+    ),
+    levels = c(
+      "Broad context",
+      "Established methods",
+      "Gaps & critiques",
+      "Your niche",
+      "Purpose + RQ"
+    )
+  ),
+  breadth = c(100, 78, 55, 32, 18),
+  reader_question = c(
+    "What field is this?",
+    "What do people usually do?",
+    "What is wrong or missing?",
+    "Where do you fit?",
+    "What will you test?"
+  )
+)
+
+ggplot(funnel, aes(x = stage, y = breadth, fill = stage)) +
+  geom_col(width = 0.72, alpha = 0.95) +
+  geom_text(
+    aes(label = paste0(breadth, "%")),
+    y = funnel$breadth + 4,
+    color = "gray15",
+    fontface = "bold",
+    size = 4.0
+  ) +
+  geom_text(
+    aes(label = reader_question),
+    y = funnel$breadth / 2,
+    color = "white",
+    fontface = "italic",
+    size = 3.2
+  ) +
+  scale_fill_manual(values = c("#4A90D9", "#5BA85B", "#D97B4A", "#9B59B6", "#2E86C1")) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.08))) +
+  labs(
+    title = "Literature review as a funnel (conceptual)",
+    subtitle = "Bar height = how \"wide\" your reading still is at that stage — you deliberately narrow scope",
+    x = NULL,
+    y = "Conceptual breadth (%)"
+  ) +
+  .theme_grad695() +
+  theme(axis.text.x = element_text(size = 10, face = "bold"))
+```
+
+## How to read your first few papers (practical tutorial)
+
+If journal articles feel dense, use this **repeatable routine** until the pattern feels familiar:
+
+1. **Read the abstract once** — only to learn the topic and claim.
+2. **Read the introduction and the last paragraph of the literature review** — notice hook → background → importance → goal, then how the authors land on their question.
+3. **Skim section headings** — find where methods, data, and analysis live; do not read every equation on the first pass.
+4. **Read the discussion / conclusion** — what did they *decide* their evidence showed?
+5. **Return to the middle** only if you need details for *your* project (for example, how they measured a variable you also plan to measure).
+
+> **Why this order works:** You learn the *argument structure* before you drown in technical detail. Structure is what your proposal needs to copy first.
+
+## What the Literature Review Is NOT
+
+A literature review is a **structured argument supported by evidence** — not a list of summaries.
+
+| What students often write | What it actually is | Why it fails |
+|---|---|---|
+| "Smith (2020) found X. Jones (2021) found Y. Chen (2022) found Z." | An annotated bibliography | No argument, no synthesis, no connection to your project |
+| Paper summaries with no linking commentary | A data dump | Reader cannot see how the work relates to your research question |
+| Extensive technical explanation of algorithms you will use | A methods primer | Unless you developed the algorithm, briefly justify *why* it fits — don't explain *how* it works |
+
+> A strong literature review reads like a coherent essay that happens to have citations — not like a collection of summaries stapled together.
+
+## Citation Management with Zotero
+
+Managing 10–20+ sources manually is error-prone and time-consuming. **Zotero** ([zotero.org](https://www.zotero.org/)) is the recommended free, open-source citation manager for this course.
+
+```{r zotero-workflow, fig.align='center'}
+grViz("
+digraph zotero {
+  graph [layout = dot, rankdir = LR, label = 'Zotero Workflow for Literature Reviews', labelloc = t, fontsize = 18, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  F [label = 'Find a Source\n(Google Scholar,\njournal website)', fillcolor = '#AED6F1']
+  S [label = 'Save to Zotero\n(browser connector\nor manual entry)', fillcolor = '#A9DFBF']
+  A [label = 'Attach PDF &\nAdd Notes', fillcolor = '#FAD7A0']
+  C [label = 'Generate Citation\n(APA, MLA, Chicago,\netc.)', fillcolor = '#D7BDE2']
+  W [label = 'Insert into\nWord / Google Docs\n/ RStudio', fillcolor = '#FADBD8']
+
+  F -> S -> A -> C -> W
+}
+")
+```
+
+**What Zotero does for you:**
+
+| Feature | Description |
+|---|---|
+| **Metadata storage** | Stores author, year, journal, volume, DOI, and other citation fields automatically |
+| **Automatic formatting** | Generates formatted citations in APA, MLA, Chicago, and dozens of other styles on demand |
+| **PDF attachment** | Lets you attach, highlight, and annotate the full PDF for each source within the app |
+| **Notes per source** | Keeps your reading notes and summaries alongside each reference — essential when you have 15+ sources |
+| **Cross-device sync** | Syncs your library across computers; works offline |
+| **Word processor integration** | Integrates directly with Microsoft Word, Google Docs, and RStudio / R Markdown for one-click citation insertion |
+
+**Getting started:**
+
+1. Download and install Zotero from [zotero.org](https://www.zotero.org/)
+2. Install the **Zotero Connector** browser extension — this lets you save a source to your library with one click from Google Scholar or any journal page
+3. In your Zotero library, create a **collection** (folder) for your capstone project
+4. As you find sources, save them to that collection; attach the PDF when available
+5. Write a **brief note** (2–4 sentences) for each source while the reading is fresh: what the study found, what method it used, and how it relates to your project
+
+> **HU Library resources:** Harrisburg University's Library has put together guides and tutorials to help you get started with Zotero. Check the Library's research guides page for step-by-step instructions and video walkthroughs.
+
+> **Already using a different citation manager (Mendeley, EndNote, RefWorks)?** Those tools are acceptable substitutes. The key habit is the same: save sources as you find them, attach notes, and never format references by hand.
+
+```{r zotero-weekly-targets, fig.height = 3.6}
+zweek <- data.frame(
+  week = factor(paste("Week", 1:4), levels = paste("Week", 1:4)),
+  sources_to_add = c(4, 4, 4, 3),
+  cumulative = c(4, 8, 12, 15)
+)
+
+ggplot(zweek, aes(x = week, y = sources_to_add, fill = week)) +
+  geom_col(width = 0.68, alpha = 0.95) +
+  geom_text(
+    aes(label = paste0("+", sources_to_add, " new\n(", cumulative, " total)")),
+    vjust = -0.2,
+    size = 3.2,
+    lineheight = 1.05,
+    color = "gray15"
+  ) +
+  scale_fill_manual(values = grad695_palette[1:4]) +
+  expand_limits(y = max(zweek$sources_to_add) * 1.55) +
+  labs(
+    title = "Example pacing: building a 15-source Zotero library in four weeks",
+    subtitle = "Adjust to your course deadlines — the point is steady capture + notes, not a last-minute PDF pile",
+    x = NULL,
+    y = "New sources saved this week"
+  ) +
+  .theme_grad695() +
+  theme(axis.text.y = element_blank(), panel.grid.major.y = element_blank())
+```
+
+## Ending the Literature Review
+
+The final paragraph of the literature review serves a specific transitional function. It should:
+
+1. Name the **methodological approach** you will take (e.g., predictive modeling, survey analysis, text mining)
+2. State the **purpose of the study** using a purpose statement (see Part 3)
+3. Pose your **research question(s) or hypothesis(es)**
+
+This closing paragraph is the hinge between the literature review and the methods section. Everything before it justifies why you are doing what you are doing; everything after it describes how.
+
+### Part 2 recap — check your understanding
+
+1. In one sentence, what is the difference between a **literature review** and an **annotated bibliography**?
+2. What are the **last three things** the reader should see at the end of your literature review section?
+3. Open Zotero (or install it) and **save one real source** you might use — did the metadata look complete?
+
+---
+
+# Part 3: Purpose Statements and Research Questions
+
+## The Purpose Statement
+
+The purpose statement is **more specific than the goal statement** in the introduction. While the goal statement uses broad constructs, the purpose statement reflects the actual research design you will use.
+
+```{r purpose-types, fig.align='center'}
+grViz("
+digraph purpose {
+  graph [layout = dot, rankdir = LR, label = 'Purpose Statement Types by Research Design', labelloc = t, fontsize = 18, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  P [label = 'Purpose\nStatement', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  D [label = 'Describe', fillcolor = '#5BA85B', fontcolor = white]
+  E [label = 'Explore', fillcolor = '#D97B4A', fontcolor = white]
+  X [label = 'Explain', fillcolor = '#9B59B6', fontcolor = white]
+  Pr [label = 'Predict', fillcolor = '#2E86C1', fontcolor = white]
+
+  D1 [label = 'Gathering and summarizing\ninformation on a topic', fillcolor = '#D5EDD5']
+  E1 [label = 'Generating or discovering\nnew information', fillcolor = '#FDDFC8']
+  X1 [label = 'Determining causes or\nrelationships between variables', fillcolor = '#E8D5F5']
+  Pr1 [label = 'Prediction and forecasting\nan outcome', fillcolor = '#D6EAF8']
+
+  P -> D; P -> E; P -> X; P -> Pr;
+  D -> D1; E -> E1; X -> X1; Pr -> Pr1;
+}
+")
+```
+
+**Templates:**
+
+- *"The purpose of this study is to **describe** [the distribution / prevalence / characteristics of X]."*
+- *"The purpose of this study is to **explore** [a newly observed phenomenon or relationship]."*
+- *"The purpose of this study is to **explain** [the relationship between X and Y]."*
+- *"The purpose of this study is to **predict** [outcome Y from features X using a model]."*
+
+You may also use **build** or **develop** for projects that are primarily constructing a model, tool, or algorithm.
+
+```{r purpose-verb-cheatsheet, fig.height = 3.4}
+verbs <- data.frame(
+  verb = factor(
+    c("Describe", "Explore", "Explain", "Predict"),
+    levels = c("Describe", "Explore", "Explain", "Predict")
+  ),
+  you_typically = c(
+    "Summarize what exists (counts, trends, plots)",
+    "Map unknown territory; generate hypotheses",
+    "Test relationships; compare groups; regression",
+    "Models, accuracy, forecasting, classification"
+  ),
+  starts_with = rep("The purpose of this study is to…", 4)
+)
+
+ggplot(verbs, aes(x = verb, y = 1, fill = verb)) +
+  geom_tile(height = 0.92, alpha = 0.95, color = "white", linewidth = 0.4) +
+  geom_text(
+    aes(label = paste0(verb, "\n\n", you_typically)),
+    size = 3.15,
+    color = "white",
+    fontface = "bold",
+    lineheight = 1.05
+  ) +
+  scale_fill_manual(values = grad695_palette[c(2, 3, 4, 5)]) +
+  coord_flip(expand = FALSE) +
+  labs(
+    title = "Purpose-statement verbs: match the verb to the kind of evidence you will collect",
+    subtitle = paste0("Every purpose line still begins: ", unique(verbs$starts_with)),
+    x = NULL,
+    y = NULL
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(face = "bold", margin = margin(b = 4)),
+    plot.subtitle = element_text(color = "gray35", size = 10.5, margin = margin(b = 8)),
+    plot.margin = margin(10, 16, 10, 16),
+    legend.position = "none"
+  )
+```
+
+## Hypothesis Testing
+
+Traditional academic research is organized around **hypothesis testing** — stating a prediction about the relationship between variables and testing it with inferential statistics.
+
+```{r hypothesis-diagram, fig.align='center'}
+grViz("
+digraph hypothesis {
+  graph [layout = dot, rankdir = LR, label = 'Structure of Hypothesis Testing', labelloc = t, fontsize = 18, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  H [label = 'Hypothesis\nTesting', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  H0 [label = 'Null Hypothesis (H0)\nNo effect / no difference', fillcolor = '#F1948A']
+  H1 [label = 'Alternative Hypothesis (H1)\nPredicted effect or difference', fillcolor = '#A9DFBF']
+
+  S [label = 'Statistical Test\n(e.g. t-test, regression)', fillcolor = '#FAD7A0']
+  R [label = 'Supported or\nNot Supported', fillcolor = '#D7BDE2']
+
+  H -> H0; H -> H1;
+  H0 -> S; H1 -> S;
+  S -> R;
+}
+")
+```
+
+A hypothesis must be:
+
+- A **single, simple statement** predicting the outcome
+- **Testable** with a statistical analysis — you must be able to look at the output and say "supported" or "not supported"
+- Written so that **all variables are quantitatively defined**
+- **Population-specific** — the population to which findings apply must be stated
+
+**Example hypotheses:**
+
+> *"The number of retweets of a political candidate's tweets is positively correlated with their approval rating."*
+
+> *"The use of Instagram for marketing increases a small business's profits."*
+
+> *"The consumer confidence index in one quarter significantly predicts the Dow index in the following quarter."*
+
+**Important caveat on p-values:** Statistical significance does not equal practical significance. A large enough sample size will make nearly anything statistically significant. Always consider **effect size** and the **real-world magnitude** of the effect — how much money does this save, how many lives does this change, what does this mean for how people actually behave?
+
+```{r pvalue-vs-effect-lesson, fig.height = 4}
+lesson <- data.frame(
+  scenario = factor(
+    c("Huge sample,\ntiny lift", "Modest sample,\nlarge lift"),
+    levels = c("Huge sample,\ntiny lift", "Modest sample,\nlarge lift")
+  ),
+  p_value = c(0.001, 0.12),
+  effect_cohens_d = c(0.08, 0.65),
+  plain_language = c(
+    "Statistically \"significant\" but may be useless in practice",
+    "Not conventionally significant but may still matter — investigate further"
+  )
+)
+
+lesson_long <- rbind(
+  data.frame(scenario = lesson$scenario, metric = "p-value (lower = more \"significant\")", value = lesson$p_value),
+  data.frame(scenario = lesson$scenario, metric = "Effect size\n(Cohen's d, higher = bigger separation)", value = lesson$effect_cohens_d)
+)
+
+ggplot(lesson_long, aes(x = scenario, y = value, fill = metric)) +
+  geom_col(position = position_dodge(width = 0.72), width = 0.68, alpha = 0.92) +
+  facet_wrap(~metric, scales = "free_y", ncol = 2) +
+  scale_fill_manual(values = c(grad695_palette[3], grad695_palette[2])) +
+  labs(
+    title = "Why p-values alone mislead beginners (toy comparison)",
+    subtitle = "Same two hypothetical studies — in one, significance is driven by sample size; in the other, the effect is large but noisy",
+    x = NULL,
+    y = NULL
+  ) +
+  .theme_grad695() +
+  theme(
+    legend.position = "none",
+    strip.text = element_text(face = "bold", size = 10.5)
+  )
+```
+
+The figure uses **illustrative numbers** only to teach the *pattern*: always pair inferential conclusions with **effect size**, **confidence intervals** (when applicable), and a **plain-language interpretation** for stakeholders.
+
+## Research Questions
+
+For most analytics and data science projects, **research questions are preferable to hypotheses**. A research question is functionally similar to a hypothesis but written as a question rather than a prediction. This framing gives you:
+
+- More flexibility when no single prior theory strongly predicts the outcome
+- Freedom to examine the data in multiple ways without being locked into a binary "supported / not supported" judgment
+- A better fit for predictive modeling and descriptive studies that do not rely on p-values
+
+### Characteristics of a Good Research Question
+
+```{r rq-checklist, fig.align='center'}
+grViz("
+digraph rq_checklist {
+  graph [layout = dot, rankdir = TB, label = 'Characteristics of a Good Research Question', labelloc = t, fontsize = 18]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  RQ [label = 'Good Research\nQuestion', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  A [label = 'Clearly states the\ntarget population', fillcolor = '#AED6F1']
+  B [label = 'Clearly states the\nvariables to be studied', fillcolor = '#A9DFBF']
+  C [label = 'Addresses a gap or\nlimitation in past work', fillcolor = '#FAD7A0']
+  D [label = 'Scope of data needed\nis clear', fillcolor = '#F1948A']
+  E [label = 'Has a clear objective\n(what you will know after)', fillcolor = '#D7BDE2']
+
+  RQ -> A; RQ -> B; RQ -> C; RQ -> D; RQ -> E;
+}
+")
+```
+
+**Example research questions:**
+
+> *"Can a neural network-based model outperform traditional models for forecasting stock prices?"*
+
+> *"What economic and social factors — such as GDP, education levels, and overall health indicators — explain a country's subjective wellbeing?"*
+
+> *"How does the content of tweets impact a tweeter's influence (number of followers and retweets)?"*
+
+> **Common mistake:** "Can X predict Y?" is a weak research question. Of course X can predict Y — what you actually want to know is whether X predicts Y *better than alternatives*, or whether your model exceeds some meaningful baseline. Frame the comparison explicitly.
+
+```{r weak-vs-strong-rq, fig.width = 10, fig.height = 4.5}
+rq_compare <- data.frame(
+  version = factor(
+    c("Weak (no comparison)", "Strong (names a benchmark)"),
+    levels = c("Weak (no comparison)", "Strong (names a benchmark)")
+  ),
+  clarity_score = c(2.1, 4.7),
+  example = c(
+    "\"Can tweet sentiment\npredict stock returns?\"",
+    "\"Does tweet sentiment add\nincremental return prediction\nbeyond sector ETFs\nand lagged returns?\""
+  )
+)
+
+ggplot(rq_compare, aes(y = version, x = clarity_score, fill = version)) +
+  geom_col(width = 0.55, alpha = 0.95) +
+  geom_text(
+    aes(label = example, x = 0.15),
+    size = 3.4,
+    color = "white",
+    fontface = "bold",
+    lineheight = 0.92,
+    hjust = 0
+  ) +
+  scale_fill_manual(values = c(grad695_palette[7], grad695_palette[2])) +
+  scale_x_continuous(limits = c(0, 5), breaks = seq(0, 5, 1)) +
+  labs(
+    title = "Research question clarity (illustrative scores for teaching)",
+    subtitle = "Strong questions tell the reader what you are beating — a baseline model, a theory, or a simpler feature set",
+    y = NULL,
+    x = "Clarity / specificity (1–5)"
+  ) +
+  .theme_grad695() +
+  theme(axis.text.y = element_text(size = 11, face = "bold"))
+```
+
+The literature review should close with **at least one** research question or hypothesis — but not both, unless they address two clearly distinct sub-problems.
+
+### Part 3 recap — check your understanding
+
+1. Write **one** purpose sentence for your project using the template *"The purpose of this study is to …"*
+2. Is your project closer to **prediction** or **explanation**? What changes in the kind of figure you would show in results?
+3. Rewrite a weak question *"Can X predict Y?"* into a stronger question that names a **comparison or baseline**.
+
+---
+
+# Part 4: Research Design — The Methods Section
+
+## Building Blocks
+
+The methods section translates your research question into a concrete plan. Regardless of the approach — survey research, machine learning, text analysis, or anything else — every methods section must address three building blocks:
+
+```{r methods-blocks, fig.align='center'}
+grViz("
+digraph methods {
+  graph [layout = dot, rankdir = LR, label = 'Three Building Blocks of Research Design', labelloc = t, fontsize = 18, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 13]
+
+  M [label = 'Research\nDesign', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  D [label = 'Data', fillcolor = '#5BA85B', fontcolor = white]
+  Me [label = 'Measurement', fillcolor = '#D97B4A', fontcolor = white]
+  A [label = 'Analysis', fillcolor = '#9B59B6', fontcolor = white]
+
+  D1 [label = 'What data are you using?\nHow is it collected?', fillcolor = '#D5EDD5']
+  Me1 [label = 'What are your variables?\nHow are things quantified?', fillcolor = '#FDDFC8']
+  A1 [label = 'What models/methods will you\nuse to generate insight?', fillcolor = '#E8D5F5']
+
+  M -> D; M -> Me; M -> A;
+  D -> D1; Me -> Me1; A -> A1;
+}
+")
+```
+
+## Data Quality
+
+When describing your data, you must address three dimensions of quality:
+
+| Dimension | Key Question | What to Consider |
+|---|---|---|
+| **Accuracy** | How accurate is the data? | All data has measurement error. Check distributions for outliers and implausible values. Quantify and acknowledge error where possible. |
+| **Validity of Labels** | Are the variables / labels useful? | Does the quantification match real-world behavior? A variable collected because it was *easy* to measure is not always the *best* measure of the underlying concept. |
+| **Real-World Fit** | How well does the data capture the actual problem? | Consider how end users will interact with the results. Data collected without regard for the people it represents often produces models that fail in practice. |
+
+> **Example:** Sentiment scores (positive/negative) are widely used in NLP because they are easy to compute — but they often lack actionable meaning on their own. Acknowledging this limitation honestly is part of good scientific practice.
+
+```{r data-quality-documentation, fig.height = 3.2}
+dq <- data.frame(
+  dimension = factor(
+    c("Accuracy & outliers", "Label / measure validity", "Fit to real decisions"),
+    levels = c("Accuracy & outliers", "Label / measure validity", "Fit to real decisions")
+  ),
+  how_hard_to_defend = c(4.2, 4.5, 4.7)
+)
+
+ggplot(dq, aes(x = how_hard_to_defend, y = dimension, fill = dimension)) +
+  geom_col(alpha = 0.95) +
+  scale_x_continuous(limits = c(0, 5), breaks = seq(0, 5, 1)) +
+  scale_fill_manual(values = grad695_palette[c(1, 3, 6)]) +
+  labs(
+    title = "How thoroughly should you document data quality? (illustrative rubric)",
+    subtitle = "Higher bar = readers and reviewers will ask sharper questions if you skip it — write 2–4 sentences each in your proposal",
+    x = "Relative scrutiny you should expect (1 = low, 5 = high)",
+    y = NULL
+  ) +
+  .theme_grad695()
+```
+
+## Sampling
+
+Almost no study works with the full population of interest. You work with a **sample** — a subset of data that should, ideally, represent the broader population your findings will generalize to.
+
+```{r sampling-diagram, fig.align='center'}
+grViz("
+digraph sampling {
+  graph [layout = dot, rankdir = TB, label = 'Sampling Considerations', labelloc = t, fontsize = 18]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  S [label = 'Sampling', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  A [label = 'Does the data represent the\npopulation the model will be applied to?', fillcolor = '#AED6F1']
+  B [label = 'How diverse is the dataset?\nAre categories or ranges missing?', fillcolor = '#A9DFBF']
+  C [label = 'How flexible is the model\nfor new situations and datasets?', fillcolor = '#FAD7A0']
+
+  S -> A; S -> B; S -> C;
+}
+")
+```
+
+For predictive or AI models, this is especially critical. Training data that does not represent the full diversity of the real world will produce models that make errors — sometimes harmful ones — for underrepresented groups. Describing your data in detail (how it was collected, what population it covers, what groups may be missing) is not just good practice; it is an honest account of what your findings can and cannot generalize to.
+
+```{r population-vs-sample, fig.width = 10, fig.height = 4}
+ps <- data.frame(
+  layer = factor(
+    c("Population", "Your sample"),
+    levels = c("Population", "Your sample")
+  ),
+  coverage = c(100, 18),
+  detail = c(
+    "Who you hope your\nstatements apply to",
+    "The rows you\nactually analyze"
+  )
+)
+
+ggplot(ps, aes(y = layer, x = coverage, fill = layer)) +
+  geom_col(width = 0.5, alpha = 0.95) +
+  geom_text(
+    aes(label = paste0(coverage, "% of the story"), x = coverage + 2),
+    hjust = 0,
+    size = 4,
+    fontface = "bold",
+    color = "gray15"
+  ) +
+  geom_text(
+    aes(label = detail, x = pmin(coverage, 15) + 1),
+    hjust = 0,
+    size = 3.4,
+    color = "white",
+    fontface = "italic",
+    lineheight = 0.9
+  ) +
+  scale_fill_manual(values = c(grad695_palette[6], grad695_palette[1])) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.25))) +
+  labs(
+    title = "Population vs sample (conceptual, not literal row counts)",
+    subtitle = "Your job is to explain the gap: who is missing, what biases that creates, and which claims must stay narrow",
+    y = NULL,
+    x = "Conceptual coverage (%)"
+  ) +
+  .theme_grad695() +
+  theme(axis.text.y = element_text(size = 12, face = "bold"))
+```
+
+## Types of Variables
+
+Understanding the *types* of variables in your data constrains what analyses you can and should run:
+
+```{r variable-types, fig.align='center'}
+grViz("
+digraph var_types {
+  graph [layout = dot, rankdir = LR, label = 'Types of Variables', labelloc = t, fontsize = 18, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  V [label = 'Variable\nTypes', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  C [label = 'Categorical', fillcolor = '#5BA85B', fontcolor = white]
+  N [label = 'Numeric', fillcolor = '#D97B4A', fontcolor = white]
+  F [label = 'Features\n(Engineered)', fillcolor = '#9B59B6', fontcolor = white]
+
+  C1 [label = 'Nominal\n(no order)', fillcolor = '#D5EDD5']
+  C2 [label = 'Ordinal\n(ordered buckets)', fillcolor = '#D5EDD5']
+
+  N1 [label = 'Interval\n(equal spacing, no true zero)', fillcolor = '#FDDFC8']
+  N2 [label = 'Ratio\n(equal spacing, true zero)', fillcolor = '#FDDFC8']
+
+  F1 [label = 'Extracted from\nunstructured data\n(text, image, audio)', fillcolor = '#E8D5F5']
+  F2 [label = 'Developed from\nstructured data\n(interactions, aggregates)', fillcolor = '#E8D5F5']
+
+  V -> C; V -> N; V -> F;
+  C -> C1; C -> C2;
+  N -> N1; N -> N2;
+  F -> F1; F -> F2;
+}
+")
+```
+
+For unstructured data (text, images, audio), you must also describe **how you will convert raw input into numeric features** — e.g., word embeddings, topic modeling, sentiment scores, or image pixel arrays. This conversion step is part of measurement, and it should be documented clearly.
+
+## Conceptual Definitions
+
+A **conceptual definition** explains a variable in plain language:
+
+- What is it designed to capture?
+- Why does it matter for your research question?
+- How do researchers in your field typically define it?
+
+Conceptual definitions belong in the **literature review**, and they should be supported by citations showing how other researchers define the same variable. If a variable has more than one accepted definition in the literature, acknowledge the disagreement and justify your choice.
+
+> **Example:** *Sentiment* can be defined as a general evaluative attitude toward a person, place, or thing — or more narrowly as an emotional response to a stimulus. For a study examining brand perception on social media, the evaluative definition is more appropriate because it captures consumer attitudes directly.
+
+Write **at least a couple of sentences** about each major variable.
+
+## Operational Definitions
+
+An **operational definition** translates the conceptual definition into a technical, measurable form:
+
+- How is the variable actually quantified in your data or analysis?
+- What are the possible values, and what do they mean?
+- How should the values be interpreted?
+
+Operational definitions go in the **methods section**. Multiple operational definitions of the same concept can increase the robustness of your study — each quantification has its own measurement error, and triangulating across multiple operationalizations reduces that error.
+
+> **Example:** *Sentiment* may be operationalized as a compound score from the VADER lexicon, ranging from −1 (maximally negative) to +1 (maximally positive), with values near 0 indicating neutral text. Alternatively, it may be operationalized as a three-class label (positive / neutral / negative) predicted by a fine-tuned BERT classifier.
+
+Write **at least one full sentence** per variable or feature set.
+
+```{r conceptual-vs-operational, fig.width = 10, fig.height = 3.5}
+def_layers <- data.frame(
+  layer = c(
+    "Conceptual definition\n(literature review)",
+    "Operational definition\n(methods section)"
+  ),
+  job = c(
+    "Plain language + citations:\nwhat the idea means in the field",
+    "Technical rule: exactly how\na number is produced from raw inputs"
+  ),
+  y_pos = c(2, 1)
+)
+
+ggplot(def_layers, aes(y = factor(y_pos), x = 1, fill = layer)) +
+  geom_tile(width = 1.6, height = 0.85, alpha = 0.95) +
+  geom_text(
+    aes(label = layer, x = 0.4),
+    size = 4.2,
+    color = "white",
+    fontface = "bold",
+    lineheight = 0.92
+  ) +
+  geom_text(
+    aes(label = job, x = 1.25),
+    size = 3.4,
+    color = "white",
+    lineheight = 0.92
+  ) +
+  scale_fill_manual(values = c(grad695_palette[3], grad695_palette[1])) +
+  coord_cartesian(xlim = c(0.15, 1.85), clip = "off") +
+  labs(
+    title = "Two layers of \"definition\" — beginners often skip one of these",
+    subtitle = "If you only write the conceptual side, reviewers ask how you measured it;\nif you only write code labels, readers do not know what construct you think you captured"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(face = "bold", size = 13, margin = margin(b = 4)),
+    plot.subtitle = element_text(color = "gray35", size = 10.5, margin = margin(b = 10), lineheight = 1.05),
+    plot.margin = margin(10, 16, 10, 16),
+    legend.position = "none"
+  )
+```
+
+## Analytic Plan
+
+The analytic plan describes how you will take your data and derive insight from it. The plan must be:
+
+- **Consistent with the goal** — descriptive goals call for EDA and summary statistics; explanatory goals call for regression or causal models; predictive goals call for machine learning pipelines
+- **Consistent with the data type** — categorical outcomes call for classification; continuous outcomes call for regression; unstructured data requires preprocessing before any modeling
+- **Justified, not just trendy** — more complex is not automatically better; if a logistic regression will answer your research question, use it
+
+```{r analytic-plan, fig.align='center'}
+grViz("
+digraph analytic {
+  graph [layout = dot, rankdir = LR, label = 'Matching Goal to Analytic Approach', labelloc = t, fontsize = 18, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  G [label = 'Project Goal', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  D [label = 'Descriptive /\nExploratory', fillcolor = '#5BA85B', fontcolor = white]
+  X [label = 'Explanatory', fillcolor = '#D97B4A', fontcolor = white]
+  P [label = 'Predictive', fillcolor = '#9B59B6', fontcolor = white]
+
+  D1 [label = 'Define all variables.\nUse EDA methods.', fillcolor = '#D5EDD5']
+  X1 [label = 'Define independent variables\n(predictors) and dependent\nvariables (outcomes).', fillcolor = '#FDDFC8']
+  P1 [label = 'Define features (inputs)\nand outcomes (outputs).', fillcolor = '#E8D5F5']
+
+  G -> D; G -> X; G -> P;
+  D -> D1; X -> X1; P -> P1;
+}
+")
+```
+
+> **Refinement principle:** If your data cannot answer your research question, you have three options: change your research question, acquire different data, or consider how you might engineer new features from existing data. At the end of the day, if your analysis does not clearly answer your research question, then the study was not well designed. Every analytic decision should be logically justifiable — and documented.
+
+```{r methods-three-pillars, fig.width = 10, fig.height = 4.5}
+pillars <- data.frame(
+  pillar = factor(
+    c("Data", "Measurement", "Analysis"),
+    levels = c("Data", "Measurement", "Analysis")
+  ),
+  checklist = c(
+    "Source, time window,\ninclusion rules,\nlimitations",
+    "Conceptual + operational\ndefinitions;\nengineered features",
+    "Models, validation,\nmetrics tied to\nyour RQ"
+  ),
+  equal_weight = c(1, 1, 1)
+)
+
+ggplot(pillars, aes(x = pillar, y = equal_weight, fill = pillar)) +
+  geom_col(width = 0.58, alpha = 0.95) +
+  geom_text(
+    aes(label = pillar, y = 0.72),
+    size = 5.5,
+    color = "white",
+    fontface = "bold"
+  ) +
+  geom_text(
+    aes(label = checklist, y = 0.38),
+    size = 3.3,
+    color = "white",
+    lineheight = 0.9
+  ) +
+  scale_fill_manual(values = grad695_palette[c(2, 3, 4)]) +
+  labs(
+    title = "Methods section balance: three pillars deserve equal attention",
+    subtitle = "Do not write two pages on algorithms and one vague sentence on where the CSV came from",
+    x = NULL,
+    y = NULL
+  ) +
+  .theme_grad695() +
+  theme(
+    axis.text = element_blank(),
+    panel.grid = element_blank()
+  ) +
+  coord_cartesian(ylim = c(0, 1.05), clip = "off")
+```
+
+### Part 4 recap — check your understanding
+
+1. List the **three building blocks** of your methods section and one bullet you will include under each for *your* capstone.
+2. For your main outcome variable, write **one conceptual sentence** and **one operational sentence** (they should not be identical).
+3. Name **one group** your data might under-represent and how that limits what you can claim.
+
+---
+
+# Part 5: Feasibility — Can You Actually Do This?
+
+## Why Feasibility Matters
+
+A proposal can have a brilliant research question, a thorough literature review, and an elegant analytic plan — and still be a bad proposal if the project **cannot realistically be completed**. Reviewers (including your advisor) will ask a blunt question before anything else: *"Is this actually doable with the time, data, skills, and tools this student has?"*
+
+Feasibility is not about lowering ambition. It is about demonstrating that you have thought through the **practical constraints** and designed a project that fits within them. A tightly scoped study you can finish will always contribute more than an ambitious study you abandon halfway.
+
+## The Five Feasibility Questions
+
+Every proposal should address five categories of feasibility, even if briefly. Think of them as a pre-flight checklist: if any item is red, the project needs redesign before you invest further effort.
+
+```{r feasibility-checklist, fig.width = 10, fig.height = 5}
+feasibility <- data.frame(
+  question = factor(
+    c("Data access", "Scope & timeline", "Skills & tools", "Ethics & approvals", "Contingency plan"),
+    levels = rev(c("Data access", "Scope & timeline", "Skills & tools", "Ethics & approvals", "Contingency plan"))
+  ),
+  core_question = c(
+    "Can you actually obtain\nthe data you described?",
+    "Can you finish within\none semester?",
+    "Do you have (or can you learn)\nthe required methods?",
+    "Will IRB or data-use\nagreements block you?",
+    "What is your backup plan\nif something falls through?"
+  ),
+  risk = c(4.8, 4.5, 3.8, 3.5, 4.0)
+)
+
+ggplot(feasibility, aes(y = question, x = risk, fill = question)) +
+  geom_col(width = 0.6, alpha = 0.95) +
+  geom_text(
+    aes(label = core_question, x = 0.15),
+    hjust = 0,
+    size = 3.4,
+    color = "white",
+    fontface = "bold",
+    lineheight = 0.9
+  ) +
+  scale_fill_manual(values = c(
+    grad695_palette[4], grad695_palette[5], grad695_palette[3],
+    grad695_palette[2], grad695_palette[1]
+  )) +
+  scale_x_continuous(limits = c(0, 5.2), breaks = seq(0, 5, 1)) +
+  labs(
+    title = "Five feasibility questions your proposal must answer",
+    subtitle = "Bar length = how often this issue derails student projects (illustrative scale, 1 = rare, 5 = very common)",
+    y = NULL,
+    x = "How commonly this derails projects (1–5)"
+  ) +
+  .theme_grad695() +
+  theme(axis.text.y = element_text(size = 11, face = "bold"))
+```
+
+### 1. Data Access
+
+This is the single most common feasibility failure. Before you commit to a research question, confirm:
+
+| Check | What to verify |
+|---|---|
+| **Data exists** | Have you located a specific dataset, API, or data source — not just assumed one must exist somewhere? |
+| **You can get it** | Is it publicly downloadable, or does it require an application, institutional agreement, or payment? |
+| **It covers your needs** | Does it contain the variables, time range, and population your RQ requires? |
+| **Format is workable** | Can you actually load and parse it (CSV, JSON, SQL dump, API rate limits)? Have you tried a sample? |
+
+> **Red flag:** If your methods section says *"Data will be collected from…"* but you have never downloaded a single row, your proposal has a data-access gap. **Download a sample before you submit your proposal.** Even a partial pull proves the pipeline works.
+
+### 2. Scope and Timeline
+
+A one-semester capstone is roughly **14–16 weeks**. Subtract time for proposal writing, revisions, and final presentation, and you have about **10–12 working weeks** for data collection, cleaning, analysis, and write-up.
+
+```{r timeline-reality, fig.width = 10, fig.height = 3.5}
+timeline <- data.frame(
+  phase = factor(
+    c("Data acquisition\n& cleaning", "Analysis &\nmodeling", "Writing &\nrevisions", "Buffer for\nsurprises"),
+    levels = c("Data acquisition\n& cleaning", "Analysis &\nmodeling", "Writing &\nrevisions", "Buffer for\nsurprises")
+  ),
+  weeks = c(3, 4, 3, 2)
+)
+
+ggplot(timeline, aes(x = phase, y = weeks, fill = phase)) +
+  geom_col(width = 0.6, alpha = 0.95) +
+  geom_text(
+    aes(label = paste0(weeks, " weeks")),
+    vjust = -0.4,
+    size = 4,
+    fontface = "bold",
+    color = "gray15"
+  ) +
+  scale_fill_manual(values = grad695_palette[c(1, 2, 3, 4)]) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.2))) +
+  labs(
+    title = "Rough budget: 12 working weeks in a one-semester capstone",
+    subtitle = "If your project needs 8 weeks of data collection alone, scope is too large — simplify the question",
+    x = NULL,
+    y = "Weeks"
+  ) +
+  .theme_grad695() +
+  theme(axis.text.x = element_text(size = 10, face = "bold"))
+```
+
+**Scope-reduction strategies** (when the timeline does not fit):
+
+- **Narrow the population** — instead of "all Twitter users," study "US political candidates during the 2024 election cycle"
+- **Reduce the number of variables** — focus on the 3–5 most theoretically justified features, not every column in the dataset
+- **Simplify the model** — a well-executed logistic regression answers a clear RQ better than a half-finished deep learning pipeline
+- **Use existing data** — collecting your own survey or scraping a new dataset adds weeks; an existing benchmark dataset lets you start analysis immediately
+
+### 3. Skills and Tools
+
+Be honest about what you know now versus what you would need to learn:
+
+| Skill gap | Feasible if… | Risky if… |
+|---|---|---|
+| A new R / Python library | You budget 1–2 weeks to learn it and the documentation is good | The library is poorly documented or you have never coded in that language |
+| A new statistical method | You have coursework in the underlying math and a clear tutorial to follow | You have never taken a statistics course and the method requires tuning dozens of hyperparameters |
+| Cloud computing / GPUs | Your university provides access and you have used the command line before | You need to set up infrastructure from scratch with no prior experience |
+
+> **Practical rule:** One new skill per project is fine. Three new skills is a proposal rewrite.
+
+### 4. Ethics and Approvals
+
+If your project requires IRB review or a data-use agreement, those processes take **weeks to months**. Factor that lead time into your timeline.
+
+- If you are using a **publicly available, fully anonymized** dataset, you likely qualify for an exempt review (fastest path)
+- If you are **collecting data from people** (surveys, interviews, scraping identifiable social media), start the IRB application *now* — do not wait until the proposal is approved
+- If you are using **proprietary data from an employer**, confirm in writing that you have permission to use it for academic research and to publish results
+
+### 5. Contingency Plan
+
+Things go wrong. APIs get deprecated, datasets turn out to be messier than expected, a key variable has 60% missing values. A feasible proposal anticipates at least one likely failure and names the fallback:
+
+> *"If the Twitter API rate limit prevents collection of the full 12-month dataset, we will narrow the window to the 3-month period surrounding the election and supplement with the pre-collected dataset from Smith et al. (2022)."*
+
+> *"If the neural network model does not converge within the compute budget, we will report results from the gradient-boosted tree model as the primary analysis and discuss the deep learning attempt as future work."*
+
+A contingency plan does not weaken a proposal — it strengthens it by showing the reviewer you will still produce results even if Plan A hits a wall.
+
+## Feasibility Self-Assessment
+
+Before submitting your proposal, score yourself honestly on each dimension:
+
+```{r feasibility-self-assess, fig.width = 10, fig.height = 4.5}
+assess <- data.frame(
+  dimension = factor(
+    c("Data access", "Scope & timeline", "Skills & tools", "Ethics & approvals", "Contingency plan"),
+    levels = c("Data access", "Scope & timeline", "Skills & tools", "Ethics & approvals", "Contingency plan")
+  ),
+  green = c(
+    "Downloaded a sample;\nall variables present",
+    "Fits in 10-12 weeks\nwith buffer",
+    "One new skill max;\nrest is familiar",
+    "Exempt or no IRB;\ndata is public",
+    "Named a specific\nbackup dataset or model"
+  ),
+  red = c(
+    "Never tried to access;\nassuming it exists",
+    "Needs 6+ months\nor full-time effort",
+    "Three+ unfamiliar\nmethods stacked",
+    "IRB not started;\ndata access unclear",
+    "No fallback;\nsingle point of failure"
+  )
+)
+
+assess_long <- rbind(
+  data.frame(dimension = assess$dimension, status = "Green (ready)", description = assess$green),
+  data.frame(dimension = assess$dimension, status = "Red (needs work)", description = assess$red)
+)
+
+ggplot(assess_long, aes(x = dimension, y = status, fill = status)) +
+  geom_tile(width = 0.9, height = 0.85, alpha = 0.92, color = "white", linewidth = 0.5) +
+  geom_text(
+    aes(label = description),
+    size = 3.0,
+    color = "white",
+    fontface = "bold",
+    lineheight = 0.88
+  ) +
+  scale_fill_manual(values = c("#5BA85B", "#C0392B")) +
+  labs(
+    title = "Feasibility self-assessment: green means go, red means redesign before submitting",
+    subtitle = "Score each dimension honestly — one red flag is fixable; three red flags mean the project scope needs rethinking",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(face = "bold", size = 12.5, margin = margin(b = 4)),
+    plot.subtitle = element_text(color = "gray35", size = 10.5, margin = margin(b = 10)),
+    plot.margin = margin(10, 14, 10, 14),
+    axis.text.x = element_text(size = 10, face = "bold", angle = 20, hjust = 1),
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    legend.text = element_text(size = 10)
+  )
+```
+
+### Part 5 recap — check your understanding
+
+1. Have you **actually downloaded** (or confirmed access to) the data your proposal describes? If not, do it today.
+2. Sketch a rough **week-by-week timeline** for your project. Does it fit in 12 working weeks? If not, what can you cut?
+3. Write **one contingency sentence** for the most likely thing that could go wrong in your project.
+
+---
+
+# Putting It All Together
+
+The five sections of the research proposal are not independent documents — they are a single, continuous argument. Feasibility runs alongside every section: a question you cannot answer with available data, a method you cannot execute in time, or an approval you cannot obtain will undermine even the strongest intellectual argument.
+
+```{r full-pipeline, fig.align='center'}
+grViz("
+digraph pipeline {
+  graph [layout = dot, rankdir = TB, label = 'From Problem to Research Plan', labelloc = t, fontsize = 20]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 13]
+
+  A [label = 'Introduction\n(What is the problem? Why does it matter?)', fillcolor = '#AED6F1']
+  B [label = 'Literature Review\n(What is known? What approaches exist? What are the gaps?)', fillcolor = '#A9DFBF']
+  C [label = 'Purpose Statement & Research Question\n(What specifically will this study learn?)', fillcolor = '#FAD7A0']
+  D [label = 'Methods / Research Design\n(Data, measurement, and analytic plan)', fillcolor = '#D7BDE2']
+  F [label = 'Feasibility Check\n(Can you actually do this with your time, data, and skills?)', fillcolor = '#F5B041']
+  E [label = 'Results & Contribution\n(What did you find? What does it add?)', fillcolor = '#FADBD8']
+
+  A -> B [label = ' justifies ']
+  B -> C [label = ' motivates ']
+  C -> D [label = ' directs ']
+  D -> F [label = ' validates ']
+  F -> E [label = ' enables ']
+}
+")
+```
+
+**Example narrative connecting all four sections:**
+
+> *"Social media platforms have transformed how political candidates communicate with voters — yet few studies have examined whether the emotional content of candidate tweets predicts voter sentiment at scale. The goal of the current study is to explore how tweet sentiment influences public approval of political candidates.*
+>
+> *[Literature review: establishes that social media language affects political perception; identifies that most prior studies use manual coding rather than automated NLP; notes that VADER-based sentiment analysis has not yet been applied to presidential campaign data.]*
+>
+> *The purpose of this study is to predict changes in approval ratings from tweet-level sentiment scores. Research question: Can VADER-derived sentiment from a candidate's tweets predict weekly shifts in approval ratings beyond what polling baselines alone can explain?*
+>
+> *[Methods: Twitter API data for two candidates across 12 months, operationalized via VADER compound scores; weekly Gallup approval rating as the outcome; time-series regression model controlling for major news events.]*
+>
+> *[Feasibility: A pilot pull of 5,000 tweets has been completed and parsed successfully. The full collection can be finished within 2 weeks using the Academic Research API tier. Timeline allows 3 weeks for data prep, 4 for modeling, and 3 for writing. If the full 12-month window cannot be collected, the study will narrow to the 3-month primary campaign period.]*"
+
+---
+
+# Key Terms
+
+| Term | Definition |
+|---|---|
+| **Narrative Hook** | An opening that grabs the reader's attention and contextualizes the problem — the only place in a research paper where non-academic sources are acceptable |
+| **Goal Statement** | A broad sentence ending the introduction that names what the project aims to accomplish, using constructs rather than specific variables |
+| **Purpose Statement** | A more specific statement at the end of the literature review that reflects the actual research design (describe, explore, explain, predict) |
+| **Hypothesis** | A single, testable prediction about the relationship between variables, evaluated with a statistical test |
+| **Research Question** | A question framing what the study will learn, preferable to hypotheses for exploratory and predictive work |
+| **Conceptual Definition** | A plain-language explanation of what a variable is and why it matters; belongs in the literature review with citations |
+| **Operational Definition** | A technical specification of how a variable is measured or quantified; belongs in the methods section |
+| **Sampling** | The selection of a subset of data intended to represent the broader population; sampling bias limits generalizability |
+| **Effect Size** | A measure of the magnitude of a relationship or difference, more informative than p-values alone |
+| **p-hacking** | Running many analyses and reporting only statistically significant results, inflating the false positive rate |
+| **Zotero** | A free, open-source citation manager for storing references, generating formatted citations, and integrating sources into word processors and R Markdown |
+| **Feasibility** | A practical assessment of whether a proposed study can be completed given the available data, timeline, skills, ethical requirements, and contingency options |
+
+---
+
+# Next Steps & To-Do
+
+Work through the list **in order** — each item feeds the next.
+
+- [ ] **Action 1 (Part 1):** Write a 2–3 paragraph introduction for your capstone proposal. Include a narrative hook, brief background, importance statement, and goal statement. Do not use subheadings within the introduction. Read it aloud: does it sound like one story or four separate mini-essays?
+- [ ] **Action 2 (Part 2 — reading):** Pick **one** peer-reviewed article close to your topic. Follow the **five-step reading routine** from this tutorial. Highlight the sentence where the authors pivot from *what is known* to *what is missing*.
+- [ ] **Action 3 (Part 2 — Zotero):** Create a Zotero collection for your project. Add **five** sources minimum; each must have a 2–4 sentence note answering: finding, method, relevance to you.
+- [ ] **Action 4 (Part 3):** Draft the closing block of your literature review: methodological approach + purpose statement (use the verb chart) + **one** research question that names a comparison or baseline. Run it past the **weak vs strong** figure above.
+- [ ] **Action 5 (Part 4):** Outline your methods section using the **three pillars** figure: Data, Measurement, Analysis. Under each pillar, write at least three bullets that are specific to *your* dataset (not generic ML jargon).
+- [ ] **Action 6 (Part 5 — Feasibility):** Complete the **feasibility self-assessment** (green/red grid). Confirm you have downloaded a data sample. Sketch a 12-week timeline. Write one contingency sentence for your biggest risk.
+- [ ] **Action 7 (Integration):** Write one tight paragraph that chains **goal → gap → question → data → feasibility** without introducing new ideas — this is your "elevator version" of the proposal logic.
