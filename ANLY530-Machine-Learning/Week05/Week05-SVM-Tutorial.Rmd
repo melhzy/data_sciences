@@ -1,0 +1,1137 @@
+---
+title: "Week 05: Support Vector Machines (SVM)"
+author: "Ziyuan Huang"
+date: "Last Updated: `r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: cosmo
+    highlight: tango
+    code_folding: show
+    df_print: paged
+    mathjax: "https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 6
+)
+
+# Deterministic seed via seedhash — reproducible across machines
+if (!requireNamespace("seedhash", quietly = TRUE)) {
+  if (!requireNamespace("pak", quietly = TRUE)) {
+    install.packages("pak", repos = "https://r-lib.github.io/p/pak/stable/")
+  }
+  pak::pkg_install("github::melhzy/seedhash/R", ask = FALSE)
+}
+```
+
+```{r seeds, include=TRUE}
+library(seedhash)
+gen <- SeedHashGenerator$new("ANLY530-Week05-SVM")
+MASTER_SEED <- gen$generate_seeds(1)
+set.seed(MASTER_SEED)
+```
+
+```{r seedhash-info, echo=FALSE, results='asis'}
+cat(sprintf("**Random Seed Source:** `seedhash` package — input string: `\"ANLY530-Week05-SVM\"` → seed: `%d`\n\n", MASTER_SEED))
+```
+
+# Introduction
+
+In the past few weeks we learned how Decision Trees split data with yes/no questions and how Random Forests combine many trees to reduce overfitting. This week we take a very different approach: **Support Vector Machines (SVMs)**.
+
+Instead of asking questions about individual features, an SVM tries to find the **best possible dividing line** (or surface) between classes. Think of it like building a road between two neighborhoods — the SVM finds the *widest* road it can, so that the two neighborhoods are as far apart as possible.
+
+> *"A support vector machine constructs a hyper-plane or set of hyper-planes in a high or infinite dimensional space, which can be used for classification, regression or other tasks. Intuitively, a good separation is achieved by the hyper-plane that has the largest distance to the nearest training data points of any class."*
+> — scikit-learn documentation **[1]**
+
+> *"In addition to performing linear classification, SVMs can efficiently perform non-linear classification using the kernel trick, representing the data only through a set of pairwise similarity comparisons between the original data points using a kernel function."*
+> — Wikipedia, "Support vector machine" **[2]**
+
+**Learning Objectives:**
+
+1. Understand the intuition behind **maximum-margin classification** using everyday analogies.
+2. Define and visualise **hyperplanes**, **margins**, and **support vectors**.
+3. Distinguish **hard-margin** from **soft-margin** SVM and explain the role of the **C** parameter.
+4. Explain the **kernel trick** and compare **linear**, **polynomial**, and **RBF** kernels.
+5. Build, tune, and evaluate SVMs in R using the `e1071` package.
+6. Apply SVM to both **classification** and **regression** tasks.
+7. Understand when SVMs shine and when other algorithms may be more appropriate.
+
+## Required Packages
+
+```{r load-packages}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(
+  tidyverse,
+  e1071,
+  caret,
+  gridExtra,
+  scales,
+  kernlab
+)
+```
+
+---
+
+# Part 1: The Big Idea — Finding the Widest Road
+
+## 1.1 What Problem Does SVM Solve?
+
+Imagine you have a handful of blue marbles and red marbles scattered on a table. Your job is to lay down a ruler (a straight line) so that all blue marbles end up on one side and all red marbles on the other. There are many ways to place the ruler — but which placement is *best*?
+
+The SVM answer: **the line that leaves the widest possible gap between the two groups**. That gap is called the **margin**.
+
+```{r widest-road-intuition, fig.height=5, fig.width=9}
+set.seed(MASTER_SEED)
+
+blue <- data.frame(x = rnorm(20, mean = 2, sd = 0.6),
+                   y = rnorm(20, mean = 4, sd = 0.6),
+                   class = "Blue")
+red  <- data.frame(x = rnorm(20, mean = 4, sd = 0.6),
+                   y = rnorm(20, mean = 2, sd = 0.6),
+                   class = "Red")
+demo_df <- rbind(blue, red)
+
+ggplot(demo_df, aes(x = x, y = y, color = class)) +
+  geom_point(size = 3, alpha = 0.8) +
+  scale_color_manual(values = c("Blue" = "#1976D2", "Red" = "#E53935")) +
+  geom_abline(intercept = 6.2, slope = -1, color = "grey60",
+              linewidth = 0.8, linetype = "dashed") +
+  geom_abline(intercept = 5.5, slope = -1, color = "grey60",
+              linewidth = 0.8, linetype = "dashed") +
+  geom_abline(intercept = 5.85, slope = -1, color = "#2E7D32",
+              linewidth = 1.5) +
+  annotate("text", x = 1.3, y = 1.5,
+           label = "Many lines can separate the two groups...\nbut only one gives the WIDEST road.",
+           color = "grey30", size = 3.8, hjust = 0) +
+  annotate("text", x = 4.8, y = 4.8,
+           label = "SVM line\n(widest margin)",
+           color = "#2E7D32", fontface = "bold", size = 3.5) +
+  labs(
+    title = "The Core Idea: Find the Line with the Widest Road",
+    subtitle = "SVM picks the separator that maximises the gap between the two classes",
+    x = "Feature 1", y = "Feature 2", color = "Class"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## 1.2 Key Terminology — Plain English
+
+Before diving into the math, let's pin down the vocabulary. All the technical terms map to simple ideas:
+
+| Technical Term | Plain English | Analogy |
+|---|---|---|
+| **Hyperplane** | The dividing line (or surface) between classes | The road's centre line |
+| **Margin** | The width of the gap between the closest points of each class | The road's total width |
+| **Support Vectors** | The handful of data points that sit right on the edge of the margin — they "support" the road | The houses closest to the road on either side |
+| **Maximum Margin** | Making the road as wide as possible | Building the widest road so neither neighbourhood encroaches |
+| **C (Cost)** | How strictly we enforce the rule "no points inside the road" | How many zoning violations you tolerate |
+| **Kernel** | A mathematical trick that lets the SVM draw curved boundaries | Putting on special glasses that let you see the data differently |
+
+## 1.3 Why a Wide Margin Matters
+
+A wider margin means the model is more confident. If the road is very narrow, even a tiny shift in new data could put a point on the wrong side. A wide margin gives the model breathing room.
+
+```{r margin-comparison, fig.height=4.5, fig.width=11}
+set.seed(MASTER_SEED + 1)
+
+pts <- data.frame(
+  x = c(rnorm(15, 2, 0.4), rnorm(15, 4, 0.4)),
+  y = c(rnorm(15, 2, 0.4), rnorm(15, 4, 0.4)),
+  class = rep(c("A", "B"), each = 15)
+)
+
+p_narrow <- ggplot(pts, aes(x, y, color = class)) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = c("#1976D2", "#E53935")) +
+  geom_abline(intercept = 5.5, slope = -1, linewidth = 1.2, color = "#333333") +
+  geom_abline(intercept = 5.3, slope = -1, linetype = "dashed", color = "#999999") +
+  geom_abline(intercept = 5.7, slope = -1, linetype = "dashed", color = "#999999") +
+  labs(title = "Narrow Margin", subtitle = "Risky — new points could easily be misclassified") +
+  theme_minimal() + theme(legend.position = "none")
+
+p_wide <- ggplot(pts, aes(x, y, color = class)) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = c("#1976D2", "#E53935")) +
+  geom_abline(intercept = 6.0, slope = -1, linewidth = 1.2, color = "#2E7D32") +
+  geom_abline(intercept = 5.2, slope = -1, linetype = "dashed", color = "#66BB6A") +
+  geom_abline(intercept = 6.8, slope = -1, linetype = "dashed", color = "#66BB6A") +
+  annotate("text", x = 4.5, y = 4.5, label = "Wide\nmargin", color = "#2E7D32",
+           fontface = "bold", size = 4) +
+  labs(title = "Wide Margin (SVM)", subtitle = "Safer — more room for new data points") +
+  theme_minimal() + theme(legend.position = "none")
+
+grid.arrange(p_narrow, p_wide, ncol = 2,
+  top = "Why Maximum Margin Matters for Generalisation")
+```
+
+---
+
+# Part 2: Linear SVM — The Math Behind the Road
+
+## 2.1 The Hyperplane Equation
+
+In two dimensions, a hyperplane is just a straight line described by:
+
+$$w_1 x_1 + w_2 x_2 + b = 0$$
+
+In plain language: **$w$** (the weight vector) determines the direction the line faces, and **$b$** (the bias) shifts it left or right.
+
+- Points on one side satisfy $w_1 x_1 + w_2 x_2 + b > 0$ (class +1)
+- Points on the other side satisfy $w_1 x_1 + w_2 x_2 + b < 0$ (class −1)
+
+The margin boundaries are:
+
+$$w_1 x_1 + w_2 x_2 + b = +1 \quad \text{(positive margin)}$$
+$$w_1 x_1 + w_2 x_2 + b = -1 \quad \text{(negative margin)}$$
+
+The distance between these two lines (the road width) is:
+
+$$\text{Margin} = \frac{2}{\|w\|}$$
+
+So to make the margin as wide as possible, we need to make $\|w\|$ as **small** as possible — which leads to the SVM optimisation problem.
+
+## 2.2 Visualising the Margin and Support Vectors
+
+Let's build our first real SVM and see these concepts come alive.
+
+```{r first-svm, fig.height=6, fig.width=8}
+set.seed(MASTER_SEED)
+
+x1 <- c(rnorm(30, 2, 0.7), rnorm(30, 5, 0.7))
+x2 <- c(rnorm(30, 5, 0.7), rnorm(30, 2, 0.7))
+y  <- factor(c(rep("+1", 30), rep("-1", 30)))
+svm_data <- data.frame(x1, x2, y)
+
+svm_lin <- svm(y ~ x1 + x2, data = svm_data, kernel = "linear",
+               cost = 1, scale = FALSE)
+
+w  <- t(svm_lin$coefs) %*% svm_lin$SV
+b  <- -svm_lin$rho
+
+slope     <- -w[1] / w[2]
+intercept <- -b / w[2]
+margin_up <- -(b + 1) / w[2]
+margin_dn <- -(b - 1) / w[2]
+
+sv_df <- as.data.frame(svm_lin$SV)
+sv_df$y <- svm_data$y[svm_lin$index]
+
+ggplot(svm_data, aes(x = x1, y = x2, color = y)) +
+  geom_point(size = 2.5, alpha = 0.6) +
+  geom_point(data = sv_df, aes(x = x1, y = x2),
+             shape = 1, size = 5, stroke = 1.3, color = "black") +
+  geom_abline(intercept = intercept, slope = slope,
+              color = "#2E7D32", linewidth = 1.3) +
+  geom_abline(intercept = margin_up, slope = slope,
+              color = "#66BB6A", linewidth = 0.9, linetype = "dashed") +
+  geom_abline(intercept = margin_dn, slope = slope,
+              color = "#66BB6A", linewidth = 0.9, linetype = "dashed") +
+  scale_color_manual(values = c("+1" = "#1976D2", "-1" = "#E53935")) +
+  annotate("text", x = 5.5, y = 5.5, label = "Decision\nBoundary",
+           color = "#2E7D32", fontface = "bold", size = 3.5) +
+  annotate("text", x = 5.5, y = 6.3, label = "Margin boundary",
+           color = "#66BB6A", size = 3) +
+  annotate("text", x = 1.5, y = 1.5,
+           label = paste("Support Vectors:", nrow(sv_df)),
+           color = "black", fontface = "italic", size = 3.5) +
+  labs(
+    title = "Linear SVM: Decision Boundary, Margin, and Support Vectors",
+    subtitle = "Black circles = support vectors (the few points that define the entire boundary)",
+    x = "Feature 1", y = "Feature 2", color = "Class"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+> **Key observation:** Out of 60 training points, only a handful are circled as support vectors. These are the only points that matter — if you removed every other point, the SVM would produce the *exact same* boundary. This is what makes SVMs memory-efficient.
+
+## 2.3 Hard-Margin vs. Soft-Margin SVM
+
+### Hard-Margin: No Exceptions Allowed
+
+A **hard-margin** SVM demands that every single data point sits on the correct side of the margin — no violations tolerated. This only works if the data is **perfectly linearly separable** (the two groups don't overlap at all). In real data, this is almost never the case.
+
+### Soft-Margin: Allow Some Mistakes
+
+A **soft-margin** SVM relaxes the strict rule and allows some points to be inside the margin or even on the wrong side. This is controlled by the **C parameter**:
+
+$$\min_{w,b,\zeta} \frac{1}{2} \|w\|^2 + C \sum_{i=1}^{n} \zeta_i$$
+
+subject to $y_i(w^T x_i + b) \geq 1 - \zeta_i$ and $\zeta_i \geq 0$.
+
+In plain English:
+
+- The first term ($\frac{1}{2}\|w\|^2$) tries to make the margin **wide**.
+- The second term ($C \sum \zeta_i$) penalises **violations** (points inside or across the margin).
+- **$C$ is the dial between these two goals:**
+  - **Small C** → "Be chill, allow some mistakes, make the road wide" → wider margin, simpler model.
+  - **Large C** → "Be strict, punish every mistake" → narrower margin, tries harder to classify every training point correctly.
+
+```{r hard-vs-soft, echo=FALSE, fig.height=3, fig.width=9}
+par(mar = c(0, 0, 1.5, 0), mfrow = c(1, 2))
+
+plot(0, 0, type = "n", xlim = c(0, 8), ylim = c(0, 6), axes = FALSE,
+     main = "Hard-Margin: \"Zero tolerance\"")
+rect(3.5, 0, 4.5, 6, col = "#E8F5E9", border = NA)
+segments(4, 0, 4, 6, col = "#2E7D32", lwd = 3)
+segments(3.5, 0, 3.5, 6, col = "#66BB6A", lwd = 2, lty = 2)
+segments(4.5, 0, 4.5, 6, col = "#66BB6A", lwd = 2, lty = 2)
+points(c(1.5, 2.0, 2.5, 1.8, 3.0), c(2, 4, 1, 3, 5), pch = 16, col = "#1976D2", cex = 1.5)
+points(c(5.5, 6.0, 5.8, 6.5, 5.2), c(2, 4, 1, 3, 5), pch = 16, col = "#E53935", cex = 1.5)
+text(4, 6.2, "Every point must stay outside the green zone", cex = 0.8, col = "grey40")
+
+plot(0, 0, type = "n", xlim = c(0, 8), ylim = c(0, 6), axes = FALSE,
+     main = "Soft-Margin: \"Some violations OK (controlled by C)\"")
+rect(3.0, 0, 5.0, 6, col = "#E8F5E9", border = NA)
+segments(4, 0, 4, 6, col = "#2E7D32", lwd = 3)
+segments(3, 0, 3, 6, col = "#66BB6A", lwd = 2, lty = 2)
+segments(5, 0, 5, 6, col = "#66BB6A", lwd = 2, lty = 2)
+points(c(1.5, 2.0, 2.5, 1.8, 3.5), c(2, 4, 1, 3, 5), pch = 16, col = "#1976D2", cex = 1.5)
+points(c(5.5, 6.0, 5.8, 6.5, 4.3), c(2, 4, 1, 3, 2), pch = 16, col = "#E53935", cex = 1.5)
+points(c(3.5, 4.3), c(5, 2), pch = 1, cex = 2.5, lwd = 2)
+text(4, 6.2, "Some points are allowed inside the margin (wider road)", cex = 0.8, col = "grey40")
+
+par(mfrow = c(1, 1))
+```
+
+## 2.4 The C Parameter: Your Model's Strictness Dial
+
+```{r c-parameter-effect, fig.height=6, fig.width=11}
+set.seed(MASTER_SEED + 2)
+
+n <- 80
+x1_c <- c(rnorm(n/2, 2, 1), rnorm(n/2, 4, 1))
+x2_c <- c(rnorm(n/2, 4, 1), rnorm(n/2, 2, 1))
+y_c  <- factor(c(rep("A", n/2), rep("B", n/2)))
+df_c <- data.frame(x1 = x1_c, x2 = x2_c, y = y_c)
+
+grid_c <- expand.grid(
+  x1 = seq(min(x1_c) - 1, max(x1_c) + 1, length.out = 150),
+  x2 = seq(min(x2_c) - 1, max(x2_c) + 1, length.out = 150)
+)
+
+c_values <- c(0.01, 0.1, 1, 100)
+
+plots_c <- lapply(c_values, function(C_val) {
+  m <- svm(y ~ x1 + x2, data = df_c, kernel = "linear", cost = C_val, scale = FALSE)
+  grid_c$pred <- predict(m, grid_c)
+  n_sv <- nrow(m$SV)
+
+  ggplot() +
+    geom_tile(data = grid_c, aes(x = x1, y = x2, fill = pred), alpha = 0.3) +
+    geom_point(data = df_c, aes(x = x1, y = x2, color = y), size = 1.8, alpha = 0.7) +
+    geom_point(data = as.data.frame(m$SV), aes(x = x1, y = x2),
+               shape = 1, size = 4, stroke = 1, color = "black") +
+    scale_fill_manual(values = c("A" = "#BBDEFB", "B" = "#FFCDD2"), guide = "none") +
+    scale_color_manual(values = c("A" = "#1976D2", "B" = "#E53935"), guide = "none") +
+    labs(
+      title = sprintf("C = %s", C_val),
+      subtitle = sprintf("%d support vectors", n_sv)
+    ) +
+    theme_minimal(base_size = 9) +
+    theme(plot.title = element_text(face = "bold"))
+})
+
+do.call(grid.arrange, c(plots_c, ncol = 4,
+  top = "Effect of C: Small C → Wide Margin (more SVs) | Large C → Narrow Margin (fewer SVs)"))
+```
+
+> **Reading the plots:**
+>
+> - **C = 0.01**: Very lenient. Wide margin, many support vectors, ignores some misclassifications.
+> - **C = 0.1**: Moderate. A reasonable balance.
+> - **C = 1**: The default. Fairly strict.
+> - **C = 100**: Very strict. Tries hard to classify every training point — risks overfitting.
+
+---
+
+# Part 3: The Kernel Trick — Drawing Curved Boundaries
+
+## 3.1 The Problem: Data That Can't Be Separated by a Straight Line
+
+Real-world data is rarely neat enough for a straight line. Consider this classic example: one class forms a ring around the other. No straight line can separate them.
+
+```{r non-linear-data, fig.height=5, fig.width=8}
+set.seed(MASTER_SEED + 3)
+
+n_ring <- 200
+theta  <- runif(n_ring, 0, 2 * pi)
+r_inner <- rnorm(n_ring / 2, mean = 1, sd = 0.2)
+r_outer <- rnorm(n_ring / 2, mean = 3, sd = 0.3)
+
+ring_data <- data.frame(
+  x1 = c(r_inner * cos(theta[1:(n_ring/2)]), r_outer * cos(theta[(n_ring/2+1):n_ring])),
+  x2 = c(r_inner * sin(theta[1:(n_ring/2)]), r_outer * sin(theta[(n_ring/2+1):n_ring])),
+  y  = factor(c(rep("Inner", n_ring/2), rep("Outer", n_ring/2)))
+)
+
+ggplot(ring_data, aes(x = x1, y = x2, color = y)) +
+  geom_point(size = 2, alpha = 0.7) +
+  scale_color_manual(values = c("Inner" = "#E53935", "Outer" = "#1976D2")) +
+  coord_equal() +
+  labs(
+    title = "Non-Linearly Separable Data: The Ring Problem",
+    subtitle = "No straight line can separate inner (red) from outer (blue) points",
+    x = "Feature 1", y = "Feature 2", color = "Class"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## 3.2 The Kernel Trick: A Magical Transformation
+
+Here is the core insight behind the kernel trick, explained with an analogy:
+
+> **Imagine you're looking at a crowd from above (a bird's-eye view).** Red-shirted people form a circle in the middle, surrounded by blue-shirted people. From above, you can't draw a single straight line to separate them. **Now imagine you could float up in a helicopter** — from that elevated angle, you can see the reds are on a hill and the blues are in the valley. A flat sheet of glass slid between hill and valley separates them perfectly.
+
+That's what a kernel does mathematically: it **transforms the data into a higher dimension** where a straight separator works. The beauty is that the SVM never actually computes the higher-dimensional coordinates — it only needs the **distances between points** in that new space (the "kernel function").
+
+### Common Kernels
+
+| Kernel | Formula | What it does |
+|---|---|---|
+| **Linear** | $K(x, x') = x \cdot x'$ | No transformation — works when data is already linearly separable |
+| **Polynomial** | $K(x, x') = (\gamma\, x \cdot x' + r)^d$ | Creates curved boundaries by considering feature interactions up to degree $d$ |
+| **RBF (Radial Basis Function)** | $K(x, x') = \exp(-\gamma \|x - x'\|^2)$ | Creates smooth, flexible boundaries; the most popular choice for non-linear data |
+
+## 3.3 The Kernel Trick Visualised: Lifting Data into a Higher Dimension
+
+```{r kernel-trick-viz, fig.height=5, fig.width=11}
+set.seed(MASTER_SEED + 4)
+n_kt <- 150
+x_1d <- c(rnorm(n_kt/2, -2, 0.6), rnorm(n_kt/4, 0, 0.3), rnorm(n_kt/4, 2, 0.6))
+y_1d <- factor(c(rep("B", n_kt/2), rep("A", n_kt/4), rep("B", n_kt/4)))
+
+df_1d <- data.frame(x = x_1d, y = y_1d)
+
+p_1d <- ggplot(df_1d, aes(x = x, y = 0, color = y)) +
+  geom_point(size = 2.5, alpha = 0.6) +
+  scale_color_manual(values = c("A" = "#E53935", "B" = "#1976D2")) +
+  labs(title = "1D View: Not Linearly Separable",
+       subtitle = "Red dots in the middle, blue on both sides — no single cut works",
+       x = "Feature x", y = "") +
+  theme_minimal() + theme(legend.position = "none",
+                           axis.text.y = element_blank(),
+                           axis.ticks.y = element_blank())
+
+df_2d <- df_1d %>% mutate(x_sq = x^2)
+
+p_2d <- ggplot(df_2d, aes(x = x, y = x_sq, color = y)) +
+  geom_point(size = 2.5, alpha = 0.6) +
+  scale_color_manual(values = c("A" = "#E53935", "B" = "#1976D2")) +
+  geom_hline(yintercept = 1.5, color = "#2E7D32", linewidth = 1.2, linetype = "dashed") +
+  annotate("text", x = 2.5, y = 1.8, label = "Now a straight line works!",
+           color = "#2E7D32", fontface = "bold", size = 3.5) +
+  labs(title = "2D View: Add x² as a New Feature",
+       subtitle = "After mapping x → (x, x²), the classes become linearly separable",
+       x = "Feature x", y = "Feature x²") +
+  theme_minimal() + theme(legend.position = "none")
+
+grid.arrange(p_1d, p_2d, ncol = 2,
+  top = "The Kernel Trick: Transform Data So a Linear Separator Works")
+```
+
+The left plot shows data in 1D where red and blue are tangled. The right plot adds $x^2$ as a second dimension — and suddenly a horizontal line separates them perfectly. The kernel trick does this kind of transformation automatically, without you having to manually design the new features.
+
+## 3.4 Comparing Kernels on the Ring Dataset
+
+```{r kernel-comparison, fig.height=5, fig.width=11}
+kernels <- list(
+  list(kernel = "linear",     name = "Linear Kernel"),
+  list(kernel = "polynomial", name = "Polynomial (degree 3)"),
+  list(kernel = "radial",     name = "RBF (Radial Basis Function)")
+)
+
+grid_ring <- expand.grid(
+  x1 = seq(min(ring_data$x1) - 0.5, max(ring_data$x1) + 0.5, length.out = 150),
+  x2 = seq(min(ring_data$x2) - 0.5, max(ring_data$x2) + 0.5, length.out = 150)
+)
+
+plots_k <- lapply(kernels, function(k) {
+  m <- svm(y ~ x1 + x2, data = ring_data, kernel = k$kernel,
+           cost = 10, gamma = 1, degree = 3, scale = FALSE)
+  grid_ring$pred <- predict(m, grid_ring)
+  n_sv <- nrow(m$SV)
+  acc <- mean(predict(m, ring_data) == ring_data$y)
+
+  ggplot() +
+    geom_tile(data = grid_ring, aes(x = x1, y = x2, fill = pred), alpha = 0.35) +
+    geom_point(data = ring_data, aes(x = x1, y = x2, color = y), size = 1.5, alpha = 0.7) +
+    scale_fill_manual(values = c("Inner" = "#FFCDD2", "Outer" = "#BBDEFB"), guide = "none") +
+    scale_color_manual(values = c("Inner" = "#E53935", "Outer" = "#1976D2"), guide = "none") +
+    coord_equal() +
+    labs(
+      title = k$name,
+      subtitle = sprintf("Accuracy: %.1f%% | SVs: %d", acc * 100, n_sv)
+    ) +
+    theme_minimal(base_size = 9) +
+    theme(plot.title = element_text(face = "bold"))
+})
+
+do.call(grid.arrange, c(plots_k, ncol = 3,
+  top = "Kernel Comparison on the Ring Dataset"))
+```
+
+> **What to notice:**
+>
+> - **Linear**: Fails completely — it can only draw a straight line through circular data.
+> - **Polynomial**: Does a decent job by creating curved boundaries.
+> - **RBF**: Nails it — the flexible, smooth boundary captures the ring shape perfectly.
+
+---
+
+# Part 4: The RBF Kernel — SVM's Secret Weapon
+
+## 4.1 How RBF Works (Intuition)
+
+The RBF kernel measures how **close** two data points are:
+
+$$K(x, x') = \exp\left(-\gamma \|x - x'\|^2\right)$$
+
+- When two points are **close together**, $\|x - x'\|^2$ is small, so $K$ is close to 1 (high similarity).
+- When two points are **far apart**, $\|x - x'\|^2$ is large, so $K$ is close to 0 (low similarity).
+
+The parameter **$\gamma$** controls how far each point's influence reaches:
+
+- **Small $\gamma$**: Each point's influence reaches far → smoother, simpler boundaries.
+- **Large $\gamma$**: Each point's influence is local → more complex, wiggly boundaries.
+
+## 4.2 Visualising the Gamma Parameter
+
+```{r gamma-effect, fig.height=5.5, fig.width=11}
+set.seed(MASTER_SEED + 5)
+
+n_g <- 120
+x1_g <- c(rnorm(n_g/2, 2, 1.2), rnorm(n_g/2, 4, 1.2))
+x2_g <- c(rnorm(n_g/2, 4, 1.2), rnorm(n_g/2, 2, 1.2))
+y_g  <- factor(c(rep("A", n_g/2), rep("B", n_g/2)))
+df_g <- data.frame(x1 = x1_g, x2 = x2_g, y = y_g)
+
+grid_g <- expand.grid(
+  x1 = seq(min(x1_g) - 1, max(x1_g) + 1, length.out = 150),
+  x2 = seq(min(x2_g) - 1, max(x2_g) + 1, length.out = 150)
+)
+
+gamma_vals <- c(0.01, 0.1, 1, 10)
+
+plots_g <- lapply(gamma_vals, function(gv) {
+  m <- svm(y ~ x1 + x2, data = df_g, kernel = "radial",
+           cost = 1, gamma = gv, scale = FALSE)
+  grid_g$pred <- predict(m, grid_g)
+  n_sv <- nrow(m$SV)
+  acc <- mean(predict(m, df_g) == df_g$y)
+
+  ggplot() +
+    geom_tile(data = grid_g, aes(x = x1, y = x2, fill = pred), alpha = 0.3) +
+    geom_point(data = df_g, aes(x = x1, y = x2, color = y), size = 1.5, alpha = 0.6) +
+    scale_fill_manual(values = c("A" = "#BBDEFB", "B" = "#FFCDD2"), guide = "none") +
+    scale_color_manual(values = c("A" = "#1976D2", "B" = "#E53935"), guide = "none") +
+    labs(
+      title = bquote(gamma == .(gv)),
+      subtitle = sprintf("Train acc: %.0f%% | SVs: %d", acc * 100, n_sv)
+    ) +
+    theme_minimal(base_size = 9) +
+    theme(plot.title = element_text(face = "bold"))
+})
+
+do.call(grid.arrange, c(plots_g, ncol = 4,
+  top = "Effect of Gamma on the RBF Kernel's Decision Boundary"))
+```
+
+> - $\gamma = 0.01$: Very smooth, almost linear — underfitting.
+> - $\gamma = 0.1$: Good balance — captures the general pattern.
+> - $\gamma = 1$: Starting to overfit — the boundary gets wiggly.
+> - $\gamma = 10$: Severe overfitting — the boundary wraps tightly around individual points.
+
+## 4.3 The C × Gamma Interaction
+
+Both C and $\gamma$ affect the model's complexity. Tuning them together is essential.
+
+```{r c-gamma-grid, fig.height=8, fig.width=11}
+set.seed(MASTER_SEED + 6)
+
+cg_combos <- expand.grid(C = c(0.1, 1, 10), gamma = c(0.1, 1, 10))
+
+plots_cg <- lapply(1:nrow(cg_combos), function(i) {
+  C_val <- cg_combos$C[i]
+  g_val <- cg_combos$gamma[i]
+
+  m <- svm(y ~ x1 + x2, data = df_g, kernel = "radial",
+           cost = C_val, gamma = g_val, scale = FALSE)
+  grid_g$pred <- predict(m, grid_g)
+  acc <- mean(predict(m, df_g) == df_g$y)
+
+  ggplot() +
+    geom_tile(data = grid_g, aes(x = x1, y = x2, fill = pred), alpha = 0.3) +
+    geom_point(data = df_g, aes(x = x1, y = x2, color = y), size = 1.2, alpha = 0.5) +
+    scale_fill_manual(values = c("A" = "#BBDEFB", "B" = "#FFCDD2"), guide = "none") +
+    scale_color_manual(values = c("A" = "#1976D2", "B" = "#E53935"), guide = "none") +
+    labs(title = sprintf("C=%s, γ=%s", C_val, g_val),
+         subtitle = sprintf("Acc: %.0f%%", acc * 100)) +
+    theme_minimal(base_size = 8) +
+    theme(plot.title = element_text(face = "bold", size = 9))
+})
+
+do.call(grid.arrange, c(plots_cg, ncol = 3,
+  top = "C × Gamma Grid: How the Two Hyperparameters Interact\n(Rows: increasing C; Columns: increasing Gamma)"))
+```
+
+> **Rule of thumb:** Start with `C = 1` and `gamma = 1/ncol(X)` (the default in `e1071`), then use grid search or cross-validation to find the best combination.
+
+---
+
+# Part 5: Building SVMs in R
+
+## 5.1 SVM on the Iris Dataset
+
+Let's apply SVM to the classic Iris dataset and compare it with the Decision Tree and Random Forest we built in previous weeks.
+
+```{r iris-svm-setup}
+data(iris)
+set.seed(MASTER_SEED)
+train_idx <- sample(1:nrow(iris), floor(0.7 * nrow(iris)))
+iris_train <- iris[train_idx, ]
+iris_test  <- iris[-train_idx, ]
+```
+
+```{r iris-svm-train}
+svm_iris <- svm(Species ~ ., data = iris_train, kernel = "radial",
+                cost = 1, gamma = 0.25, scale = TRUE)
+print(svm_iris)
+```
+
+```{r iris-svm-eval}
+pred_iris <- predict(svm_iris, iris_test)
+acc_iris  <- mean(pred_iris == iris_test$Species)
+
+cat(sprintf("SVM Test Accuracy: %.1f%%\n", acc_iris * 100))
+table(Predicted = pred_iris, Actual = iris_test$Species)
+```
+
+## 5.2 Decision Boundary on Iris (Petal Features)
+
+```{r iris-boundary, fig.height=5.5, fig.width=9}
+iris_2d <- iris[, c("Petal.Length", "Petal.Width", "Species")]
+train_2d <- iris_2d[train_idx, ]
+test_2d  <- iris_2d[-train_idx, ]
+
+svm_2d <- svm(Species ~ ., data = train_2d, kernel = "radial",
+              cost = 5, gamma = 1, scale = TRUE)
+
+grid_iris <- expand.grid(
+  Petal.Length = seq(0.5, 7.5, length.out = 200),
+  Petal.Width  = seq(0, 2.8, length.out = 200)
+)
+
+scaled_grid <- grid_iris
+scaled_grid$Petal.Length <- (grid_iris$Petal.Length - mean(train_2d$Petal.Length)) / sd(train_2d$Petal.Length)
+scaled_grid$Petal.Width  <- (grid_iris$Petal.Width  - mean(train_2d$Petal.Width))  / sd(train_2d$Petal.Width)
+
+grid_iris$pred <- predict(svm_2d, grid_iris)
+
+sv_indices <- svm_2d$index
+sv_points <- train_2d[sv_indices, ]
+
+palette_iris <- c(setosa = "#AED6F1", versicolor = "#A9DFBF", virginica = "#F9E79F")
+point_colors <- c(setosa = "#1A5276", versicolor = "#1E8449", virginica = "#922B21")
+
+ggplot() +
+  geom_tile(data = grid_iris,
+            aes(x = Petal.Length, y = Petal.Width, fill = pred), alpha = 0.5) +
+  geom_point(data = train_2d,
+             aes(x = Petal.Length, y = Petal.Width, color = Species, shape = Species),
+             size = 2) +
+  geom_point(data = sv_points,
+             aes(x = Petal.Length, y = Petal.Width),
+             shape = 1, size = 4.5, stroke = 1.2, color = "black") +
+  scale_fill_manual(values = palette_iris, guide = "none") +
+  scale_color_manual(values = point_colors) +
+  labs(
+    title = "SVM Decision Boundary on Iris (Petal Features, RBF Kernel)",
+    subtitle = sprintf("Black circles = %d support vectors out of %d training points",
+                       nrow(sv_points), nrow(train_2d)),
+    x = "Petal Length (cm)", y = "Petal Width (cm)", color = "Species"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+> **Compare with Week 02 (Decision Tree) and Week 03 (Random Forest):** The Decision Tree produced rigid, axis-aligned rectangular regions. The Random Forest smoothed those rectangles by averaging many trees. The SVM with an RBF kernel creates **smooth, curved** boundaries that naturally follow the shape of the data.
+
+## 5.3 Hyperparameter Tuning with Cross-Validation
+
+The `e1071` package provides `tune()` for automated grid search with cross-validation.
+
+```{r svm-tuning, fig.height=5}
+set.seed(MASTER_SEED)
+
+tune_result <- tune(svm, Species ~ ., data = iris_train,
+  kernel = "radial",
+  ranges = list(
+    cost  = c(0.1, 1, 10, 100),
+    gamma = c(0.01, 0.1, 0.5, 1, 2)
+  ),
+  tunecontrol = tune.control(cross = 5)
+)
+
+cat("Best parameters found:\n")
+cat(sprintf("  C     = %s\n", tune_result$best.parameters$cost))
+cat(sprintf("  gamma = %s\n", tune_result$best.parameters$gamma))
+cat(sprintf("  CV error = %.4f\n", tune_result$best.performance))
+
+tune_df <- tune_result$performances
+tune_df$cost_label <- factor(paste("C =", tune_df$cost))
+
+ggplot(tune_df, aes(x = gamma, y = error, color = cost_label)) +
+  geom_line(linewidth = 1.1) +
+  geom_point(size = 2.5) +
+  scale_x_log10() +
+  scale_color_viridis_d(option = "plasma", begin = 0.15, end = 0.85) +
+  labs(
+    title = "SVM Hyperparameter Tuning: 5-Fold CV Error",
+    subtitle = "Grid search over C and gamma — lower error is better",
+    x = expression(gamma ~ "(log scale)"), y = "CV Classification Error",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+```{r best-svm-eval}
+best_svm <- tune_result$best.model
+pred_best <- predict(best_svm, iris_test)
+acc_best  <- mean(pred_best == iris_test$Species)
+
+cat(sprintf("\nBest SVM Test Accuracy: %.1f%%\n", acc_best * 100))
+table(Predicted = pred_best, Actual = iris_test$Species)
+```
+
+---
+
+# Part 6: Feature Scaling — Why It's Critical for SVM
+
+## 6.1 SVMs Are Not Scale Invariant
+
+Unlike Decision Trees and Random Forests, SVMs rely on **distances** between data points. If one feature ranges from 0 to 1 and another from 0 to 10,000, the second feature will completely dominate the distance calculations, and the first feature will be effectively ignored.
+
+**This is the single most common mistake beginners make with SVMs.**
+
+> *"Support Vector Machine algorithms are not scale invariant, so it is highly recommended to scale your data."* — scikit-learn documentation **[1]**
+
+```{r scaling-demo, fig.height=5, fig.width=11}
+set.seed(MASTER_SEED + 7)
+
+n_sc <- 100
+df_unscaled <- data.frame(
+  salary   = c(rnorm(n_sc/2, 50000, 8000), rnorm(n_sc/2, 80000, 8000)),
+  age      = c(rnorm(n_sc/2, 30, 5), rnorm(n_sc/2, 45, 5)),
+  promoted = factor(c(rep("No", n_sc/2), rep("Yes", n_sc/2)))
+)
+
+svm_unscaled <- svm(promoted ~ salary + age, data = df_unscaled,
+                    kernel = "radial", cost = 1, scale = FALSE)
+acc_unscaled <- mean(predict(svm_unscaled, df_unscaled) == df_unscaled$promoted)
+
+svm_scaled <- svm(promoted ~ salary + age, data = df_unscaled,
+                  kernel = "radial", cost = 1, scale = TRUE)
+acc_scaled <- mean(predict(svm_scaled, df_unscaled) == df_unscaled$promoted)
+
+p_unsc <- ggplot(df_unscaled, aes(x = salary, y = age, color = promoted)) +
+  geom_point(size = 2, alpha = 0.6) +
+  scale_color_manual(values = c("No" = "#1976D2", "Yes" = "#E53935")) +
+  labs(title = "Unscaled Data",
+       subtitle = sprintf("SVM accuracy: %.0f%% (salary dominates distance)", acc_unscaled * 100),
+       x = "Salary ($)", y = "Age (years)") +
+  theme_minimal() + theme(legend.position = "none")
+
+df_sc <- df_unscaled %>%
+  mutate(salary_sc = scale(salary), age_sc = scale(age))
+
+p_sc <- ggplot(df_sc, aes(x = salary_sc, y = age_sc, color = df_unscaled$promoted)) +
+  geom_point(size = 2, alpha = 0.6) +
+  scale_color_manual(values = c("No" = "#1976D2", "Yes" = "#E53935")) +
+  labs(title = "Scaled Data (z-score)",
+       subtitle = sprintf("SVM accuracy: %.0f%% (both features contribute equally)", acc_scaled * 100),
+       x = "Salary (standardised)", y = "Age (standardised)") +
+  theme_minimal() + theme(legend.position = "none")
+
+grid.arrange(p_unsc, p_sc, ncol = 2,
+  top = "Feature Scaling Is Critical for SVM — Always Standardise Your Data")
+```
+
+> **Takeaway:** Always set `scale = TRUE` in `e1071::svm()` (this is the default), or manually standardise your features to zero mean and unit variance before fitting.
+
+---
+
+# Part 7: SVM for Regression (SVR)
+
+## 7.1 From Classification to Regression
+
+SVMs can also do regression. **Support Vector Regression (SVR)** works by fitting a "tube" of width $\varepsilon$ (epsilon) around the data. Points inside the tube contribute zero error; only points outside the tube are penalised.
+
+This is the opposite logic from linear regression (which tries to minimise the error for *every* point):
+
+- **Linear Regression**: Minimise all errors.
+- **SVR**: Ignore small errors (inside the $\varepsilon$-tube), only penalise large ones.
+
+## 7.2 Visualising the Epsilon Tube
+
+```{r svr-example, fig.height=5.5, fig.width=9}
+set.seed(MASTER_SEED + 8)
+
+x_svr <- sort(runif(80, 0, 4 * pi))
+y_svr <- sin(x_svr) + rnorm(80, sd = 0.25)
+df_svr <- data.frame(x = x_svr, y = y_svr)
+
+svr_model <- svm(y ~ x, data = df_svr, type = "eps-regression",
+                 kernel = "radial", epsilon = 0.2, cost = 10, gamma = 0.3)
+
+pred_grid <- data.frame(x = seq(0, 4 * pi, length.out = 300))
+pred_grid$y_hat <- predict(svr_model, pred_grid)
+
+sv_idx <- svr_model$index
+sv_df  <- df_svr[sv_idx, ]
+
+ggplot(df_svr, aes(x = x, y = y)) +
+  geom_ribbon(data = pred_grid,
+              aes(x = x, ymin = y_hat - svr_model$epsilon,
+                  ymax = y_hat + svr_model$epsilon, y = NULL),
+              fill = "#C8E6C9", alpha = 0.6) +
+  geom_line(data = pred_grid, aes(x = x, y = y_hat),
+            color = "#2E7D32", linewidth = 1.3) +
+  geom_point(alpha = 0.5, color = "grey40", size = 2) +
+  geom_point(data = sv_df, color = "#E53935", size = 3, shape = 1, stroke = 1.2) +
+  scale_x_continuous(breaks = c(0, pi, 2*pi, 3*pi, 4*pi),
+                     labels = c("0", "π", "2π", "3π", "4π")) +
+  labs(
+    title = "Support Vector Regression (SVR) with the Epsilon-Insensitive Tube",
+    subtitle = sprintf("Green zone = ε-tube (ε = %.1f). Red circles = %d support vectors (points outside the tube).",
+                       svr_model$epsilon, length(sv_idx)),
+    x = "x", y = "y"
+  ) +
+  theme_minimal()
+```
+
+> Points **inside** the green tube are "close enough" — they incur zero loss. Only the red-circled **support vectors** (points on the edge or outside the tube) influence the model. This makes SVR robust to noise.
+
+## 7.3 Comparing SVR Kernels
+
+```{r svr-kernel-compare, fig.height=5, fig.width=11}
+svr_lin <- svm(y ~ x, data = df_svr, type = "eps-regression",
+               kernel = "linear", epsilon = 0.2, cost = 5)
+svr_poly <- svm(y ~ x, data = df_svr, type = "eps-regression",
+                kernel = "polynomial", epsilon = 0.2, cost = 5, degree = 4, gamma = 0.1)
+svr_rbf <- svm(y ~ x, data = df_svr, type = "eps-regression",
+               kernel = "radial", epsilon = 0.2, cost = 10, gamma = 0.3)
+
+pred_grid$lin  <- predict(svr_lin,  pred_grid)
+pred_grid$poly <- predict(svr_poly, pred_grid)
+pred_grid$rbf  <- predict(svr_rbf,  pred_grid)
+
+pred_long <- pred_grid %>%
+  select(x, lin, poly, rbf) %>%
+  pivot_longer(-x, names_to = "kernel", values_to = "pred") %>%
+  mutate(kernel = recode(kernel,
+    lin  = "Linear",
+    poly = "Polynomial (degree 4)",
+    rbf  = "RBF (Radial)"
+  ))
+
+rmse_fn <- function(actual, predicted) sqrt(mean((actual - predicted)^2))
+rmse_lin  <- rmse_fn(df_svr$y, predict(svr_lin,  df_svr))
+rmse_poly <- rmse_fn(df_svr$y, predict(svr_poly, df_svr))
+rmse_rbf  <- rmse_fn(df_svr$y, predict(svr_rbf,  df_svr))
+
+ggplot(df_svr, aes(x = x, y = y)) +
+  geom_point(alpha = 0.4, color = "grey50", size = 1.8) +
+  geom_line(data = pred_long, aes(x = x, y = pred, color = kernel), linewidth = 1.2) +
+  scale_color_manual(values = c(
+    "Linear"                = "#FF5722",
+    "Polynomial (degree 4)" = "#FF9800",
+    "RBF (Radial)"          = "#009688"
+  )) +
+  scale_x_continuous(breaks = c(0, pi, 2*pi, 3*pi, 4*pi),
+                     labels = c("0", "π", "2π", "3π", "4π")) +
+  labs(
+    title = "SVR Kernel Comparison on Sine-Wave Data",
+    subtitle = sprintf("RMSE — Linear: %.3f | Poly: %.3f | RBF: %.3f",
+                       rmse_lin, rmse_poly, rmse_rbf),
+    x = "x", y = "y", color = "SVR Kernel"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+---
+
+# Part 8: SVM vs. Other Models — A Visual Comparison
+
+Let's put all four models we've learned (Decision Tree, Random Forest, SVM, and Linear Regression / Logistic) side by side on the same classification task.
+
+```{r model-comparison-setup}
+set.seed(MASTER_SEED + 9)
+
+n_comp <- 200
+x1_comp <- c(rnorm(n_comp/2, 2, 1.3), rnorm(n_comp/2, 4.5, 1.3))
+x2_comp <- c(rnorm(n_comp/2, 4.5, 1.3), rnorm(n_comp/2, 2, 1.3))
+y_comp  <- factor(c(rep("A", n_comp/2), rep("B", n_comp/2)))
+df_comp <- data.frame(x1 = x1_comp, x2 = x2_comp, y = y_comp)
+
+idx_comp <- sample(1:n_comp, floor(0.7 * n_comp))
+train_comp <- df_comp[idx_comp, ]
+test_comp  <- df_comp[-idx_comp, ]
+
+grid_comp <- expand.grid(
+  x1 = seq(min(x1_comp) - 1, max(x1_comp) + 1, length.out = 150),
+  x2 = seq(min(x2_comp) - 1, max(x2_comp) + 1, length.out = 150)
+)
+```
+
+```{r model-comparison-plot, fig.height=5.5, fig.width=11}
+library(rpart)
+library(randomForest)
+
+dt_comp <- rpart(y ~ x1 + x2, data = train_comp, method = "class",
+                 control = rpart.control(maxdepth = 4))
+rf_comp <- randomForest(y ~ x1 + x2, data = train_comp, ntree = 200)
+svm_lin_comp <- svm(y ~ x1 + x2, data = train_comp, kernel = "linear", cost = 1, scale = TRUE)
+svm_rbf_comp <- svm(y ~ x1 + x2, data = train_comp, kernel = "radial", cost = 5, gamma = 0.5, scale = TRUE)
+
+models_comp <- list(
+  list(model = dt_comp,       name = "Decision Tree",    pred_fn = function(m, d) predict(m, d, type = "class")),
+  list(model = rf_comp,       name = "Random Forest",    pred_fn = function(m, d) predict(m, d)),
+  list(model = svm_lin_comp,  name = "SVM (Linear)",     pred_fn = function(m, d) predict(m, d)),
+  list(model = svm_rbf_comp,  name = "SVM (RBF)",        pred_fn = function(m, d) predict(m, d))
+)
+
+plots_comp <- lapply(models_comp, function(item) {
+  grid_comp$pred <- item$pred_fn(item$model, grid_comp)
+  test_pred <- item$pred_fn(item$model, test_comp)
+  test_acc  <- mean(test_pred == test_comp$y)
+
+  ggplot() +
+    geom_tile(data = grid_comp, aes(x = x1, y = x2, fill = pred), alpha = 0.3) +
+    geom_point(data = test_comp, aes(x = x1, y = x2, color = y), size = 1.5, alpha = 0.7) +
+    scale_fill_manual(values = c("A" = "#BBDEFB", "B" = "#FFCDD2"), guide = "none") +
+    scale_color_manual(values = c("A" = "#1976D2", "B" = "#E53935"), guide = "none") +
+    labs(
+      title = item$name,
+      subtitle = sprintf("Test accuracy: %.1f%%", test_acc * 100)
+    ) +
+    theme_minimal(base_size = 9) +
+    theme(plot.title = element_text(face = "bold"))
+})
+
+do.call(grid.arrange, c(plots_comp, ncol = 4,
+  top = "Model Comparison: Decision Boundary and Test Accuracy"))
+```
+
+```{r comparison-table, echo=FALSE}
+acc_results <- data.frame(
+  Model = sapply(models_comp, function(x) x$name),
+  Test_Accuracy = sapply(models_comp, function(item) {
+    pred <- item$pred_fn(item$model, test_comp)
+    round(mean(pred == test_comp$y) * 100, 1)
+  })
+)
+
+knitr::kable(acc_results, col.names = c("Model", "Test Accuracy (%)"),
+  caption = "Test accuracy on the 2D classification task")
+```
+
+---
+
+# Part 9: Advantages, Disadvantages & Practical Tips
+
+## 9.1 When to Use SVM
+
+```{r pros-cons-table, echo=FALSE}
+pros_cons <- data.frame(
+  Property = c(
+    "High-dimensional data",
+    "Small-to-medium datasets",
+    "Non-linear patterns",
+    "Memory efficiency",
+    "Outlier robustness",
+    "Large datasets (> 100K rows)",
+    "Feature scaling required",
+    "Probability estimates",
+    "Interpretability",
+    "Hyperparameter sensitivity"
+  ),
+  Assessment = c(
+    "Excellent — SVMs work well even when features outnumber samples",
+    "Excellent — SVM is one of the best performers on small data",
+    "Excellent — the kernel trick handles complex boundaries",
+    "Good — only support vectors are stored, not the entire dataset",
+    "Good (soft margin) — C parameter controls sensitivity to outliers",
+    "Poor — training is O(n² to n³); use Linear SVM or other methods instead",
+    "Required — always standardise features before using SVM",
+    "Not native — requires expensive calibration (Platt scaling)",
+    "Low — the model is a 'black box'; hard to explain individual predictions",
+    "Moderate — C and gamma must be tuned carefully via cross-validation"
+  )
+)
+
+knitr::kable(pros_cons, col.names = c("Property", "SVM Assessment"),
+  caption = "SVM Strengths and Weaknesses")
+```
+
+## 9.2 Decision Guide: When to Choose SVM
+
+| Scenario | Recommendation |
+|---|---|
+| Small dataset, complex boundary | **SVM (RBF kernel)** — it excels here |
+| Need interpretability | Decision Tree or Logistic Regression — SVM is a black box |
+| Very large dataset (millions of rows) | Random Forest or Gradient Boosting — SVM is too slow |
+| High-dimensional sparse data (e.g., text) | **Linear SVM** — fast and effective |
+| Need probability estimates | Random Forest or Logistic Regression — SVM probabilities are unreliable |
+| Baseline model with no tuning | Random Forest — SVM needs careful tuning of C and $\gamma$ |
+
+## 9.3 Practical Tips
+
+1. **Always scale your features** — standardise to zero mean and unit variance.
+2. **Start with `kernel = "radial"`** — it's the most flexible and a good default.
+3. **Use `tune()` or `caret::train()`** for systematic hyperparameter search.
+4. **Try a wide range** — search C in $\{0.01, 0.1, 1, 10, 100\}$ and $\gamma$ in $\{0.001, 0.01, 0.1, 1\}$ on log scales.
+5. **Check the number of support vectors** — if nearly all points are support vectors, the model may be underfitting (try increasing C or $\gamma$).
+6. **For large datasets**, consider `kernlab::ksvm()` which offers more efficient solvers and additional kernel options.
+
+---
+
+# Part 10: Multi-Class SVM
+
+SVMs are inherently binary classifiers (they separate two classes). To handle multiple classes (like the 3-species Iris problem), two strategies are used:
+
+| Strategy | How it works | Number of models |
+|---|---|---|
+| **One-vs-One (OVO)** | Train one SVM for every pair of classes, then vote | $\frac{k(k-1)}{2}$ |
+| **One-vs-All (OVA)** | Train one SVM per class (that class vs. all others) | $k$ |
+
+R's `e1071::svm()` uses **One-vs-One** by default.
+
+```{r multiclass-viz, fig.height=4.5, fig.width=9}
+set.seed(MASTER_SEED + 10)
+
+iris_3class <- svm(Species ~ Petal.Length + Petal.Width, data = iris,
+                   kernel = "radial", cost = 5, gamma = 1, scale = TRUE)
+
+grid_3c <- expand.grid(
+  Petal.Length = seq(0.5, 7.5, length.out = 200),
+  Petal.Width  = seq(0, 2.8, length.out = 200)
+)
+grid_3c$pred <- predict(iris_3class, grid_3c)
+
+ggplot() +
+  geom_tile(data = grid_3c,
+            aes(x = Petal.Length, y = Petal.Width, fill = pred), alpha = 0.45) +
+  geom_point(data = iris,
+             aes(x = Petal.Length, y = Petal.Width, color = Species, shape = Species),
+             size = 2, alpha = 0.8) +
+  scale_fill_manual(values = palette_iris, guide = "none") +
+  scale_color_manual(values = point_colors) +
+  labs(
+    title = "Multi-Class SVM on Iris (One-vs-One with RBF Kernel)",
+    subtitle = sprintf("3 binary SVMs combined: setosa-vs-versicolor, setosa-vs-virginica, versicolor-vs-virginica | %d SVs",
+                       nrow(iris_3class$SV)),
+    x = "Petal Length (cm)", y = "Petal Width (cm)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+---
+
+# Knowledge Check
+
+<details>
+<summary>**Question 1:** In your own words, what is a support vector and why is it called that?</summary>
+**Answer:** A support vector is one of the training data points that sits exactly on the margin boundary (or inside/beyond it in the soft-margin case). They are called "support" vectors because they literally *hold up* the margin — if you removed any non-support-vector point, the decision boundary would not change at all. The entire SVM model is defined by just these few critical points.
+</details>
+
+<br>
+
+<details>
+<summary>**Question 2:** What happens if you set C to an extremely large value? What about an extremely small value?</summary>
+**Answer:** **Very large C** means the SVM tries very hard to classify every single training point correctly. The margin becomes narrow and the boundary tightly wraps around the data — this leads to **overfitting**. **Very small C** means the SVM is very tolerant of misclassifications. The margin becomes wide and the boundary is smooth and simple — this can lead to **underfitting**. The optimal C balances these extremes.
+</details>
+
+<br>
+
+<details>
+<summary>**Question 3:** Why must you scale your features before training an SVM, but not before training a Decision Tree?</summary>
+**Answer:** SVMs compute distances between data points (via the kernel function). If Feature A ranges from 0 to 1 and Feature B ranges from 0 to 100,000, then Feature B will dominate all distance calculations, making Feature A effectively invisible. Decision Trees, on the other hand, only compare a feature against thresholds one at a time — they never compute distances between features, so scaling is irrelevant.
+</details>
+
+<br>
+
+<details>
+<summary>**Question 4:** Explain the kernel trick as if you were talking to someone who has never studied math.</summary>
+**Answer:** Imagine you have red and blue coins mixed together on a table. You need to separate them with a straight ruler, but they're too tangled up. The kernel trick is like picking up the table and shaking it so the coins jump into the air — in 3D, the red coins fly higher than the blue ones, and now you can slide a flat piece of glass between them. The kernel does this "lifting" mathematically without actually computing the 3D positions — it just needs to know how far apart the coins are in the new arrangement.
+</details>
+
+<br>
+
+<details>
+<summary>**Question 5:** You train an SVM on a dataset and notice that 95% of your training points are support vectors. What does this tell you?</summary>
+**Answer:** If nearly all points are support vectors, it typically means: (1) C is too small — the model is too lenient and isn't creating a meaningful margin, or (2) the kernel is not appropriate (e.g., using a linear kernel on highly non-linear data). In either case, the SVM is essentially memorising most of the training data rather than finding a clean separating boundary. Try increasing C, switching to a different kernel, or tuning $\gamma$.
+</details>
+
+<br>
+
+<details>
+<summary>**Question 6:** When would you choose an SVM over a Random Forest, and vice versa?</summary>
+**Answer:** Choose **SVM** when: you have a small-to-medium dataset (< 10K rows), the boundary is complex and non-linear, you have high-dimensional data (e.g., gene expression data where features outnumber samples), or you need a sparse model (only support vectors are stored). Choose **Random Forest** when: you have a large dataset, you want a strong baseline with minimal tuning, you need feature importance rankings, or you need interpretable probability estimates.
+</details>
+
+---
+
+# Summary
+
+| Concept | Key Idea | R Implementation |
+|---|---|---|
+| **Hyperplane** | The boundary that separates classes | `svm(..., kernel = "linear")` |
+| **Margin** | Gap between the closest points of each class; SVM maximises this | Controlled by the `cost` (C) parameter |
+| **Support Vectors** | The critical points on the margin that define the boundary | Accessible via `model$SV` and `model$index` |
+| **C Parameter** | Trade-off dial: small C = wide margin (simple), large C = narrow margin (complex) | `cost = 1` (default) |
+| **Kernel Trick** | Transform data into higher dimensions so a linear separator works | `kernel = "radial"` / `"polynomial"` / `"linear"` |
+| **Gamma ($\gamma$)** | Controls how far each point's influence reaches in the RBF kernel | `gamma = 0.1` |
+| **Feature Scaling** | Always standardise features before SVM | `scale = TRUE` (default in `e1071`) |
+| **SVR** | SVM for regression: fit an $\varepsilon$-tube around the data | `svm(..., type = "eps-regression")` |
+| **Multi-class** | One-vs-One strategy: train $k(k-1)/2$ binary SVMs | Automatic in `e1071::svm()` |
+| **Hyperparameter Tuning** | Use cross-validation to find optimal C and $\gamma$ | `tune(svm, ...)` or `caret::train()` |
+
+**The Big Picture:** SVMs approach classification from a fundamentally different angle than trees: instead of asking questions about features, they find the *widest possible gap* between classes. The kernel trick lets them handle complex, non-linear data without explicitly computing high-dimensional transformations. Combined with careful tuning of C and $\gamma$, SVMs remain one of the most powerful algorithms for small-to-medium datasets with complex boundaries.
+
+---
+
+# References
+
+[1] scikit-learn developers, "1.4. Support Vector Machines," *scikit-learn 1.8.0 documentation*, 2026. [Online]. Available: https://scikit-learn.org/stable/modules/svm.html
+
+[2] Wikipedia contributors, "Support vector machine," *Wikipedia, The Free Encyclopedia*, 2026. [Online]. Available: https://en.wikipedia.org/wiki/Support_vector_machine
+
+[3] A. Géron, *Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow*, 2nd ed. Sebastopol, CA: O'Reilly Media, 2019, ch. 5.
+
+[4] B. C. Boehmke and B. M. Greenwell, *Hands-On Machine Learning with R*. Boca Raton, FL: CRC Press, 2020, ch. 14. [Online]. Available: https://bradleyboehmke.github.io/HOML/
+
+[5] C. Cortes and V. Vapnik, "Support-vector networks," *Machine Learning*, vol. 20, no. 3, pp. 273–297, 1995.
+
+[6] C. Chang and C. Lin, "LIBSVM: A Library for Support Vector Machines," *ACM Transactions on Intelligent Systems and Technology*, vol. 2, no. 3, pp. 1–27, 2011.
+
+[7] D. Meyer, E. Dimitriadou, K. Hornik, A. Weingessel, and F. Leisch, "e1071: Misc Functions of the Department of Statistics, Probability Theory Group," R package, 2023. [Online]. Available: https://CRAN.R-project.org/package=e1071
+
+[8] A. Karatzoglou, A. Smola, K. Hornik, and A. Zeileis, "kernlab — An S4 Package for Kernel Methods in R," *Journal of Statistical Software*, vol. 11, no. 9, pp. 1–20, 2004.
+
+[9] Z. Huang, "seedhash: Deterministic Seed Generation from String Inputs Using MD5 Hashing," R package, 2026. [Online]. Available: https://github.com/melhzy/seedhash
