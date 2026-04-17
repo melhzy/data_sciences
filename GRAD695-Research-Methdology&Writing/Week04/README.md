@@ -1,57 +1,48 @@
-# Week 4 - Doing Good Science: Ethics and the IRB
+# Week 4 - Basic Research Development and Writing
 
-**Date:** March 30 - April 3, 2026  
-**Virtual Session:** Monday, March 30, 7:00-8:30 PM EST
+**Date:** April 6-10, 2026  
+**Virtual Session:** Monday, April 6, 7:00-8:30 PM EST
 
 ## Weekly Topic
 
-Research ethics, human subjects protection, and the Institutional Review Board (IRB) process. Understanding ethical considerations in research design and data collection.
+Research writing fundamentals, proposal structure, and developing the introduction section. Understanding how to effectively communicate research ideas in academic format.
 
 ## Course Materials
 
 ### Presentations
-- `Ethics.pptx`
+- `Research Basics.pptx`
 
-### Tutorial
-- [📄 View Tutorial (GitHub Pages)](https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week04/04_ethics_in_research.html)
-- [`04_ethics_in_research.Rmd`](04_ethics_in_research.Rmd) — Source file
-
-### Resources
-- IRB SharePoint Hub - Access to HU's IRB submission and approval process
-- CITI Training portal access
+### Templates
+- `Proposal Template.docx` - Standard format for capstone proposal
 
 ## Assignments
 
-### IRB Overview
-- **Due:** April 3, 2026
-- **Points:** 50 points
-- **Description:** Complete overview of IRB process and requirements for capstone project
+### Project Introduction
+- **Due:** April 13, 2026
+- **Points:** 100 points
+- **Description:** Draft introduction section for capstone proposal (1-2 pages)
+- **Must include:** Problem statement, research significance, objectives
 - **Multiple attempts allowed**
-
-### CITI Ethics Training
-- **Due:** March 30, 2026
-- **Points:** 60 points
-- **Description:** Complete required CITI Program ethics training modules
-- **Important:** Certificate required for IRB approval
 
 ## Learning Objectives
 
 By the end of this week, students will be able to:
-1. Understand fundamental principles of research ethics
-2. Identify when IRB approval is required
-3. Navigate the IRB submission process
-4. Complete required ethics training
-5. Recognize ethical considerations in their research design
+1. Structure a research proposal effectively
+2. Write clear problem statements
+3. Articulate research significance and objectives
+4. Follow academic writing conventions
+5. Use the proposal template appropriately
 
 ## Key Deliverables
 
-- CITI Training completion certificate
-- Understanding of IRB requirements for capstone project
-- Initial consideration of ethical issues in research design
+- Draft introduction section (1-2 pages double-spaced)
+- Clear articulation of research problem and objectives
+- Understanding of proposal structure
 
-## Important Notes
+## Writing Tips
 
-- CITI training completion is **required** before collecting any data
-- IRB approval may be needed depending on research design
-- Start IRB process early if human subjects are involved
-- Already completed CITI in a prior course? Just submit your existing certificate
+- Use clear, concise language
+- Avoid jargon; explain technical terms
+- Support claims with citations
+- Follow APA 7th edition format
+- Use the provided template for formatting

@@ -56,10 +56,13 @@ Instead of asking questions about individual features, an SVM tries to find the 
 > *"In addition to performing linear classification, SVMs can efficiently perform non-linear classification using the kernel trick, representing the data only through a set of pairwise similarity comparisons between the original data points using a kernel function."*
 > — Wikipedia, "Support vector machine" **[2]**
 
+> *"You can think of an SVM classifier as fitting the widest possible street (represented by the parallel dashed lines) between the classes. This is called large margin classification. ... SVMs are particularly well suited for classification of complex small- or medium-sized datasets."*
+> — Aurélien Géron, *Hands-On Machine Learning*, ch. 5 **[3]**
+
 **Learning Objectives:**
 
 1. Understand the intuition behind **maximum-margin classification** using everyday analogies.
-2. Define and visualise **hyperplanes**, **margins**, and **support vectors**.
+2. Define and visualize **hyperplanes**, **margins**, and **support vectors**.
 3. Distinguish **hard-margin** from **soft-margin** SVM and explain the role of the **C** parameter.
 4. Explain the **kernel trick** and compare **linear**, **polynomial**, and **RBF** kernels.
 5. Build, tune, and evaluate SVMs in R using the `e1071` package.
@@ -118,7 +121,7 @@ ggplot(demo_df, aes(x = x, y = y, color = class)) +
            color = "#2E7D32", fontface = "bold", size = 3.5) +
   labs(
     title = "The Core Idea: Find the Line with the Widest Road",
-    subtitle = "SVM picks the separator that maximises the gap between the two classes",
+    subtitle = "SVM picks the separator that maximizes the gap between the two classes",
     x = "Feature 1", y = "Feature 2", color = "Class"
   ) +
   theme_minimal() +
@@ -131,10 +134,10 @@ Before diving into the math, let's pin down the vocabulary. All the technical te
 
 | Technical Term | Plain English | Analogy |
 |---|---|---|
-| **Hyperplane** | The dividing line (or surface) between classes | The road's centre line |
+| **Hyperplane** | The dividing line (or surface) between classes | The road's center line |
 | **Margin** | The width of the gap between the closest points of each class | The road's total width |
 | **Support Vectors** | The handful of data points that sit right on the edge of the margin — they "support" the road | The houses closest to the road on either side |
-| **Maximum Margin** | Making the road as wide as possible | Building the widest road so neither neighbourhood encroaches |
+| **Maximum Margin** | Making the road as wide as possible | Building the widest road so neither neighborhood encroaches |
 | **C (Cost)** | How strictly we enforce the rule "no points inside the road" | How many zoning violations you tolerate |
 | **Kernel** | A mathematical trick that lets the SVM draw curved boundaries | Putting on special glasses that let you see the data differently |
 
@@ -172,7 +175,7 @@ p_wide <- ggplot(pts, aes(x, y, color = class)) +
   theme_minimal() + theme(legend.position = "none")
 
 grid.arrange(p_narrow, p_wide, ncol = 2,
-  top = "Why Maximum Margin Matters for Generalisation")
+  top = "Why Maximum Margin Matters for Generalization")
 ```
 
 ---
@@ -199,9 +202,9 @@ The distance between these two lines (the road width) is:
 
 $$\text{Margin} = \frac{2}{\|w\|}$$
 
-So to make the margin as wide as possible, we need to make $\|w\|$ as **small** as possible — which leads to the SVM optimisation problem.
+So to make the margin as wide as possible, we need to make $\|w\|$ as **small** as possible — which leads to the SVM optimization problem.
 
-## 2.2 Visualising the Margin and Support Vectors
+## 2.2 Visualizing the Margin and Support Vectors
 
 Let's build our first real SVM and see these concepts come alive.
 
@@ -278,32 +281,111 @@ In plain English:
   - **Small C** → "Be chill, allow some mistakes, make the road wide" → wider margin, simpler model.
   - **Large C** → "Be strict, punish every mistake" → narrower margin, tries harder to classify every training point correctly.
 
-```{r hard-vs-soft, echo=FALSE, fig.height=3, fig.width=9}
-par(mar = c(0, 0, 1.5, 0), mfrow = c(1, 2))
+```{r hard-vs-soft, echo=FALSE, fig.height=3.4, fig.width=11}
+old_par <- par(no.readonly = TRUE)
+par(mar = c(0.6, 1.2, 3.2, 1.2), mfrow = c(1, 2), xpd = NA)
 
+# ---- Left panel: Hard-Margin ----
 plot(0, 0, type = "n", xlim = c(0, 8), ylim = c(0, 6), axes = FALSE,
-     main = "Hard-Margin: \"Zero tolerance\"")
+     xlab = "", ylab = "", main = "")
+title(main = "Hard-Margin SVM", line = 2, cex.main = 1.05, font.main = 2)
+title(main = "\"Zero tolerance — every point must stay off the street\"",
+      line = 0.9, cex.main = 0.8, font.main = 3, col.main = "grey35")
 rect(3.5, 0, 4.5, 6, col = "#E8F5E9", border = NA)
 segments(4, 0, 4, 6, col = "#2E7D32", lwd = 3)
 segments(3.5, 0, 3.5, 6, col = "#66BB6A", lwd = 2, lty = 2)
 segments(4.5, 0, 4.5, 6, col = "#66BB6A", lwd = 2, lty = 2)
-points(c(1.5, 2.0, 2.5, 1.8, 3.0), c(2, 4, 1, 3, 5), pch = 16, col = "#1976D2", cex = 1.5)
-points(c(5.5, 6.0, 5.8, 6.5, 5.2), c(2, 4, 1, 3, 5), pch = 16, col = "#E53935", cex = 1.5)
-text(4, 6.2, "Every point must stay outside the green zone", cex = 0.8, col = "grey40")
+points(c(1.5, 2.0, 2.5, 1.8, 3.0), c(2, 4, 1, 3, 5),
+       pch = 16, col = "#1976D2", cex = 1.5)
+points(c(5.5, 6.0, 5.8, 6.5, 5.2), c(2, 4, 1, 3, 5),
+       pch = 16, col = "#E53935", cex = 1.5)
 
+# ---- Right panel: Soft-Margin ----
 plot(0, 0, type = "n", xlim = c(0, 8), ylim = c(0, 6), axes = FALSE,
-     main = "Soft-Margin: \"Some violations OK (controlled by C)\"")
+     xlab = "", ylab = "", main = "")
+title(main = "Soft-Margin SVM", line = 2, cex.main = 1.05, font.main = 2)
+title(main = "\"Some violations OK — controlled by the C parameter\"",
+      line = 0.9, cex.main = 0.8, font.main = 3, col.main = "grey35")
 rect(3.0, 0, 5.0, 6, col = "#E8F5E9", border = NA)
 segments(4, 0, 4, 6, col = "#2E7D32", lwd = 3)
 segments(3, 0, 3, 6, col = "#66BB6A", lwd = 2, lty = 2)
 segments(5, 0, 5, 6, col = "#66BB6A", lwd = 2, lty = 2)
-points(c(1.5, 2.0, 2.5, 1.8, 3.5), c(2, 4, 1, 3, 5), pch = 16, col = "#1976D2", cex = 1.5)
-points(c(5.5, 6.0, 5.8, 6.5, 4.3), c(2, 4, 1, 3, 2), pch = 16, col = "#E53935", cex = 1.5)
+points(c(1.5, 2.0, 2.5, 1.8, 3.5), c(2, 4, 1, 3, 5),
+       pch = 16, col = "#1976D2", cex = 1.5)
+points(c(5.5, 6.0, 5.8, 6.5, 4.3), c(2, 4, 1, 3, 2),
+       pch = 16, col = "#E53935", cex = 1.5)
 points(c(3.5, 4.3), c(5, 2), pch = 1, cex = 2.5, lwd = 2)
-text(4, 6.2, "Some points are allowed inside the margin (wider road)", cex = 0.8, col = "grey40")
 
-par(mfrow = c(1, 1))
+par(old_par)
 ```
+
+### Why Hard Margins Break: Outlier Sensitivity
+
+Hard-margin SVMs have two fatal flaws that Géron highlights:
+
+> *"First, it only works if the data is linearly separable. Second, it is sensitive to outliers."*
+> — Géron, ch. 5 **[3]**
+
+Even **a single mislabeled point** can wreck a hard-margin classifier. The boundary must bend dramatically to keep that point on its "correct" side, and the margin collapses to almost nothing. A soft-margin SVM simply pays the penalty for misclassifying that one outlier and keeps a wide, stable street.
+
+```{r outlier-sensitivity, fig.height=4.5, fig.width=11}
+set.seed(MASTER_SEED + 11)
+
+x1_out <- c(rnorm(25, 2, 0.45), rnorm(25, 5, 0.45))
+x2_out <- c(rnorm(25, 5, 0.45), rnorm(25, 2, 0.45))
+y_out  <- factor(c(rep("A", 25), rep("B", 25)))
+df_clean <- data.frame(x1 = x1_out, x2 = x2_out, y = y_out)
+
+# Inject one outlier — a class-A point that sits deep inside the B cloud
+df_outlier <- rbind(df_clean,
+                    data.frame(x1 = 4.7, x2 = 2.3, y = factor("A", levels = levels(y_out))))
+
+grid_out <- expand.grid(
+  x1 = seq(0, 7, length.out = 150),
+  x2 = seq(0, 7, length.out = 150)
+)
+
+# "Hard-margin-like": very high C punishes every violation
+svm_hard <- svm(y ~ x1 + x2, data = df_outlier, kernel = "linear",
+                cost = 1e5, scale = FALSE)
+# Soft-margin: moderate C lets the outlier be misclassified
+svm_soft <- svm(y ~ x1 + x2, data = df_outlier, kernel = "linear",
+                cost = 0.1, scale = FALSE)
+
+grid_out$hard <- predict(svm_hard, grid_out)
+grid_out$soft <- predict(svm_soft, grid_out)
+
+p_hard <- ggplot() +
+  geom_tile(data = grid_out, aes(x = x1, y = x2, fill = hard), alpha = 0.3) +
+  geom_point(data = df_outlier, aes(x = x1, y = x2, color = y), size = 2, alpha = 0.8) +
+  geom_point(data = df_outlier[nrow(df_outlier), ],
+             aes(x = x1, y = x2), shape = 8, size = 5, stroke = 1.3, color = "black") +
+  annotate("text", x = 4.7, y = 2.9, label = "outlier",
+           color = "black", fontface = "italic", size = 3.3) +
+  scale_fill_manual(values = c("A" = "#BBDEFB", "B" = "#FFCDD2"), guide = "none") +
+  scale_color_manual(values = c("A" = "#1976D2", "B" = "#E53935"), guide = "none") +
+  labs(title = "Hard-Margin-Like SVM (C = 1e5)",
+       subtitle = "Boundary bends drastically to satisfy the outlier — margin collapses") +
+  theme_minimal()
+
+p_soft <- ggplot() +
+  geom_tile(data = grid_out, aes(x = x1, y = x2, fill = soft), alpha = 0.3) +
+  geom_point(data = df_outlier, aes(x = x1, y = x2, color = y), size = 2, alpha = 0.8) +
+  geom_point(data = df_outlier[nrow(df_outlier), ],
+             aes(x = x1, y = x2), shape = 8, size = 5, stroke = 1.3, color = "black") +
+  annotate("text", x = 4.7, y = 2.9, label = "outlier",
+           color = "black", fontface = "italic", size = 3.3) +
+  scale_fill_manual(values = c("A" = "#BBDEFB", "B" = "#FFCDD2"), guide = "none") +
+  scale_color_manual(values = c("A" = "#1976D2", "B" = "#E53935"), guide = "none") +
+  labs(title = "Soft-Margin SVM (C = 0.1)",
+       subtitle = "Outlier is sacrificed; boundary stays clean and wide") +
+  theme_minimal()
+
+grid.arrange(p_hard, p_soft, ncol = 2,
+  top = "A Single Outlier Breaks the Hard Margin — Soft Margin Absorbs It")
+```
+
+> **Takeaway:** Real data is noisy. The soft margin lets you pay a small, controlled price for each misclassified point in exchange for a much more stable decision boundary. This is the ordinary, everyday mode of SVM usage.
 
 ## 2.4 The C Parameter: Your Model's Strictness Dial
 
@@ -353,6 +435,68 @@ do.call(grid.arrange, c(plots_c, ncol = 4,
 > - **C = 0.1**: Moderate. A reasonable balance.
 > - **C = 1**: The default. Fairly strict.
 > - **C = 100**: Very strict. Tries hard to classify every training point — risks overfitting.
+
+## 2.5 The Hinge Loss: How SVM Actually Measures "Violation"
+
+What does the soft-margin SVM charge each mis-behaving point? The answer is the **hinge loss**, which is the loss function baked into every linear SVM. For a training point $(x_i, y_i)$ with label $t_i \in \{-1, +1\}$, the hinge loss is:
+
+$$\mathcal{L}_{\text{hinge}}(t_i, \, w^T x_i + b) \;=\; \max\!\left(0, \; 1 - t_i \cdot (w^T x_i + b)\right)$$
+
+Together with the margin-width term, it produces the full linear-SVM cost function **(Géron Eq. 5-13)**:
+
+$$J(w, b) \;=\; \tfrac{1}{2} w^T w \;+\; C \sum_{i=1}^{m} \max\!\left(0, \; 1 - t_i (w^T x_i + b)\right)$$
+
+Reading the hinge loss geometrically:
+
+- If a point is **safely past the margin on the correct side** ($t_i \cdot (w^T x_i + b) \geq 1$), the loss is exactly **zero** — the point is ignored.
+- If a point sits **inside the margin or on the wrong side**, the loss grows **linearly** with how badly it violates.
+- The "hinge" — the kink at 1 — is what gives the loss its name.
+
+```{r hinge-loss-plot, fig.height=4.5, fig.width=9}
+z <- seq(-3, 3, length.out = 400)
+hinge  <- pmax(0, 1 - z)
+logist <- log(1 + exp(-z))
+sq     <- (1 - z)^2
+zero_one <- as.numeric(z < 0)
+
+loss_df <- data.frame(
+  z = rep(z, 4),
+  loss = c(hinge, logist, sq, zero_one),
+  type = factor(rep(c("Hinge (SVM)", "Logistic", "Squared (LS)", "0-1 (ideal)"),
+                    each = length(z)),
+                levels = c("Hinge (SVM)", "Logistic", "Squared (LS)", "0-1 (ideal)"))
+)
+
+ggplot(loss_df, aes(x = z, y = loss, color = type, linetype = type)) +
+  geom_line(linewidth = 1.2) +
+  geom_vline(xintercept = 1, linetype = "dotted", color = "grey40") +
+  annotate("text", x = 1.05, y = 2.6, label = "margin edge (t·f(x) = 1)",
+           hjust = 0, color = "grey30", size = 3.3) +
+  scale_color_manual(values = c(
+    "Hinge (SVM)"  = "#2E7D32",
+    "Logistic"     = "#1976D2",
+    "Squared (LS)" = "#FB8C00",
+    "0-1 (ideal)"  = "grey40"
+  )) +
+  scale_linetype_manual(values = c(
+    "Hinge (SVM)"  = "solid",
+    "Logistic"     = "solid",
+    "Squared (LS)" = "solid",
+    "0-1 (ideal)"  = "dashed"
+  )) +
+  coord_cartesian(ylim = c(0, 3)) +
+  labs(
+    title = "The Hinge Loss Compared to Other Classification Losses",
+    subtitle = "Horizontal axis: margin score t·(wᵀx + b). Hinge is zero once a point is past the margin.",
+    x = expression(t %.% (w^T * x + b)),
+    y = "Loss",
+    color = NULL, linetype = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+> **Why hinge loss and not squared error?** The hinge loss has a *flat-zero* region — it stops caring about points that are already safely classified. Squared loss, by contrast, keeps pulling the boundary toward every point (including ones that were already correct). That "I only care about points near the edge" behavior is exactly what creates the sparse, support-vector-based solution.
 
 ---
 
@@ -404,8 +548,11 @@ That's what a kernel does mathematically: it **transforms the data into a higher
 | **Linear** | $K(x, x') = x \cdot x'$ | No transformation — works when data is already linearly separable |
 | **Polynomial** | $K(x, x') = (\gamma\, x \cdot x' + r)^d$ | Creates curved boundaries by considering feature interactions up to degree $d$ |
 | **RBF (Radial Basis Function)** | $K(x, x') = \exp(-\gamma \|x - x'\|^2)$ | Creates smooth, flexible boundaries; the most popular choice for non-linear data |
+| **Sigmoid** | $K(x, x') = \tanh(\gamma\, x \cdot x' + r)$ | Behaves like a two-layer neural network; useful historically, rarely a first choice today |
 
-## 3.3 The Kernel Trick Visualised: Lifting Data into a Higher Dimension
+> **Beyond these four**, specialized kernels exist for specific data structures: **string kernels** for text and DNA sequences, **graph kernels** for network data, and **spectrum / subsequence kernels** for bioinformatics. Géron notes that "as a rule of thumb, you should always try the linear kernel first (`LinearSVC` is much faster than `SVC(kernel='linear')`), especially if the training set is very large or if it has plenty of features. If the training set is not too large, you should also try the Gaussian RBF kernel; it works well in most cases." **[3]**
+
+## 3.3 The Kernel Trick Visualized: Lifting Data into a Higher Dimension
 
 ```{r kernel-trick-viz, fig.height=5, fig.width=11}
 set.seed(MASTER_SEED + 4)
@@ -444,7 +591,79 @@ grid.arrange(p_1d, p_2d, ncol = 2,
 
 The left plot shows data in 1D where red and blue are tangled. The right plot adds $x^2$ as a second dimension — and suddenly a horizontal line separates them perfectly. The kernel trick does this kind of transformation automatically, without you having to manually design the new features.
 
-## 3.4 Comparing Kernels on the Ring Dataset
+## 3.4 Similarity Features: The Intuition Behind the RBF Kernel
+
+Before comparing kernels, it helps to understand **why** the RBF kernel works. Géron explains it with a second transformation technique called **similarity features** — a surprisingly concrete idea that leads naturally to the RBF formula.
+
+Pick a few reference points in your data — call them **landmarks**. For every training point, compute *how similar* it is to each landmark using a Gaussian bell curve:
+
+$$\phi_{\gamma}(x, \ell) \;=\; \exp\!\left(-\gamma \, \lVert x - \ell \rVert^{2}\right)$$
+
+- At the landmark itself, similarity = 1.
+- Far from the landmark, similarity ≈ 0.
+- $\gamma$ controls how fast similarity decays with distance.
+
+Replace the original features with these **similarity scores**, and suddenly a dataset that was tangled in the original space becomes linearly separable. The RBF kernel is just the "free version" of this trick: the kernel function computes these similarity scores *implicitly* — for every pair of points, with every training instance acting as its own landmark — without ever materializing the new features.
+
+```{r similarity-features-landmarks, fig.height=4.8, fig.width=11}
+set.seed(MASTER_SEED + 12)
+
+# Build the same 1D example as before
+x_land <- c(rnorm(60, -2, 0.55), rnorm(30, 0, 0.3), rnorm(30, 2, 0.55))
+y_land <- factor(c(rep("B", 60), rep("A", 30), rep("B", 30)),
+                 levels = c("A", "B"))
+df_land <- data.frame(x = x_land, y = y_land)
+
+# Two landmarks (Géron Fig 5-8): one in the middle, one on the right
+ell1 <- 0      # near the red cluster
+ell2 <- 2      # near the right blue cluster
+gamma_k <- 0.6
+
+df_land$phi1 <- exp(-gamma_k * (df_land$x - ell1)^2)
+df_land$phi2 <- exp(-gamma_k * (df_land$x - ell2)^2)
+
+p_original <- ggplot(df_land, aes(x = x, y = 0, color = y)) +
+  geom_point(size = 2.5, alpha = 0.65) +
+  geom_vline(xintercept = c(ell1, ell2), linetype = "dashed", color = "#2E7D32",
+             linewidth = 0.8) +
+  annotate("text", x = ell1, y = 0.4, label = "landmark ℓ₁",
+           color = "#2E7D32", size = 3.3, fontface = "italic") +
+  annotate("text", x = ell2, y = 0.4, label = "landmark ℓ₂",
+           color = "#2E7D32", size = 3.3, fontface = "italic") +
+  scale_color_manual(values = c("A" = "#E53935", "B" = "#1976D2")) +
+  labs(title = "Original 1D Space with Two Landmarks",
+       subtitle = "Tangled: no single cut of x separates the red from the blue",
+       x = "x", y = "") +
+  coord_cartesian(ylim = c(-0.6, 0.6)) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+p_similarity <- ggplot(df_land, aes(x = phi1, y = phi2, color = y)) +
+  geom_point(size = 2.5, alpha = 0.7) +
+  geom_abline(intercept = 0.65, slope = -0.3,
+              color = "#2E7D32", linewidth = 1.1, linetype = "dashed") +
+  scale_color_manual(values = c("A" = "#E53935", "B" = "#1976D2")) +
+  labs(title = "After Similarity Features (φ₁, φ₂)",
+       subtitle = "Each point is now described by its similarity to the two landmarks — classes separate cleanly",
+       x = expression(varphi[1] == exp(-gamma * (x - l[1])^2)),
+       y = expression(varphi[2] == exp(-gamma * (x - l[2])^2)),
+       color = "Class") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+grid.arrange(p_original, p_similarity, ncol = 2,
+  top = "Similarity Features: Replace Coordinates with 'How Close Am I to Each Landmark?'")
+```
+
+> **Key insight:** The RBF kernel $K(x, x') = \exp(-\gamma \lVert x - x'\rVert^2)$ is exactly this similarity measure, applied between **every pair** of training points. Because of the kernel trick, the SVM never has to build the expanded feature matrix explicitly — it just plugs the kernel value into the dual optimization problem.
+
+### Mercer's Theorem (Why This Works)
+
+Why is any smooth, symmetric similarity function a valid "kernel"? **Mercer's theorem** guarantees that if $K(a, b)$ satisfies a few mild mathematical conditions (continuous, symmetric, and positive semi-definite), then there exists *some* higher-dimensional feature map $\phi$ such that $K(a, b) = \phi(a)^\top \phi(b)$ — even if we can't write $\phi$ down explicitly. For the Gaussian RBF kernel, $\phi$ maps each point to an **infinite-dimensional** space — which is precisely why we don't want to materialize it and why the kernel trick is so valuable **[3]**.
+
+## 3.5 Comparing Kernels on the Ring Dataset
 
 ```{r kernel-comparison, fig.height=5, fig.width=11}
 kernels <- list(
@@ -507,7 +726,7 @@ The parameter **$\gamma$** controls how far each point's influence reaches:
 - **Small $\gamma$**: Each point's influence reaches far → smoother, simpler boundaries.
 - **Large $\gamma$**: Each point's influence is local → more complex, wiggly boundaries.
 
-## 4.2 Visualising the Gamma Parameter
+## 4.2 Visualizing the Gamma Parameter
 
 ```{r gamma-effect, fig.height=5.5, fig.width=11}
 set.seed(MASTER_SEED + 5)
@@ -763,14 +982,14 @@ p_sc <- ggplot(df_sc, aes(x = salary_sc, y = age_sc, color = df_unscaled$promote
   scale_color_manual(values = c("No" = "#1976D2", "Yes" = "#E53935")) +
   labs(title = "Scaled Data (z-score)",
        subtitle = sprintf("SVM accuracy: %.0f%% (both features contribute equally)", acc_scaled * 100),
-       x = "Salary (standardised)", y = "Age (standardised)") +
+       x = "Salary (standardized)", y = "Age (standardized)") +
   theme_minimal() + theme(legend.position = "none")
 
 grid.arrange(p_unsc, p_sc, ncol = 2,
-  top = "Feature Scaling Is Critical for SVM — Always Standardise Your Data")
+  top = "Feature Scaling Is Critical for SVM — Always Standardize Your Data")
 ```
 
-> **Takeaway:** Always set `scale = TRUE` in `e1071::svm()` (this is the default), or manually standardise your features to zero mean and unit variance before fitting.
+> **Takeaway:** Always set `scale = TRUE` in `e1071::svm()` (this is the default), or manually standardize your features to zero mean and unit variance before fitting.
 
 ---
 
@@ -778,14 +997,19 @@ grid.arrange(p_unsc, p_sc, ncol = 2,
 
 ## 7.1 From Classification to Regression
 
-SVMs can also do regression. **Support Vector Regression (SVR)** works by fitting a "tube" of width $\varepsilon$ (epsilon) around the data. Points inside the tube contribute zero error; only points outside the tube are penalised.
+SVMs are versatile: the same street-fitting idea also drives **Support Vector Regression (SVR)**. As Géron puts it, the trick is to **reverse the objective**:
 
-This is the opposite logic from linear regression (which tries to minimise the error for *every* point):
+> *"Instead of trying to fit the largest possible street between two classes while limiting margin violations, SVM Regression tries to fit as many instances as possible **on** the street while limiting margin violations (i.e., instances off the street). The width of the street is controlled by a hyperparameter, ε."*
+> — Géron, *Hands-On Machine Learning*, ch. 5 **[3]**
 
-- **Linear Regression**: Minimise all errors.
-- **SVR**: Ignore small errors (inside the $\varepsilon$-tube), only penalise large ones.
+The street here is a **tube** of half-width $\varepsilon$ (epsilon) drawn around the regression curve. Any point that lands **inside** the tube contributes zero error — the model is said to be $\varepsilon$-**insensitive**. Only points **outside** the tube are penalized. Compare this to ordinary regression:
 
-## 7.2 Visualising the Epsilon Tube
+- **Linear Regression**: Minimize the error for *every* point, no matter how small.
+- **SVR**: Ignore small errors (points inside the $\varepsilon$-tube), only penalize the ones that stick out.
+
+Because the model only "sees" the points on the edge of or outside the tube, SVR is naturally robust to noise — small wiggles in the data do not pull the fit around.
+
+## 7.2 Visualizing the Epsilon Tube
 
 ```{r svr-example, fig.height=5.5, fig.width=9}
 set.seed(MASTER_SEED + 8)
@@ -977,7 +1201,7 @@ pros_cons <- data.frame(
     "Good — only support vectors are stored, not the entire dataset",
     "Good (soft margin) — C parameter controls sensitivity to outliers",
     "Poor — training is O(n² to n³); use Linear SVM or other methods instead",
-    "Required — always standardise features before using SVM",
+    "Required — always standardize features before using SVM",
     "Not native — requires expensive calibration (Platt scaling)",
     "Low — the model is a 'black box'; hard to explain individual predictions",
     "Moderate — C and gamma must be tuned carefully via cross-validation"
@@ -999,9 +1223,81 @@ knitr::kable(pros_cons, col.names = c("Property", "SVM Assessment"),
 | Need probability estimates | Random Forest or Logistic Regression — SVM probabilities are unreliable |
 | Baseline model with no tuning | Random Forest — SVM needs careful tuning of C and $\gamma$ |
 
-## 9.3 Practical Tips
+## 9.3 Computational Complexity — When SVMs Get Slow
 
-1. **Always scale your features** — standardise to zero mean and unit variance.
+One of the most important practical facts about SVMs is how their training time scales with the dataset. Géron **[3]** summarizes the picture for Scikit-Learn's SVM classes — the same tradeoffs apply to R's `e1071::svm()` (based on `libsvm`) and `kernlab::ksvm()`:
+
+```{r svm-complexity-table, echo=FALSE}
+complexity_tbl <- data.frame(
+  Class_R_Python = c(
+    "`e1071::svm()` / Scikit-learn `SVC`",
+    "`kernlab::ksvm()`",
+    "Scikit-learn `LinearSVC` / `LiblineaR` in R",
+    "Scikit-learn `SGDClassifier` (hinge loss)"
+  ),
+  Time_Complexity = c(
+    "$O(m^{2} n)$ to $O(m^{3} n)$",
+    "$O(m^{2} n)$ to $O(m^{3} n)$",
+    "$O(m \\cdot n)$",
+    "$O(m \\cdot n)$"
+  ),
+  Supports_Kernel_Trick = c("Yes", "Yes", "No — linear only", "No — linear only"),
+  Best_For = c(
+    "Small-to-medium datasets with complex non-linear boundaries",
+    "Same as above, plus extra kernel options and more efficient solvers",
+    "Very large datasets or very high-dimensional sparse data (text, gene expression)",
+    "Online / streaming data, or datasets too large to fit in memory"
+  )
+)
+
+knitr::kable(
+  complexity_tbl,
+  col.names = c("Class (R / Python)", "Time Complexity", "Kernel Trick?", "Best For"),
+  caption = "Training-time complexity for common SVM implementations — m = #instances, n = #features"
+)
+```
+
+> **The practical implication:** Kernelized SVMs (the ones that use `"radial"`, `"polynomial"`, etc.) have cost that grows **between quadratically and cubically** with the number of training samples. They become "dreadfully slow" (Géron's words) on datasets with hundreds of thousands of instances. Above that scale, switch to a linear SVM, Random Forest, Gradient Boosting, or a neural network.
+
+```{r svm-complexity-plot, fig.height=4.5, fig.width=9}
+m_grid <- 10 ^ seq(2, 6, length.out = 200)   # 100 to 1,000,000 instances
+
+complexity_df <- data.frame(
+  m = rep(m_grid, 3),
+  time = c(
+    m_grid,              # O(m)       — LinearSVC
+    m_grid ^ 2,          # O(m^2)     — kernelized, best case
+    m_grid ^ 3           # O(m^3)     — kernelized, worst case
+  ),
+  algorithm = factor(rep(
+    c("LinearSVC  —  O(m)",
+      "Kernel SVM best  —  O(m²)",
+      "Kernel SVM worst —  O(m³)"),
+    each = length(m_grid)),
+    levels = c("LinearSVC  —  O(m)",
+               "Kernel SVM best  —  O(m²)",
+               "Kernel SVM worst —  O(m³)"))
+)
+
+ggplot(complexity_df, aes(x = m, y = time, color = algorithm)) +
+  geom_line(linewidth = 1.2) +
+  scale_x_log10(labels = scales::comma) +
+  scale_y_log10(labels = scales::label_number(scale_cut = scales::cut_short_scale())) +
+  scale_color_manual(values = c("#1976D2", "#FB8C00", "#E53935")) +
+  labs(
+    title = "Training-Time Scaling: Why Kernel SVMs Fall Off a Cliff at Large m",
+    subtitle = "Both axes are log-scaled. Each additional order of magnitude in m costs 2-3 orders of magnitude in time for kernel SVMs.",
+    x = "Number of training instances (m)",
+    y = "Relative training time (log scale)",
+    color = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## 9.4 Practical Tips
+
+1. **Always scale your features** — standardize to zero mean and unit variance.
 2. **Start with `kernel = "radial"`** — it's the most flexible and a good default.
 3. **Use `tune()` or `caret::train()`** for systematic hyperparameter search.
 4. **Try a wide range** — search C in $\{0.01, 0.1, 1, 10, 100\}$ and $\gamma$ in $\{0.001, 0.01, 0.1, 1\}$ on log scales.
@@ -1085,7 +1381,7 @@ ggplot() +
 
 <details>
 <summary>**Question 5:** You train an SVM on a dataset and notice that 95% of your training points are support vectors. What does this tell you?</summary>
-**Answer:** If nearly all points are support vectors, it typically means: (1) C is too small — the model is too lenient and isn't creating a meaningful margin, or (2) the kernel is not appropriate (e.g., using a linear kernel on highly non-linear data). In either case, the SVM is essentially memorising most of the training data rather than finding a clean separating boundary. Try increasing C, switching to a different kernel, or tuning $\gamma$.
+**Answer:** If nearly all points are support vectors, it typically means: (1) C is too small — the model is too lenient and isn't creating a meaningful margin, or (2) the kernel is not appropriate (e.g., using a linear kernel on highly non-linear data). In either case, the SVM is essentially memorizing most of the training data rather than finding a clean separating boundary. Try increasing C, switching to a different kernel, or tuning $\gamma$.
 </details>
 
 <br>
@@ -1102,12 +1398,12 @@ ggplot() +
 | Concept | Key Idea | R Implementation |
 |---|---|---|
 | **Hyperplane** | The boundary that separates classes | `svm(..., kernel = "linear")` |
-| **Margin** | Gap between the closest points of each class; SVM maximises this | Controlled by the `cost` (C) parameter |
+| **Margin** | Gap between the closest points of each class; SVM maximizes this | Controlled by the `cost` (C) parameter |
 | **Support Vectors** | The critical points on the margin that define the boundary | Accessible via `model$SV` and `model$index` |
 | **C Parameter** | Trade-off dial: small C = wide margin (simple), large C = narrow margin (complex) | `cost = 1` (default) |
 | **Kernel Trick** | Transform data into higher dimensions so a linear separator works | `kernel = "radial"` / `"polynomial"` / `"linear"` |
 | **Gamma ($\gamma$)** | Controls how far each point's influence reaches in the RBF kernel | `gamma = 0.1` |
-| **Feature Scaling** | Always standardise features before SVM | `scale = TRUE` (default in `e1071`) |
+| **Feature Scaling** | Always standardize features before SVM | `scale = TRUE` (default in `e1071`) |
 | **SVR** | SVM for regression: fit an $\varepsilon$-tube around the data | `svm(..., type = "eps-regression")` |
 | **Multi-class** | One-vs-One strategy: train $k(k-1)/2$ binary SVMs | Automatic in `e1071::svm()` |
 | **Hyperparameter Tuning** | Use cross-validation to find optimal C and $\gamma$ | `tune(svm, ...)` or `caret::train()` |
