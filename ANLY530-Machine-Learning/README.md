@@ -27,19 +27,19 @@ Quick links to every week. Click **📄 Tutorial** to open the live HTML, or **�
 | Week | Topic                                           | Tutorial                                                                                                             | Source            |
 | ---- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------- |
 | 01   | Introduction to Machine Learning                | [📄 Tutorial](https://melhzy.github.io/data_sciences/ANLY530-Machine-Learning/Week01/01_Intro_to_Machine_Learning.html) | [📂 Folder](Week01/) |
-| 02   | Python & R for Machine Learning                 | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week02/) |
-| 03   | Decision Trees                                  | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week03/) |
-| 04   | Random Forests & Ensemble Methods               | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week04/) |
-| 05   | Regression                                      | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week05/) |
-| 06   | Support Vector Machines                         | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week06/) |
-| 07   | Probabilistic Learning & Classification Metrics | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week07/) |
-| 08   | Unsupervised Learning                           | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week08/) |
-| 09   | Preprocessing & Feature Selection               | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week09/) |
-| 10   | Feature Engineering & Dimensionality Reduction  | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week10/) |
-| 11   | Model Evaluation & Selection                    | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week11/) |
-| 12   | Advanced Ensemble Methods                       | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week12/) |
-| 13   | Introduction to Neural Networks                 | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week13/) |
-| 14   | Final Project Wrap-Up & Review                  | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week14/) |
+| 02   | Decision Trees                                  | [📄 Tutorial](https://melhzy.github.io/data_sciences/ANLY530-Machine-Learning/Week02/Week02-DecisionTrees-Tutorial.html) | [📂 Folder](Week02/) |
+| 03   | Ensemble Learning & Random Forests              | [📄 Tutorial](https://melhzy.github.io/data_sciences/ANLY530-Machine-Learning/Week03/Week03-RandomForest-Tutorial.html) | [📂 Folder](Week03/) |
+| 04   | Regression Models                               | [📄 Tutorial](https://melhzy.github.io/data_sciences/ANLY530-Machine-Learning/Week04/Week04-Regression-Tutorial.html) | [📂 Folder](Week04/) |
+| 05   | Support Vector Machines                         | [📄 Tutorial](https://melhzy.github.io/data_sciences/ANLY530-Machine-Learning/Week05/Week05-SVM-Tutorial.html) | [📂 Folder](Week05/) |
+| 06   | Probabilistic Learning & Classification Metrics | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week06/) |
+| 07   | Unsupervised Learning                           | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week07/) |
+| 08   | Preprocessing & Feature Selection               | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week08/) |
+| 09   | Feature Engineering & Dimensionality Reduction  | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week09/) |
+| 10   | Model Evaluation & Selection                    | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week10/) |
+| 11   | Advanced Ensemble Methods                       | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week11/) |
+| 12   | Introduction to Neural Networks                 | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week12/) |
+| 13   | Final Project Wrap-Up & Review                  | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week13/) |
+| 14   | Final Presentations                             | 🔜 Coming Soon                                                                                                       | [📂 Folder](Week14/) |
 
 ---
 
@@ -66,29 +66,9 @@ Overview of the ML landscape: supervised, unsupervised, and reinforcement learni
 
 ---
 
-### [Week 02: Python &amp; R for Machine Learning](Week02/)
+### [Week 02: Decision Trees](Week02/)
 
-Setting up the ML environment. Basics of Python and R for data science, reproducible reporting with RMarkdown + reticulate, and the core scientific Python stack.
-
-**Topics Covered:**
-
-- Installation: R, RStudio, Anaconda, Jupyter
-- Python and R basics: data types, control flow, functions
-- RMarkdown + reticulate for reproducible reports
-- Key libraries: NumPy, Pandas, Matplotlib, Scikit-Learn, tidyverse, ggplot2
-- End-to-end ML project setup
-
-**Reading**: Géron Ch. 2 — End-to-End ML Project (setup sections)
-
-**Materials:**
-
-- 📂 [Week 02 Folder](Week02/)
-
----
-
-### [Week 03: Decision Trees](Week03/)
-
-How decision trees learn, split data, and make predictions. The CART algorithm, Gini impurity vs. entropy, overfitting and pruning, and visualizing decision boundaries.
+Deep dive into the CART algorithm — Gini impurity, entropy, class probabilities, decision boundaries, regularization (cp, max_depth, minsplit), instability, regression trees, feature importance, and partial dependence plots.
 
 **Topics Covered:**
 
@@ -96,21 +76,20 @@ How decision trees learn, split data, and make predictions. The CART algorithm, 
 - Gini impurity and entropy as splitting criteria
 - Tree depth, overfitting, and regularization (max depth, min samples)
 - Visualizing and interpreting decision boundaries
-- Regression trees
+- Regression trees, feature importance, and partial dependence plots
 
 **Reading**: Géron Ch. 6 — Decision Trees
-**Assignment 1 Released**: Decision Trees (due April 4)
-**Project Proposal Due**: March 28, 2026
 
 **Materials:**
 
-- 📂 [Week 03 Folder](Week03/)
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY530-Machine-Learning/Week02/Week02-DecisionTrees-Tutorial.html)
+- 📂 [Week 02 Folder](Week02/)
 
 ---
 
-### [Week 04: Random Forests &amp; Ensemble Methods](Week04/)
+### [Week 03: Ensemble Learning &amp; Random Forests](Week03/)
 
-From a single decision tree to an ensemble. Bagging, feature randomness, out-of-bag evaluation, feature importance, and an introduction to boosting.
+From bagging and voting classifiers to Random Forests, Extra-Trees, and Gradient Boosting. Covers OOB evaluation, feature importance, hyperparameter tuning (mtry, nodesize), regression forests, and stacking.
 
 **Topics Covered:**
 
@@ -119,86 +98,67 @@ From a single decision tree to an ensemble. Bagging, feature randomness, out-of-
 - Out-of-bag (OOB) error estimation
 - Feature importance scores
 - Introduction to boosting: AdaBoost, Gradient Boosting
+- Stacking ensembles
 
 **Reading**: Géron Ch. 7 — Ensemble Learning and Random Forests
-**Assignment 1 Due** | **Assignment 2 Released**: Random Forests
 
 **Materials:**
 
-- 📂 [Week 04 Folder](Week04/)
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY530-Machine-Learning/Week03/Week03-RandomForest-Tutorial.html)
+- 📂 [Week 03 Folder](Week03/)
 
 ---
 
-### [Week 05: Regression](Week05/)
+### [Week 04: Regression Models](Week04/)
 
-Linear regression from first principles through regularized models. Gradient descent, the bias-variance tradeoff, polynomial regression, and logistic regression for classification.
+Linear Regression (Normal Equation, Gradient Descent, MSE cost surface, learning rate effect, confidence & prediction bands, residual diagnostics), SVR (linear vs. RBF kernel), Decision Tree Regression (depth vs. overfitting), and Random Forest Regression (OOB convergence, feature importance).
 
 **Topics Covered:**
 
 - Linear regression: OLS, Normal Equation
 - Gradient descent: batch, stochastic, mini-batch
 - Cost functions and learning rate selection
-- Polynomial regression
-- Bias-variance tradeoff and learning curves
-- Regularization: Ridge (L2), Lasso (L1), ElasticNet
-- Logistic regression and softmax for classification
+- SVR: linear vs. RBF kernel
+- Decision Tree Regression and Random Forest Regression
+- 8 visualizations + model comparison
 
 **Reading**: Géron Ch. 4 — Training Models
-**Assignment 2 Due** | **Assignment 3 Released**: Regression
 
 **Materials:**
 
-- 📂 [Week 05 Folder](Week05/)
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY530-Machine-Learning/Week04/Week04-Regression-Tutorial.html)
+- 📂 [Week 04 Folder](Week04/)
 
 ---
 
-### [Week 06: Support Vector Machines](Week06/)
+### [Week 05: Support Vector Machines](Week05/)
 
-Maximum-margin classifiers, the kernel trick, and SVMs for regression. Hard and soft margin classification, the RBF kernel, and Support Vector Regression (SVR).
+Maximum-margin classification, hyperplanes, support vectors, hard vs. soft margin (C parameter), the kernel trick (linear, polynomial, RBF), gamma tuning, feature scaling, SVR for regression, multi-class SVM, and model comparison with Decision Trees & Random Forests.
 
 **Topics Covered:**
 
 - Support vectors and maximum-margin hyperplane
 - Hard margin vs. soft margin classification (C parameter)
 - The kernel trick: polynomial and RBF kernels
+- Gamma tuning and feature scaling
 - Multi-class SVM
 - Support Vector Regression (SVR)
-- When to prefer SVMs over other classifiers
+- 20+ visualizations with plain English explanations
 
 **Reading**: Géron Ch. 5 — Support Vector Machines
-**Assignment 3 Due** | **Assignment 4 Released**: Support Vector Machines
 
 **Materials:**
 
-- 📂 [Week 06 Folder](Week06/)
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY530-Machine-Learning/Week05/Week05-SVM-Tutorial.html)
+- 📂 [Week 05 Folder](Week05/)
 
 ---
 
-### [Week 07: Probabilistic Learning — Naïve Bayes &amp; Classification Metrics](Week07/)
-
-Bayes' theorem applied to classification. The Naïve Bayes family of classifiers and a comprehensive deep dive into evaluation metrics: confusion matrix, precision, recall, F1, and ROC-AUC.
-
-**Topics Covered:**
-
-- Bayes' theorem and conditional probability
-- Gaussian, Multinomial, and Bernoulli Naïve Bayes
-- Naïve independence assumption and when it works
-- Confusion matrix: TP, TN, FP, FN
-- Precision, Recall, F1-score
-- Precision-recall tradeoff
-- ROC curve and AUC
-- When to optimize for precision vs. recall
-
-**Reading**: Géron Ch. 3 — Classification
-**Assignment 4 Due** | **Assignment 5 Released**: Naïve Bayes
-
-**Materials:**
-
-- 📂 [Week 07 Folder](Week07/)
+### [Week 06: Probabilistic Learning — Naïve Bayes &amp; Classification Metrics](Week06/)
 
 ---
 
-### [Week 08: Unsupervised Learning](Week08/)
+### [Week 07: Unsupervised Learning](Week07/)
 
 Discovering structure in unlabeled data. K-Means and DBSCAN clustering, hierarchical clustering, anomaly detection, density estimation, and Gaussian Mixture Models.
 
@@ -208,19 +168,17 @@ Discovering structure in unlabeled data. K-Means and DBSCAN clustering, hierarch
 - DBSCAN: density-based clustering and noise handling
 - Hierarchical / agglomerative clustering and dendrograms
 - Anomaly detection techniques
-- Density estimation
 - Gaussian Mixture Models (GMM) and EM algorithm
 
 **Reading**: Géron Ch. 9 — Unsupervised Learning Techniques
-**Assignment 5 Due** | **Assignment 6 Released**: Unsupervised Learning
 
 **Materials:**
 
-- 📂 [Week 08 Folder](Week08/)
+- 📂 [Week 07 Folder](Week07/)
 
 ---
 
-### [Week 09: Preprocessing &amp; Feature Selection](Week09/)
+### [Week 08: Preprocessing &amp; Feature Selection](Week08/)
 
 Building robust, reproducible ML pipelines with Scikit-Learn. Handling messy real-world data, scaling, encoding, class imbalance, and systematic feature selection strategies.
 
@@ -235,15 +193,14 @@ Building robust, reproducible ML pipelines with Scikit-Learn. Handling messy rea
 - Scikit-Learn Pipelines and ColumnTransformer
 
 **Reading**: Géron Ch. 2 (pipeline sections) | Ch. 13 (preprocessing)
-**Assignment 6 Due**
 
 **Materials:**
 
-- 📂 [Week 09 Folder](Week09/)
+- 📂 [Week 08 Folder](Week08/)
 
 ---
 
-### [Week 10: Feature Engineering &amp; Dimensionality Reduction](Week10/)
+### [Week 09: Feature Engineering &amp; Dimensionality Reduction](Week09/)
 
 Creating informative features and reducing dimensionality. PCA from eigenvalues to explained variance, t-SNE for visualization, and practical feature engineering patterns.
 
@@ -258,15 +215,14 @@ Creating informative features and reducing dimensionality. PCA from eigenvalues 
 - LLE and other manifold learning methods (overview)
 
 **Reading**: Géron Ch. 8 — Dimensionality Reduction
-**Assignment 7 Released**: Feature Engineering & PCA
 
 **Materials:**
 
-- 📂 [Week 10 Folder](Week10/)
+- 📂 [Week 09 Folder](Week09/)
 
 ---
 
-### [Week 11: Model Evaluation &amp; Selection](Week11/)
+### [Week 10: Model Evaluation &amp; Selection](Week10/)
 
 Rigorous, unbiased model evaluation. Cross-validation strategies, systematic hyperparameter search, learning and validation curves, and avoiding common pitfalls.
 
@@ -281,15 +237,14 @@ Rigorous, unbiased model evaluation. Cross-validation strategies, systematic hyp
 - Avoiding data leakage in pipelines
 
 **Reading**: Géron Ch. 2 (evaluation sections)
-**Assignment 7 Due**
 
 **Materials:**
 
-- 📂 [Week 11 Folder](Week11/)
+- 📂 [Week 10 Folder](Week10/)
 
 ---
 
-### [Week 12: Advanced Ensemble Methods](Week12/)
+### [Week 11: Advanced Ensemble Methods](Week11/)
 
 Gradient boosting in depth — the algorithm behind XGBoost and LightGBM — plus stacking and blending to combine models.
 
@@ -303,15 +258,14 @@ Gradient boosting in depth — the algorithm behind XGBoost and LightGBM — plu
 - Practical tips: early stopping, feature importance
 
 **Reading**: Géron Ch. 7 (boosting sections)
-**Assignment 8 Released**: Ensemble Modeling
 
 **Materials:**
 
-- 📂 [Week 12 Folder](Week12/)
+- 📂 [Week 11 Folder](Week11/)
 
 ---
 
-### [Week 13: Introduction to Neural Networks](Week13/)
+### [Week 12: Introduction to Neural Networks](Week12/)
 
 From the perceptron to modern deep learning. Building, training, and evaluating feedforward neural networks with Keras.
 
@@ -326,15 +280,14 @@ From the perceptron to modern deep learning. Building, training, and evaluating 
 - Batch size, epochs, and early stopping
 
 **Reading**: Géron Ch. 10 — Introduction to Artificial Neural Networks with Keras
-**Assignment 8 Due**
 
 **Materials:**
 
-- 📂 [Week 13 Folder](Week13/)
+- 📂 [Week 12 Folder](Week12/)
 
 ---
 
-### [Week 14: Final Project Wrap-Up &amp; Review](Week14/)
+### [Week 13: Final Project Wrap-Up &amp; Review](Week13/)
 
 Course review, key takeaways, common pitfalls, and group Q&A. Final project report and recorded presentations due.
 
@@ -349,7 +302,7 @@ Course review, key takeaways, common pitfalls, and group Q&A. Final project repo
 
 **Materials:**
 
-- 📂 [Week 14 Folder](Week14/)
+- 📂 [Week 13 Folder](Week13/)
 
 ---
 
@@ -527,19 +480,26 @@ ANLY530-Machine-Learning/
 ├── Week01/                            # Intro to Machine Learning
 │   ├── 01_Intro_to_Machine_Learning.rmd
 │   └── 01_Intro_to_Machine_Learning.html
-├── Week02/                            # Python & R for ML
-├── Week03/                            # Decision Trees
-├── Week04/                            # Random Forests & Ensembles
-├── Week05/                            # Regression
-├── Week06/                            # Support Vector Machines
-├── Week07/                            # Naïve Bayes & Classification Metrics
-├── Week08/                            # Unsupervised Learning
-├── Week09/                            # Preprocessing & Feature Selection
-├── Week10/                            # Feature Engineering & PCA
-├── Week11/                            # Model Evaluation & Selection
-├── Week12/                            # Advanced Ensemble Methods
-├── Week13/                            # Introduction to Neural Networks
-└── Week14/                            # Final Project Wrap-Up
+├── Week02/                            # Decision Trees
+│   ├── Week02-DecisionTrees-Tutorial.rmd
+│   └── Week02-DecisionTrees-Tutorial.html
+├── Week03/                            # Ensemble Learning & Random Forests
+│   ├── Week03-RandomForest-Tutorial.rmd
+│   └── Week03-RandomForest-Tutorial.html
+├── Week04/                            # Regression Models
+│   ├── Week04-Regression-Tutorial.rmd
+│   └── Week04-Regression-Tutorial.html
+├── Week05/                            # Support Vector Machines
+│   ├── Week05-SVM-Tutorial.rmd
+│   └── Week05-SVM-Tutorial.html
+├── Week06/                            # Probabilistic Learning & Classification Metrics
+├── Week07/                            # Unsupervised Learning
+├── Week08/                            # Preprocessing & Feature Selection
+├── Week09/                            # Feature Engineering & PCA
+├── Week10/                            # Model Evaluation & Selection
+├── Week11/                            # Advanced Ensemble Methods
+├── Week12/                            # Introduction to Neural Networks
+└── Week13/                            # Final Project Wrap-Up
 ```
 
 ---

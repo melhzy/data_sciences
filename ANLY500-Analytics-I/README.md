@@ -17,6 +17,24 @@ All materials are designed for entry-level students with extensive plain English
 
 ## 📚 Weekly Tutorials
 
+### [Week 01: Introduction to R](Week01/)
+
+Complete beginner's guide to R programming! Learn R basics, data types, structures (vectors, matrices, data frames), functions, data manipulation, visualization, and practical analysis with Palmer Penguins dataset. 40+ visualizations with plain English explanations.
+
+**Topics Covered:**
+- R basics: installation, RStudio interface, scripts
+- Data types and structures: vectors, matrices, data frames, lists
+- Functions and control flow
+- Data manipulation fundamentals
+- Visualization basics with base R and ggplot2
+- Practical analysis with the Palmer Penguins dataset
+
+**Materials:**
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week01/01_R_for_DataAnalytics.html)
+- 📂 [Week 01 Folder](Week01/)
+
+---
+
 ### [Week 02: R for Data Analytics](Week02/)
 
 Introduction to R programming, data types, descriptive statistics, and basic hypothesis testing. Learn central tendency, dispersion measures, and visualization fundamentals.
@@ -207,6 +225,84 @@ Essential data cleaning techniques: accuracy checking, handling missing data (MC
 
 ---
 
+### [Week 09: Linear Regression](Week09/)
+
+Introduction to Linear Regression. Simple and multiple regression, hierarchical models, dummy coding, and regression diagnostics. Learn to predict outcomes and test specific hypotheses.
+
+**Topics Covered:**
+- Simple linear regression: model, coefficients, R²
+- Multiple regression: adding predictors
+- Hierarchical regression: theory-driven model building
+- Dummy coding for categorical predictors
+- Regression diagnostics: residuals, Cook's Distance
+- Assumptions checking for regression
+
+**Materials:**
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week09/09_R_for_DataAnalytics.html)
+- 📊 [Original Lecture](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week09/09_regression.html)
+- 📂 [Week 09 Folder](Week09/)
+
+---
+
+### [Week 10: Mediation & Moderation](Week10/)
+
+Advanced regression topics: Mediation (mechanisms) and Moderation (interactions). Learn modern Bootstrapping methods, Simple Slopes analysis, and how to interpret "It Depends" effects.
+
+**Topics Covered:**
+- Mediation analysis: indirect effects and mechanisms
+- Moderation analysis: interaction effects
+- Bootstrapping methods for mediation
+- Simple Slopes analysis for moderation
+- Interpreting "It Depends" effects
+- Reporting mediation and moderation results
+
+**Materials:**
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week10/10_R_for_DataAnalytics.html)
+- 📊 [View Slides](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week10/10_medmod.html)
+- 📂 [Week 10 Folder](Week10/)
+
+---
+
+### [Week 11: Comparing Two Means](Week11/)
+
+Comparing two means using the t-test (Independent & Paired). Learn about Signal-to-Noise Ratio, Assumptions (Normality, Homogeneity), and Effect Sizes (Cohen's d).
+
+**Topics Covered:**
+- Independent samples t-test
+- Paired samples t-test
+- Signal-to-noise ratio concept
+- Assumptions: normality, homogeneity of variance
+- Effect sizes: Cohen's d
+- Confidence intervals for mean differences
+- Non-parametric alternatives
+
+**Materials:**
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week11/11_R_for_DataAnalytics.html)
+- 📊 [View Slides](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week11/11_ttests.html)
+- 📂 [Week 11 Folder](Week11/)
+
+---
+
+### [Week 12: Comparing Several Means (ANOVA)](Week12/)
+
+Introduction to One-Way ANOVA. Understand the F-Ratio (Signal-to-Noise), Post Hoc Tests (Bonferroni), and Effect Sizes (Omega Squared). Visualizing SST, SSM, and SSR.
+
+**Topics Covered:**
+- One-Way ANOVA: the F-ratio
+- Between-groups vs. within-groups variance
+- Sum of Squares: SST, SSM, SSR
+- Post Hoc Tests: Bonferroni correction
+- Effect Sizes: Omega Squared (ω²)
+- Assumptions: normality, homogeneity
+- Planned contrasts
+
+**Materials:**
+- 📄 [View Tutorial Online](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week12/12_R_for_DataAnalytics.html)
+- 📊 [View Slides](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week12/12_lecture_anova.html)
+- 📂 [Week 12 Folder](Week12/)
+
+---
+
 ## 🎯 Key Features
 
 ### Code-First Approach
@@ -244,12 +340,15 @@ IEEE-style citations from Field, Miles, and Field (2012) *Discovering Statistics
 - No prior R experience required
 
 ### Learning Path
-1. **Weeks 02-03**: R fundamentals and data wrangling
-2. **Week 04**: Statistical inference foundations
-3. **Week 05**: Data visualization mastery
-4. **Weeks 06-07**: Data screening and assumption checking
-5. **Week 08**: Correlation analysis and relationships
-6. **Weeks 09+**: Advanced statistical analyses (regression, t-tests, ANOVA)
+1. **Week 01**: Introduction to R programming
+2. **Weeks 02-03**: R fundamentals and data wrangling
+3. **Week 04**: Statistical inference foundations
+4. **Week 05**: Data visualization mastery
+5. **Weeks 06-07**: Data screening and assumption checking
+6. **Week 08**: Correlation analysis and relationships
+7. **Week 09**: Linear regression
+8. **Week 10**: Mediation and moderation
+9. **Weeks 11-12**: Group comparisons (t-tests and ANOVA)
 
 ### Time Commitment
 - Each tutorial: 2-4 hours to work through
@@ -373,15 +472,38 @@ ANLY500-Analytics-I/
 │   ├── data/
 │   ├── lab/
 │   └── pictures/
-└── Week07/                   # Data Screening Part 2
+├── Week07/                   # Data Screening Part 2
+│   ├── README.md
+│   ├── 07_R_for_DataAnalytics.rmd
+│   ├── 07_R_for_DataAnalytics.html
+│   ├── 07_datascreen_2.rmd
+│   ├── 07_datascreen_2.html
+│   └── data/
+├── Week08/                   # Correlation Analysis
+│   ├── README.md
+│   ├── 08_R_for_DataAnalytics.rmd
+│   ├── 08_R_for_DataAnalytics.html
+│   └── 08_correlation.html
+├── Week09/                   # Linear Regression
+│   ├── README.md
+│   ├── 09_R_for_DataAnalytics.rmd
+│   ├── 09_R_for_DataAnalytics.html
+│   └── 09_regression.html
+├── Week10/                   # Mediation & Moderation
+│   ├── README.md
+│   ├── 10_R_for_DataAnalytics.rmd
+│   ├── 10_R_for_DataAnalytics.html
+│   └── 10_medmod.html
+├── Week11/                   # Comparing Two Means
+│   ├── README.md
+│   ├── 11_R_for_DataAnalytics.rmd
+│   ├── 11_R_for_DataAnalytics.html
+│   └── 11_ttests.html
+└── Week12/                   # Comparing Several Means (ANOVA)
     ├── README.md
-    ├── 07_R_for_DataAnalytics.rmd (2,791 lines!)
-    ├── 07_R_for_DataAnalytics.html (8,243 lines!)
-    ├── 07_datascreen_2.rmd
-    ├── 07_datascreen_2.html
-    ├── ENHANCEMENTS_SUMMARY.md
-    ├── data/
-    └── pictures/
+    ├── 12_R_for_DataAnalytics.rmd
+    ├── 12_R_for_DataAnalytics.html
+    └── 12_lecture_anova.html
 ```
 
 ---
@@ -455,12 +577,34 @@ ANLY500-Analytics-I/
 - **Transformation guide** with examples
 - **Decision trees** for violations
 
-### Week 08: Correlation 🆕
+### Week 08: Correlation
 - **Complete correlation guide** (2,700+ lines!)
 - **50+ visualizations** and scatterplots
 - **Anscombe's Quartet** demonstration
 - **Partial/semi-partial** correlations
 - **APA reporting** with examples
+
+### Week 09: Linear Regression
+- **Simple and multiple regression**
+- **Hierarchical models** and dummy coding
+- **Regression diagnostics**
+- **Prediction and interpretation**
+
+### Week 10: Mediation & Moderation
+- **Mediation analysis** with bootstrapping
+- **Moderation** with Simple Slopes
+- **"It Depends" effects** interpretation
+
+### Week 11: Comparing Two Means
+- **Independent and paired t-tests**
+- **Signal-to-noise ratio** concept
+- **Effect sizes** (Cohen's d)
+
+### Week 12: Comparing Several Means (ANOVA)
+- **One-Way ANOVA** and F-ratio
+- **Post Hoc Tests** (Bonferroni)
+- **Effect Sizes** (Omega Squared)
+- **SST, SSM, SSR** visualization
 
 ---
 
@@ -533,13 +677,13 @@ This course emphasizes visual learning with:
 
 ## 📈 Course Statistics
 
-- **Total Lines of R Code**: 15,000+
-- **Total Visualizations**: 500+
-- **Total Pages (PDF equivalent)**: 1,000+
-- **Weeks of Content**: 7 (with more coming)
-- **Practice Exercises**: 50+
-- **Lab Assignments**: 7+
-- **IEEE Citations**: 50+
+- **Total Lines of R Code**: 25,000+
+- **Total Visualizations**: 700+
+- **Total Pages (PDF equivalent)**: 1,500+
+- **Weeks of Content**: 12
+- **Practice Exercises**: 80+
+- **Lab Assignments**: 12+
+- **IEEE Citations**: 80+
 
 ---
 
@@ -550,13 +694,18 @@ This course emphasizes visual learning with:
 - **GitHub Repository**: [https://github.com/melhzy/data_sciences](https://github.com/melhzy/data_sciences)
 
 ### Individual Week Links
+- [Week 01 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week01/01_R_for_DataAnalytics.html)
 - [Week 02 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week02/02_R_for_DataAnalytics.html)
 - [Week 03 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week03/03_R_for_DataAnalytics.html)
 - [Week 04 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week04/04_R_for_DataAnalytics.html)
 - [Week 05 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week05/05_R_for_DataAnalytics.html)
 - [Week 06 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week06/06_R_for_DataAnalytics.html)
-- [Week 07 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week07/07_R_for_DataAnalytics.html) ⭐
-- [Week 08 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week08/08_R_for_DataAnalytics.html) 🆕
+- [Week 07 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week07/07_R_for_DataAnalytics.html)
+- [Week 08 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week08/08_R_for_DataAnalytics.html)
+- [Week 09 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week09/09_R_for_DataAnalytics.html)
+- [Week 10 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week10/10_R_for_DataAnalytics.html)
+- [Week 11 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week11/11_R_for_DataAnalytics.html)
+- [Week 12 Tutorial](https://melhzy.github.io/data_sciences/ANLY500-Analytics-I/Week12/12_R_for_DataAnalytics.html)
 
 ### External Resources
 - [R Documentation](https://www.rdocumentation.org/)
@@ -611,28 +760,28 @@ These materials are provided for educational purposes. Please respect academic i
 
 ## 📅 Version History
 
-- **v1.1** (January 22, 2026): Week 08 correlation analysis added 🆕
+- **v1.3** (April 2026): Weeks 09-12 added
+  - Week 09: Linear Regression (simple, multiple, hierarchical)
+  - Week 10: Mediation & Moderation (bootstrapping, simple slopes)
+  - Week 11: Comparing Two Means (t-tests, Cohen's d)
+  - Week 12: Comparing Several Means (ANOVA, post hoc, effect sizes)
+- **v1.2** (February 2026): Week 01 Introduction to R added
+  - Complete beginner's guide with 40+ visualizations
+  - Palmer Penguins dataset walkthrough
+- **v1.1** (January 2026): Week 08 correlation analysis added
   - Complete correlation tutorial with 50+ visualizations
   - Pearson, Spearman, Kendall correlations
   - Partial and semi-partial correlations
-  - Anscombe's Quartet and assumption violations
-  - Comprehensive APA reporting guide
-  - 9 IEEE citations to Field et al. Chapter 6
 - **v1.0** (January 2026): Initial comprehensive release
   - Weeks 02-07 complete
   - 60+ visualizations in Week 07
   - Full IEEE citations throughout
-  - Comprehensive READMEs for all weeks
 
 ---
 
 ## 🎯 What's Next?
 
 ### Upcoming Content
-- Week 09: Simple and multiple regression
-- Week 10: t-tests and group comparisons
-- Week 11: ANOVA (one-way and factorial)
-- Week 12: Advanced ANOVA topics
 - Week 13: Non-parametric tests
 - Week 14: Final project guidance
 
@@ -658,6 +807,6 @@ These materials are provided for educational purposes. Please respect academic i
 
 Built with ❤️ using R, RMarkdown, and ggplot2
 
-**Last Updated**: January 8, 2026
+**Last Updated**: April 20, 2026
 
 </div>

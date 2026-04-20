@@ -29,22 +29,27 @@ This course guides students to develop and finalize a selected research problem 
 
 ## Course Materials
 
+**📊 Live Course Portal:** [https://melhzy.github.io/data_sciences/#695](https://melhzy.github.io/data_sciences/#695)
+
 ### Weekly Topics
-- **Week 1 - Executive Session 1:** Analytics Research Overview, Problem Definition & Research Questions
-- **Week 2:** Finding and Comparing Frameworks and Benchmarks
-- **Week 3:** Ethics and the IRB
-- **Week 4:** Basic Research Development and Writing
-- **Week 5:** Collecting Descriptive Data (Data Mining)
-- **Week 6:** Collecting Descriptive Data (Surveys & Qualitative Methods)
-- **Week 7:** Designing Solutions (Model Components)
-- **Week 8:** Designing Solutions (Experiments and Quasi-Experiments)
-- **Week 9:** Designing Solutions (Prompt-Engineering)
-- **Week 10:** Designing Solutions (Model Validation)
-- **Week 11:** Communicating Research (Effective Presentation)
-- **Week 12:** Communicating Research (Effective Writing)
-- **Week 13:** Communicating Research (Non-technical Audiences)
-- **Week 14 - Executive Session 2:** Final Presentations (June 6)
-- **Week 15:** Final Revisions & Proposal Submission
+
+| Week | Topic | Tutorial |
+|------|-------|----------|
+| 01 | Research Foundations (Executive Session) | [📄 Tutorial](https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week01_ExecutiveSession01/01_executive_session01_research_foundations.html) |
+| 02 | Frameworks, Benchmarks & Literature Reviews | [📄 Tutorial](https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week02/02_frameworks_benchmarks.html) |
+| 03 | Individual Consultation | [📄 Tutorial](https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week03/03_individual_consultation.html) |
+| 04 | Doing Good Science — Ethics & the IRB | [📄 Tutorial](https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week04/04_ethics_in_research.html) |
+| 05 | Research Basics — Introduction to Research Questions | [📄 Tutorial](https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week05/05_research_basics.html) |
+| 06 | Collecting Descriptive Data — Data Mining | [📄 Tutorial](https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week06/06_data_mining.html) |
+| 07 | Designing Solutions (Model Components) | 🔜 Coming Soon |
+| 08 | Designing Solutions (Experiments and Quasi-Experiments) | 🔜 Coming Soon |
+| 09 | Designing Solutions (Prompt-Engineering) | 🔜 Coming Soon |
+| 10 | Designing Solutions (Model Validation) | 🔜 Coming Soon |
+| 11 | Communicating Research (Effective Presentation) | 🔜 Coming Soon |
+| 12 | Communicating Research (Effective Writing) | 🔜 Coming Soon |
+| 13 | Communicating Research (Non-technical Audiences) | 🔜 Coming Soon |
+| 14 | Final Presentations (Executive Session 2) | 🔜 Coming Soon |
+| 15 | Final Revisions & Proposal Submission | 🔜 Coming Soon |
 
 ## Major Assignments
 
