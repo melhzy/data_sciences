@@ -9,6 +9,10 @@ Research ethics, human subjects protection, and the Institutional Review Board (
 
 ## Course Materials
 
+### Tutorial
+- [📄 View Tutorial (GitHub Pages)](https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week03/03_individual_consultation.html)
+- [`03_individual_consultation.Rmd`](03_individual_consultation.Rmd) — Source file
+
 ### Presentations
 - `Ethics.pptx`
 

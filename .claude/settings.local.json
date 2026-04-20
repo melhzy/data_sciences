@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(which Rscript)",
+      "Bash(which R)",
+      "Read(//c/Program Files/R//**)",
+      "Read(//c//**)",
+      "Bash(/c/Program Files/R/R-4.5.2/bin/Rscript.exe *)",
+      "Bash(\"/c/Program Files/R/R-4.5.2/bin/Rscript.exe\" -e 'rmarkdown::render\\(\"Week05-SVM-Tutorial.Rmd\", quiet = TRUE\\)')",
+      "Bash(python -c ' *)"
+    ]
+  }
+}

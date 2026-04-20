@@ -9,6 +9,10 @@ Finding and comparing frameworks and benchmarks for research projects. Understan
 
 ## Course Materials
 
+### Tutorial
+- [📄 View Tutorial (GitHub Pages)](https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week02/02_frameworks_benchmarks.html)
+- [`02_frameworks_benchmarks.Rmd`](02_frameworks_benchmarks.Rmd) — Source file
+
 ### Presentations
 - `Finding Frameworks and Benchmarks.pptx`
 

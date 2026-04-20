@@ -1,0 +1,912 @@
+---
+title: "Week 6: Collecting Descriptive Data — Data Mining & Evaluating Data Sources"
+author: "Ziyuan Huang"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    theme: united
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center",
+  fig.width = 8,
+  fig.height = 4.2
+)
+library(DiagrammeR)
+library(ggplot2)
+
+# Shared styling for ggplot figures in this tutorial
+.theme_grad695 <- function(base_size = 12) {
+  theme_minimal(base_size = base_size) +
+    theme(
+      plot.title = element_text(face = "bold", margin = margin(b = 6)),
+      plot.subtitle = element_text(color = "gray35", size = base_size * 0.92),
+      panel.grid.minor = element_blank(),
+      panel.grid.major.x = element_blank(),
+      legend.position = "none"
+    )
+}
+
+grad695_palette <- c(
+  "#4A90D9", "#5BA85B", "#D97B4A", "#9B59B6", "#2E86C1",
+  "#AED6F1", "#A9DFBF", "#FAD7A0", "#D7BDE2", "#FADBD8"
+)
+```
+
+# Introduction
+
+Most of you will end up doing **data mining** for your capstone: taking existing data that is already out there and doing something useful with it. Pure, original data collection (running your own survey, running your own experiment) is possible — and we cover primary data collection elsewhere — but the default for a one-semester preliminary study is *secondary data*: someone else already collected it; your job is to find the right dataset, defend why it fits your research question, and use it responsibly.
+
+This week translates that plan into a concrete workflow:
+
+1. **Understand what "available data" actually means** — its structure, its documentation, and what can go wrong.
+2. **Pick the right acquisition strategy** — repositories and archives, APIs, web scraping, or databases.
+3. **Evaluate a candidate dataset honestly** — before you commit to it for your methods section.
+4. **Tie data choices back to your problem definition** — so the data answers your research question, not just whatever is convenient.
+
+> **How this week connects to Week 5:** Week 5 built the research-question → methods pipeline. Week 6 fills in the *data* pillar of that methods section: *where the rows come from, how you got them, and why a reviewer should trust them.* Everything below is designed to give you defensible answers to those three questions.
+
+## If data acquisition is new to you
+
+You do not need to have used an API, written a scraper, or touched a database. The goal of this tutorial is to get you **fluent enough to read a dataset's documentation, ask the right questions, and reject bad data before it wrecks your project**. Actual implementation (writing API calls, building scrapers) is covered in depth in courses like ANLY 540 (NLP) — this week's job is the *decision layer* above the code.
+
+```{r week-roadmap, fig.width = 10, fig.height = 5.2}
+roadmap <- data.frame(
+  order = 1:4,
+  stage = c(
+    "Features of\navailable data",
+    "Acquisition\nstrategies",
+    "Evaluating a\ncandidate dataset",
+    "Tie back to your\nresearch question"
+  ),
+  you_decide = c(
+    "Public vs private,\nstructured vs not,\nraw vs transformed,\ndocumentation",
+    "Repository, API,\nscraping, or\ndatabase —\nand why",
+    "Documentation,\naccuracy spot-check,\nfit to population,\nred flags",
+    "Does this data\nactually answer\nyour RQ? If not,\nwhat's the next\ndataset or a\nnarrower RQ?"
+  )
+)
+
+ggplot(roadmap, aes(x = order, y = 0)) +
+  geom_segment(
+    x = 1, xend = 4, y = 0, yend = 0,
+    linewidth = 1.1,
+    color = grad695_palette[1],
+    lineend = "round"
+  ) +
+  geom_point(aes(color = stage), size = 10, shape = 21, fill = "white", stroke = 1.6) +
+  geom_text(aes(label = order), size = 4.5, fontface = "bold", color = grad695_palette[1]) +
+  geom_text(
+    aes(label = stage, y = 0.35),
+    fontface = "bold",
+    size = 3.8,
+    vjust = 0,
+    lineheight = 0.95
+  ) +
+  geom_label(
+    aes(label = you_decide, y = -0.42),
+    size = 3.0,
+    color = "gray25",
+    lineheight = 0.95,
+    fill = "gray96",
+    label.size = 0.3,
+    label.padding = unit(0.35, "lines"),
+    label.r = unit(0.15, "lines")
+  ) +
+  scale_x_continuous(breaks = 1:4, expand = expansion(mult = c(0.12, 0.12))) +
+  scale_color_manual(values = grad695_palette[2:5]) +
+  coord_cartesian(ylim = c(-0.85, 0.65), clip = "off") +
+  labs(
+    title = "Tutorial roadmap: from \"what data is out there\" to \"my capstone uses this dataset\"",
+    subtitle = "Each stage is a decision you owe the reader of your methods section"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, margin = margin(b = 4)),
+    plot.subtitle = element_text(color = "gray35", size = 11, margin = margin(b = 14)),
+    plot.margin = margin(10, 30, 18, 30),
+    legend.position = "none"
+  )
+```
+
+---
+
+# Part 1: Data Availability — What You Are Actually Up Against
+
+## There is no shortage of data — only useful data
+
+Every day the world generates terabytes of new data. Very little of it is actually useful for *your* research question. The core challenges of working with available data are:
+
+- **Dealing with big data** — storage, memory, and compute constraints (other courses cover this in depth)
+- **Selecting appropriate data** — the focus of this week
+- **Cleaning and processing data** — substantial for unstructured formats; problem-specific
+- **Extracting useful insights** — finding signal in mostly-noise
+
+> **Key framing:** It is easy to throw data at a problem. With enough data, almost anything produces a result — but that result may be expensive, unsustainable, and weakly justified. *For many capstone-scale problems, smaller, higher-quality, well-curated datasets produce stronger preliminary results than massive ill-defined ones.* Selecting appropriate data is itself a research skill.
+
+```{r data-challenges, fig.width = 10, fig.height = 3.8}
+challenges <- data.frame(
+  challenge = factor(
+    c("Dealing with\nbig data", "Selecting\nappropriate data", "Cleaning &\nprocessing", "Extracting\nuseful insights"),
+    levels = c("Dealing with\nbig data", "Selecting\nappropriate data", "Cleaning &\nprocessing", "Extracting\nuseful insights")
+  ),
+  this_week = c(
+    "Covered lightly —\nANLY 699 goes deeper",
+    "This week's focus:\ndecide before\ncommitting",
+    "Touched on —\nproblem-specific,\nsee ANLY 540 for NLP",
+    "Runs through\neverything; ties\nto your RQ"
+  ),
+  emphasis = c(0.25, 0.95, 0.4, 0.6)
+)
+
+ggplot(challenges, aes(x = challenge, y = emphasis, fill = challenge)) +
+  geom_col(width = 0.65, alpha = 0.92) +
+  geom_text(
+    aes(label = this_week),
+    vjust = -0.25,
+    size = 3.15,
+    color = "gray20",
+    lineheight = 0.95
+  ) +
+  scale_fill_manual(values = grad695_palette[c(1, 2, 3, 4)]) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.55)),
+    breaks = NULL
+  ) +
+  labs(
+    title = "Four challenges of working with available data — this tutorial focuses on selection",
+    subtitle = "Bar height = how much this week emphasizes each (not how important it is overall)",
+    x = NULL,
+    y = NULL
+  ) +
+  .theme_grad695() +
+  theme(axis.text.x = element_text(size = 10, face = "bold"))
+```
+
+## Five features that describe every dataset
+
+Before you can judge whether a dataset is right for your capstone, you need a vocabulary for describing it. Every dataset sits somewhere on five dimensions:
+
+```{r data-features, fig.align='center'}
+grViz("
+digraph features {
+  graph [layout = dot, rankdir = LR, label = 'Features of Available Data', labelloc = t, fontsize = 20, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 13]
+
+  F [label = 'Features of\nAvailable Data', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  A [label = 'Public vs Private', fillcolor = '#5BA85B', fontcolor = white]
+  B [label = 'Structured /\nSemi-structured /\nUnstructured', fillcolor = '#D97B4A', fontcolor = white]
+  C [label = 'Sparse vs Dense', fillcolor = '#9B59B6', fontcolor = white]
+  D [label = 'Raw vs Transformed', fillcolor = '#2E86C1', fontcolor = white]
+  E [label = 'Well- vs Poorly\nDocumented', fillcolor = '#C0392B', fontcolor = white]
+
+  F -> A; F -> B; F -> C; F -> D; F -> E;
+}
+")
+```
+
+### Public vs private
+
+The most practical question: **do you actually have access?**
+
+- **Public data** is what most capstones use. Open datasets on Kaggle, GitHub, Hugging Face, government portals, and academic repositories are freely available, usually under a permissive license for non-commercial academic use.
+- **Private data** — internal company data, proprietary records, unreleased datasets — can be a capstone asset *if* you have documented permission, a clear data-use agreement, and a privacy-protection plan. If you are using data from your employer, confirm in writing that you can use it for academic research **and** publish results on TechRxiv.
+- **Anonymized / de-identified private data** sometimes becomes public for hackathons or competitions. Those datasets are fine to use, but the anonymization itself is a *transformation* you must document.
+
+> **Rule of thumb:** If the data is not already public and you cannot get written permission to use and publish it, pick a different dataset. Do not plan your capstone around data access you are still hoping to negotiate.
+
+### Structured, semi-structured, and unstructured
+
+Quantitative analysis requires data to eventually be in a **numeric, tabular form**. How far your source is from that form determines how much preprocessing you owe the reader in your methods section.
+
+| Form | What it looks like | What it costs you |
+|---|---|---|
+| **Structured** | CSV, Excel, SQL table — rows and columns, already numeric or cleanly categorical | Lowest preprocessing; fastest to start analysis |
+| **Semi-structured** | JSON, XML, nested API responses | Moderate — you write code to flatten / parse, but the structure is there |
+| **Unstructured** | Raw text, images, audio, PDFs | Highest — every quantification step introduces information loss |
+
+Every way of converting text (or images, or audio) to numbers loses information. Simple approaches like word-frequency counts lose a lot; deep-learning embeddings lose less but still sacrifice nuance. **Name the transformation and acknowledge its limits** — that is what a methods section is for.
+
+> **Semi-structured is often the sweet spot.** JSON and XML are memory-efficient and preserve rich relationships, but they are less plug-and-play than a flat CSV. Choose based on what your source gives you, not on what feels simplest.
+
+### Sparse vs dense
+
+This matters most for **temporal and geospatial** data.
+
+- **Dense** = regular, evenly spaced observations (minute-by-minute stock prices, hourly sensor readings). Enables classical time-series models and forecasting out of the box.
+- **Sparse** = irregular, uneven observations (social media posts at unpredictable intervals, event-driven records). More realistic for human behavior — but you will need methods that tolerate irregular timestamps or deliberate resampling.
+
+Neither is better; they fit different questions. If your RQ requires forecasting and your data is sparse, you have a methods problem to solve — not a dataset to hide.
+
+### Raw vs transformed
+
+The numbers in a public dataset are often **not the original numbers**. Common transformations include:
+
+- **Anonymization** — a specific birth date becomes an age bucket; exact GPS coordinates become a zip code; names become hashed IDs.
+- **Normalization** — raw counts are divided by population or rescaled to account for distributional skew.
+- **Aggregation** — individual records are collapsed to daily, weekly, or ZIP-code-level summaries.
+
+None of these are problems in themselves. All of them **change what your findings can say about individuals versus groups**, so you must document the transformations in your methods section. A methods section that pretends transformed data is raw is a methods section that will fail review.
+
+### Well-documented vs poorly documented — the one that actually matters
+
+Of the five features, **documentation is the single dimension that will determine whether I accept your data source**. For any dataset you propose to use, the documentation must explain:
+
+- **Source** — who collected it, where it lives, under what license
+- **Collection method** — survey, scrape, sensor, administrative record, API pull
+- **Time window** — when the data was collected, over what period
+- **Inclusion / exclusion criteria** — who or what is in the dataset, who is deliberately out
+- **Transformations applied** — anonymization, aggregation, rescaling, imputation
+- **Variable definitions** — what each column means, in what units, with what valid range
+
+```{r documentation-bar, fig.width = 10, fig.height = 4}
+docs <- data.frame(
+  item = factor(
+    c("Source & license", "Collection method", "Time window", "Inclusion / exclusion",
+      "Transformations applied", "Variable definitions"),
+    levels = rev(c("Source & license", "Collection method", "Time window", "Inclusion / exclusion",
+                   "Transformations applied", "Variable definitions"))
+  ),
+  risk_if_missing = c(4.8, 4.7, 4.2, 4.5, 4.4, 4.9)
+)
+
+ggplot(docs, aes(y = item, x = risk_if_missing, fill = item)) +
+  geom_col(width = 0.65, alpha = 0.95) +
+  geom_text(
+    aes(label = sprintf("%.1f / 5", risk_if_missing)),
+    hjust = -0.15,
+    size = 3.5,
+    fontface = "bold",
+    color = "gray15"
+  ) +
+  scale_fill_manual(values = grad695_palette[c(1, 2, 3, 4, 5, 6)]) +
+  scale_x_continuous(limits = c(0, 5.5), breaks = seq(0, 5, 1)) +
+  labs(
+    title = "Documentation checklist — if any of these is missing, the dataset is risky",
+    subtitle = "Bar length = how badly your proposal suffers when this piece is absent (illustrative)",
+    y = NULL,
+    x = "How critical it is to defensibility (1–5)"
+  ) +
+  .theme_grad695() +
+  theme(axis.text.y = element_text(size = 10.5, face = "bold"))
+```
+
+> **Red flag:** A Kaggle page that shows a clean-looking CSV and a one-line description like "stocks data 2020" is a dataset **without documentation**. It does not matter how good the underlying numbers are — if nobody took the time to explain them, you cannot defend the dataset in your methods section, and you should not use it. Keep looking.
+
+### A quick note on synthetic data
+
+Synthetic data — data generated by a model or simulation rather than collected from real observations — is increasingly common on repositories. It has legitimate uses:
+
+- Testing pipelines, algorithms, and edge cases
+- Prototyping tools when real data is unavailable
+- Exploring distributional assumptions
+
+But synthetic data **cannot** produce real-world insights about human behavior, attitudes, or outcomes. If your RQ is about *how people actually behave*, synthetic data is not evidence — it is a pilot tool. If you use it, say so explicitly and explain what real-data step would follow in GRAD 699.
+
+### Part 1 recap — check your understanding
+
+Before moving on, you should be able to answer without looking up:
+
+1. Name the **five features** that describe every dataset.
+2. For a candidate dataset you are considering, which of the **six documentation items** can you fill in right now? Which are missing?
+3. Is any part of your planned dataset **synthetic**? If yes, what does that mean your preliminary results *can* and *cannot* claim?
+
+---
+
+# Part 2: Strategies for Acquiring Data
+
+Four common paths, ranked roughly by increasing technical lift:
+
+```{r acquisition-strategies, fig.align='center'}
+grViz("
+digraph strategies {
+  graph [layout = dot, rankdir = LR, label = 'Common Strategies for Getting Data', labelloc = t, fontsize = 20, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 13]
+
+  S [label = 'Data\nAcquisition', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  R [label = 'Repositories &\nArchives', fillcolor = '#5BA85B', fontcolor = white]
+  A [label = 'APIs', fillcolor = '#D97B4A', fontcolor = white]
+  W [label = 'Web Scraping', fillcolor = '#9B59B6', fontcolor = white]
+  D [label = 'Databases\n(SQL, MongoDB)', fillcolor = '#2E86C1', fontcolor = white]
+
+  R1 [label = 'Easiest: someone\nalready built the\ndataset', fillcolor = '#D5EDD5']
+  A1 [label = 'Programmatic\npull from a live\napp or site', fillcolor = '#FDDFC8']
+  W1 [label = 'Extract from\nHTML pages\ndirectly', fillcolor = '#E8D5F5']
+  D1 [label = 'Query structured\nstorage (usually\nprivate data)', fillcolor = '#D6EAF8']
+
+  S -> R; S -> A; S -> W; S -> D;
+  R -> R1; A -> A1; W -> W1; D -> D1;
+}
+")
+```
+
+## 2.1 Repositories and archives (start here)
+
+The easiest path. Someone has already built, documented, and hosted the dataset. Your job is to pick the right one and verify its quality.
+
+### General-purpose repositories
+
+| Source | Strengths | Watch out for |
+|---|---|---|
+| **Kaggle** ([kaggle.com](https://www.kaggle.com/)) | Huge catalog, often has notebooks showing how others used the data | Anyone can upload; many datasets are poorly documented or synthetic |
+| **GitHub** ([github.com](https://github.com/)) | Data often tied to published research; README expected | Quality varies wildly by repo |
+| **Hugging Face Datasets** | Strong for ML-ready text / image / audio data; standardized dataset cards | Check the dataset card is actually filled in |
+| **OSF** ([osf.io/search](https://osf.io/search/)) | Academic, often tied to peer-reviewed studies | Smaller catalog; may require requesting access |
+| **FiveThirtyEight** ([github.com/fivethirtyeight/data](https://github.com/fivethirtyeight/data)) | Journalism-grade cleaning; clear provenance | Topic-specific; data stops when the story ends |
+
+### Government and institutional archives (often higher quality)
+
+| Source | Domain | Notes |
+|---|---|---|
+| **Data.gov** ([catalog.data.gov](https://catalog.data.gov/dataset)) | US federal datasets, all domains | Highly variable quality and update cadence |
+| **UCI Machine Learning Repository** ([archive.ics.uci.edu](https://archive.ics.uci.edu/ml/index.php)) | Benchmark ML datasets | Many are older; excellent for reproducibility |
+| **AWS Open Data Registry** ([registry.opendata.aws](https://registry.opendata.aws/)) | Large-scale datasets (satellite, genomic, web crawl) | May require AWS tooling to access efficiently |
+| **Google BigQuery public data** ([cloud.google.com/bigquery/public-data](https://cloud.google.com/bigquery/public-data/)) | Massive curated datasets, SQL-queryable | Some usage is billable beyond free tier |
+| **Domain-specific** (CDC, NIH, World Bank, BLS, ANES, ICPSR) | Health, economics, public policy, political science | Often better documented; stricter terms of use |
+
+### What "good data" looks like on a repository
+
+```{r repo-quality-signals, fig.width = 10, fig.height = 4.3}
+signals <- data.frame(
+  signal = factor(
+    c(
+      "Data card / README filled in",
+      "Collection method described",
+      "License clearly stated",
+      "Tied to a peer-reviewed paper",
+      "Variable dictionary included",
+      "Recent activity / updates"
+    ),
+    levels = rev(c(
+      "Data card / README filled in",
+      "Collection method described",
+      "License clearly stated",
+      "Tied to a peer-reviewed paper",
+      "Variable dictionary included",
+      "Recent activity / updates"
+    ))
+  ),
+  strength = c(5, 5, 4, 5, 4.5, 3.5)
+)
+
+ggplot(signals, aes(y = signal, x = strength, fill = signal)) +
+  geom_col(width = 0.65, alpha = 0.95) +
+  geom_text(
+    aes(label = sprintf("%.1f", strength)),
+    hjust = -0.2,
+    size = 3.6,
+    fontface = "bold",
+    color = "gray15"
+  ) +
+  scale_fill_manual(values = grad695_palette[c(1, 2, 3, 4, 5, 6)]) +
+  scale_x_continuous(limits = c(0, 5.6), breaks = seq(0, 5, 1)) +
+  labs(
+    title = "Quality signals to look for on a repository page",
+    subtitle = "The more of these are present, the more defensible the dataset in your methods section",
+    y = NULL,
+    x = "How strongly this signal justifies using the dataset (1–5)"
+  ) +
+  .theme_grad695() +
+  theme(axis.text.y = element_text(size = 10.5, face = "bold"))
+```
+
+> **Sanity-check trick:** Once you find a candidate dataset, pick 5–10 data points at random and cross-check them against a second source (a news report, a government portal, a published paper). If the numbers agree, you have evidence for data accuracy; if they disagree, you have a methods section problem to discuss — or a reason to walk away.
+
+## 2.2 APIs — structured pulls from a live source
+
+APIs (Application Programming Interfaces) were built for software developers to connect applications, but they are also one of the cleanest ways to collect fresh research data *when the API allows it*.
+
+```{r api-workflow, fig.align='center'}
+grViz("
+digraph api_flow {
+  graph [layout = dot, rankdir = LR, label = 'Typical API Data Collection Workflow', labelloc = t, fontsize = 18, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  K [label = 'Register for\ndeveloper account /\nAPI key', fillcolor = '#AED6F1']
+  D [label = 'Read API docs\n+ terms of service', fillcolor = '#A9DFBF']
+  C [label = 'Write request\n(Python requests or\nAPI-specific package)', fillcolor = '#FAD7A0']
+  P [label = 'Parse JSON /\nXML response', fillcolor = '#D7BDE2']
+  S [label = 'Store +\ndocument pull\n(date, params, rate)', fillcolor = '#FADBD8']
+
+  K -> D -> C -> P -> S
+}
+")
+```
+
+### The landscape has shifted
+
+Five to seven years ago, academic API access was far more open. Several platforms — most notably Twitter/X — have locked down or monetized their APIs, pricing most academic work out. The current (late-2025) landscape, from most to least accessible for typical capstones:
+
+| API | Access | Typical use |
+|---|---|---|
+| **Bluesky** | Basic auth with your own account; very open | Social-media text data, successor to "Twitter for academics" |
+| **Reddit** | Free with developer account; policies change — read current TOS | Subreddit posts/comments, public discussion |
+| **IMDb** | Documentation is patchy; Stack Overflow tutorials fill gaps | Film/TV metadata |
+| **YouTube Data API** | Free with quota limits | Video metadata, comments |
+| **World Bank** | Fully open, well documented | Economic and development indicators |
+| **Yelp Fusion** | Free tier exists but limited | Local-business reviews |
+| **Twitter / X** | Paid tiers only; academic tier effectively gone | Consider Bluesky instead |
+
+A running [List of Public APIs](https://github.com/public-apis/public-apis) on GitHub is a useful starting catalog — but remember, **"public" means anyone can apply**; it does not guarantee you will be approved for the data volume you need.
+
+### Two API families
+
+| Type | What it is | When you hit it |
+|---|---|---|
+| **REST** | The common case — URLs + query parameters, returns JSON or XML | Most APIs you will encounter |
+| **GraphQL** | Single endpoint; you write a query specifying exactly which fields you want | Some modern APIs (including Bluesky's atproto); steeper learning curve but efficient |
+
+Most beginner tutorials assume REST. If your target API is GraphQL, budget extra learning time.
+
+### JSON vs XML — the two response shapes
+
+Most APIs return data in one of two semi-structured formats:
+
+- **JSON** (JavaScript Object Notation) — nested key/value pairs, maps naturally to Python dictionaries. This is the modern default.
+- **XML** — nested tags, structurally similar to HTML. Older; you will still meet it with some government and enterprise APIs.
+
+Both preserve hierarchy (a tweet has a user, who has a follower count, etc.). You flatten them into a dataframe during preprocessing, and that flattening step belongs in your methods section.
+
+### API permissions and what "public" actually means
+
+Being "public" means anyone can apply for a developer account. What you can *actually pull* depends on:
+
+- **Authentication level** — from basic (your own login) to OAuth 2.0 with multiple encryption layers
+- **Rate limits** — how many calls per minute / day / month
+- **Approval process** — some APIs (Reddit's larger datasets, X Academic) require you to describe your research before granting access
+- **Purpose restrictions** — many prohibit commercial use, re-sharing raw data, or identifying individual users
+
+> **Before you design a methods section around an API:** pull a small sample *now*. Confirm you get what you expect, measure the rate limit, estimate how long a full collection would take. A "we will use the X API" methods section without a pilot pull is a red flag.
+
+## 2.3 Web scraping — when no API exists
+
+Scraping takes advantage of HTML structure to extract information directly from web pages. It is the fallback when there is no API, when the API is prohibitively restrictive, or when the site's RSS feed or sitemap is easier than either.
+
+### Two philosophies
+
+| Approach | What it does | When it's appropriate |
+|---|---|---|
+| **Common crawl** (broad) | Start at a page, follow every link, keep going | Building very large unlabeled text corpora (LLM training); **rarely appropriate for a capstone** |
+| **Intentional / targeted** | Define starting URL, inclusion criteria, URL pattern, and fields to extract | The default for research scraping — semi-structured, documented, reproducible |
+
+For a capstone, you almost always want the second approach. Messy common-crawl corpora are harder to defend and harder to analyze.
+
+### The targeted scraping plan
+
+Before you write a single line of scraping code, write down:
+
+1. **Starting URL** — where the scrape begins
+2. **Inclusion criteria** — which pages count (text articles only? posts with > 10 comments? English only?)
+3. **URL pattern to loop through** — typically pagination (`?page=1`, `?page=2`, …) or a sitemap
+4. **HTML pattern for extracting URLs** — the CSS selectors or XPaths that identify links on a listing page
+5. **Data fields per page** — headline, author, date, body text, tag list
+6. **HTML tags / patterns per field** — the selectors on an article page
+
+```{r scrape-plan, fig.align='center'}
+grViz("
+digraph scrape {
+  graph [layout = dot, rankdir = TB, label = 'Targeted Web Scraping Plan', labelloc = t, fontsize = 18]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  P [label = 'Plan before\ncoding', fillcolor = '#4A90D9', fontcolor = white, shape = ellipse]
+
+  A [label = 'Starting URL +\ninclusion criteria', fillcolor = '#AED6F1']
+  B [label = 'URL pattern\nto loop through\n(pagination / sitemap / RSS)', fillcolor = '#A9DFBF']
+  C [label = 'HTML patterns\nfor extracting URLs', fillcolor = '#FAD7A0']
+  D [label = 'Data fields\nper page +\nHTML tags for each', fillcolor = '#D7BDE2']
+  E [label = 'Rate limiting +\npolitely stagger\nrequests', fillcolor = '#FADBD8']
+
+  P -> A -> B -> C -> D -> E
+}
+")
+```
+
+### Ethics and terms of use (this is not optional)
+
+| Rule | Why |
+|---|---|
+| **If the site requires login, do not scrape** | Almost certainly violates terms of service |
+| **Respect `robots.txt` and rate limits** | Legal, ethical, and practical — you will be blocked otherwise |
+| **Identify yourself in the user-agent string** | Polite, traceable, and reduces the chance of being treated as an attack |
+| **Cache aggressively** | Don't re-scrape the same page during development |
+| **Never republish raw scraped content** | Share derived features, statistics, or models — not the original copyrighted text |
+
+> **The 403 signal:** If you repeatedly hit HTTP 403 "Forbidden," that is the site telling you access is not authorized. Sometimes it is an over-aggressive firewall you can work around politely; sometimes it is the site saying "no." A quick search (*"scraping [site name] terms of service"*) usually tells you which case you are in. When in doubt, stop.
+
+### RSS feeds and sitemaps — the scraping shortcut
+
+For news sites, blogs, and many content platforms, an **RSS feed** gives you headlines, summaries, dates, and article URLs in a single clean XML document — no HTML parsing needed. A **sitemap** (often `/sitemap.xml`) gives you the full URL inventory a site wants indexed. Both are explicitly designed to be machine-read, so using them is ethically and technically cleaner than raw scraping.
+
+## 2.4 Databases — for private and institutional data
+
+Most of you will not use a database for your preliminary study. You might if:
+
+- You work for an organization that stores its data in SQL, MongoDB, or similar, **and** you have written permission to use it
+- You are using a public big-data service (BigQuery, Socrata) that exposes a SQL-like interface
+- You are pulling from an institutional archive that provides direct database access
+
+The working principle is the same as elsewhere: the value of the data depends on the quality of its documentation. A SQL table without a schema description is just a CSV with more steps.
+
+> **If you are using SQL for the first time:** the syntax is close enough to pandas that you can learn what you need in a week. Focus on `SELECT`, `WHERE`, `JOIN`, `GROUP BY`, and `LIMIT` — that covers the vast majority of research queries.
+
+### Part 2 recap — check your understanding
+
+1. For your capstone topic, what are **two** candidate repositories or archives you could check first?
+2. Does your planned dataset need an **API** or **scraper**? If yes, have you attempted even a one-page pilot pull yet?
+3. Name **one** ethics or terms-of-service constraint that applies to your chosen acquisition method.
+
+---
+
+# Part 3: Evaluating a Candidate Dataset
+
+You have found a dataset. Before you commit to it in your methods section, walk it through this evaluation.
+
+## 3.1 The five evaluation questions
+
+```{r evaluation-questions, fig.width = 10, fig.height = 5}
+eval_q <- data.frame(
+  question = factor(
+    c("Documentation", "Fit to RQ", "Accuracy spot-check", "Population coverage", "Access stability"),
+    levels = rev(c("Documentation", "Fit to RQ", "Accuracy spot-check", "Population coverage", "Access stability"))
+  ),
+  core = c(
+    "Does the data card / README\ntell me source, method, time,\nand variables?",
+    "Do the variables and time range\nactually answer my research\nquestion?",
+    "If I cross-check 5-10 points against\na second source, do numbers match?",
+    "Who is IN this data — and who is\nmissing? What claims does that\nconstrain?",
+    "Can I re-pull / re-download this in\ntwo months if I need to? Is it\nlikely to disappear?"
+  ),
+  risk = c(4.9, 4.8, 4.3, 4.5, 3.8)
+)
+
+ggplot(eval_q, aes(y = question, x = risk, fill = question)) +
+  geom_col(width = 0.62, alpha = 0.95) +
+  geom_text(
+    aes(label = core, x = 0.15),
+    hjust = 0,
+    size = 3.2,
+    color = "white",
+    fontface = "bold",
+    lineheight = 0.92
+  ) +
+  scale_fill_manual(values = c(
+    grad695_palette[4], grad695_palette[5], grad695_palette[3],
+    grad695_palette[2], grad695_palette[1]
+  )) +
+  scale_x_continuous(limits = c(0, 5.2), breaks = seq(0, 5, 1)) +
+  labs(
+    title = "Five questions to run every candidate dataset through",
+    subtitle = "Bar length = how often this issue kills a dataset-based capstone (illustrative)",
+    y = NULL,
+    x = "How commonly this derails the project (1–5)"
+  ) +
+  .theme_grad695() +
+  theme(axis.text.y = element_text(size = 11, face = "bold"))
+```
+
+### 1. Documentation completeness
+
+Run the six-item checklist from Part 1 — source, method, time window, inclusion/exclusion, transformations, variable definitions. If more than one or two are missing, the dataset is not usable as your primary source.
+
+### 2. Fit to your research question
+
+| Check | Example failure |
+|---|---|
+| **Variables you need exist** | Your RQ requires "weekly approval rating," but the dataset only has "monthly approval" — your time granularity is wrong |
+| **Time window matches** | You want to study 2020–2023 trends, but the data stops in 2019 |
+| **Population matches your claims** | You want to generalize to "US adults," but the dataset is users of one specific app |
+| **Unit of analysis matches** | You want to make per-user claims, but the data is aggregated to city level |
+
+### 3. Accuracy spot-check
+
+Pick 5–10 rows at random and verify them against a second source:
+
+- A dataset of stock prices → check against Yahoo Finance or the exchange
+- A dataset of political polls → check against the pollster's own site
+- A dataset of government statistics → check against the agency's raw release
+
+Matches are evidence *for*; mismatches are a conversation you need to have in your methods section (or a reason to switch datasets).
+
+### 4. Population coverage — who is missing?
+
+Almost no dataset is a census. Your job is to describe the gap honestly:
+
+```{r population-gap, fig.width = 10, fig.height = 3.8}
+pop <- data.frame(
+  layer = factor(
+    c("Population your claims apply to",
+      "Population the dataset covers",
+      "Rows you actually use after filtering"),
+    levels = rev(c("Population your claims apply to",
+                   "Population the dataset covers",
+                   "Rows you actually use after filtering"))
+  ),
+  coverage = c(100, 45, 22)
+)
+
+ggplot(pop, aes(y = layer, x = coverage, fill = layer)) +
+  geom_col(width = 0.55, alpha = 0.95) +
+  geom_text(
+    aes(label = paste0(coverage, "%"), x = coverage + 2),
+    hjust = 0,
+    size = 4.2,
+    fontface = "bold",
+    color = "gray15"
+  ) +
+  scale_fill_manual(values = c(grad695_palette[3], grad695_palette[2], grad695_palette[1])) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Population → dataset → analytic sample (conceptual)",
+    subtitle = "Your methods section must name both gaps and the generalizability claims they allow",
+    y = NULL,
+    x = "Conceptual coverage (%)"
+  ) +
+  .theme_grad695() +
+  theme(axis.text.y = element_text(size = 10.5, face = "bold"))
+```
+
+**The two gaps you must discuss:**
+
+- **Population → dataset:** what groups or regions or time periods were never collected?
+- **Dataset → analytic sample:** after your inclusion criteria, cleaning, and missing-data handling, who did you drop?
+
+If you cannot answer these, you cannot honestly describe the limits of your preliminary findings.
+
+### 5. Access stability
+
+Can you re-pull this data in two months when your advisor asks for an updated version? Data disappears for mundane reasons:
+
+- Government portals get reorganized (and sometimes deplatformed)
+- APIs deprecate endpoints or change pricing
+- Kaggle datasets get deleted by their original uploader
+- Sites you planned to scrape change their HTML structure
+
+**Mitigation:** archive a local copy of your raw pull with a timestamp; record the exact URL, query parameters, and pull date in your methods section. For capstones, reproducibility is a floor, not a ceiling.
+
+## 3.2 The problem-driven data selection principle
+
+The most common failure mode in student projects is **data-driven problem definition** — finding a cool dataset and retrofitting a research question to it. This almost always produces a methods section where the data and RQ subtly disagree.
+
+```{r problem-driven, fig.align='center'}
+grViz("
+digraph pd {
+  graph [layout = dot, rankdir = LR, label = 'Problem-driven vs Data-driven selection', labelloc = t, fontsize = 18, splines = ortho]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 12]
+
+  subgraph cluster_good {
+    label = 'Problem-driven (do this)';
+    style = rounded; color = '#5BA85B';
+    G1 [label = 'Start with\nproblem + RQ', fillcolor = '#D5EDD5']
+    G2 [label = 'Specify data\nyou would need', fillcolor = '#D5EDD5']
+    G3 [label = 'Find the closest\navailable dataset', fillcolor = '#D5EDD5']
+    G4 [label = 'Document the gap\nbetween ideal and\navailable', fillcolor = '#D5EDD5']
+    G1 -> G2 -> G3 -> G4
+  }
+
+  subgraph cluster_bad {
+    label = 'Data-driven (do not do this)';
+    style = rounded; color = '#C0392B';
+    B1 [label = 'Find a\ncool dataset', fillcolor = '#FADBD8']
+    B2 [label = 'Invent an RQ\nthat fits it', fillcolor = '#FADBD8']
+    B3 [label = 'Pretend the RQ\nwas the motivation', fillcolor = '#FADBD8']
+    B1 -> B2 -> B3
+  }
+}
+")
+```
+
+The problem-driven path lets you honestly describe where the data falls short of the ideal. The data-driven path forces you to hide the mismatch, which inevitably shows up in the discussion section as "limitations" that are actually the whole study.
+
+> **Refinement principle (from Week 5, restated):** if your data cannot answer your RQ, you have three moves — (1) narrow the RQ so the data can answer it, (2) acquire different/additional data, or (3) engineer new features from what you have. Picking a weaker RQ on purpose is honest and often the right choice for a preliminary study.
+
+### Part 3 recap — check your understanding
+
+1. Run your top-choice dataset through the **five evaluation questions**. Which is the weakest?
+2. Name **two specific groups** your data likely under-represents, and what each limits you from claiming.
+3. Describe in one sentence: if this dataset disappeared tomorrow, **could you reproduce your analysis**? What would you need to have saved?
+
+---
+
+# Part 4: Practical Example — "I Want to Do Sentiment Analysis"
+
+The example from the lecture is worth working through end-to-end because it illustrates how problem definition shapes data selection.
+
+## The generic student pitch
+
+> *"I want to use AI to do sentiment analysis on [text data]."*
+
+This is a data / method choice dressed up as a research question. Before it can become a capstone, you have to answer:
+
+```{r sentiment-decision, fig.width = 10, fig.height = 5}
+sent <- data.frame(
+  question = factor(
+    c("What output is needed?", "Which domain(s)?", "How easy is sentiment in this domain?",
+      "Does a pre-trained model already fit?", "What data do you actually need?"),
+    levels = rev(c("What output is needed?", "Which domain(s)?", "How easy is sentiment in this domain?",
+                   "Does a pre-trained model already fit?", "What data do you actually need?"))
+  ),
+  answer_shapes_data = c(
+    "Binary class? Continuous score?\nMulti-emotion? → different labels needed",
+    "General text? Finance? Medical?\n→ different benchmarks, different jargon",
+    "Movie reviews: easy.\nFinancial filings or sarcasm: hard.",
+    "If VADER or FinBERT already works,\nyou may not need new labeled data",
+    "Amount, genre, labels, time\nrange — all determined by the\nanswers above"
+  )
+)
+
+ggplot(sent, aes(y = question, x = 1, fill = question)) +
+  geom_tile(width = 0.95, height = 0.85, alpha = 0.95, color = "white", linewidth = 0.4) +
+  geom_text(
+    aes(label = answer_shapes_data),
+    size = 3.1,
+    color = "white",
+    fontface = "bold",
+    lineheight = 0.95
+  ) +
+  scale_fill_manual(values = c(
+    grad695_palette[5], grad695_palette[4], grad695_palette[3],
+    grad695_palette[2], grad695_palette[1]
+  )) +
+  coord_cartesian(xlim = c(0.5, 1.5), clip = "off") +
+  labs(
+    title = "Five problem-definition questions that drive the data you actually need",
+    subtitle = "You cannot pick a dataset until you have working answers to all five"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(face = "bold", size = 12.5, margin = margin(b = 4)),
+    plot.subtitle = element_text(color = "gray35", size = 10.5, margin = margin(b = 10)),
+    plot.margin = margin(10, 16, 10, 16),
+    axis.text.y = element_text(size = 11, face = "bold"),
+    legend.position = "none"
+  )
+```
+
+## Two refined versions of the same pitch — and how the data needs diverge
+
+**Version A — "Can VADER-derived sentiment from political candidates' tweets predict weekly shifts in approval ratings beyond polling baselines?"**
+
+- **Output:** continuous score, per tweet, aggregated weekly
+- **Domain:** political / social-media text (general-purpose sentiment is adequate)
+- **Pre-trained fit:** VADER already works reasonably for short social text → no new labels needed
+- **Data needed:** candidate tweets (API or archive) + weekly approval ratings (Gallup / FiveThirtyEight archive)
+- **Acquisition plan:** Bluesky API or pre-collected tweet archives from academic repositories; approval data from FiveThirtyEight GitHub
+
+**Version B — "Do SEC 10-K filing tone shifts predict next-quarter stock returns for mid-cap firms?"**
+
+- **Output:** multi-dimensional tone scores, per filing
+- **Domain:** finance-specific — general-purpose sentiment misclassifies words like "liability" and "restructure"
+- **Pre-trained fit:** FinBERT or Loughran-McDonald financial sentiment lexicon is much better than VADER
+- **Data needed:** SEC filings (EDGAR) + stock return series (Yahoo Finance, Ken French data library)
+- **Acquisition plan:** EDGAR direct download or `sec-edgar` Python package; stock data via `yfinance`
+
+Same high-level pitch, **completely different data needs**. That difference is what this week's material is designed to surface *before* you commit to a dataset.
+
+### Part 4 recap — check your understanding
+
+1. Write the **one-sentence generic pitch** for your capstone ("I want to X on Y data").
+2. Answer the **five problem-definition questions** for your pitch — in writing.
+3. Based on those answers, what is the **single dataset** (or small combination) that best fits? What is your backup?
+
+---
+
+# Putting It All Together
+
+Data mining for your capstone is not about finding an impressive dataset — it is about finding a **defensible** one. The four stages of this week fit together like this:
+
+```{r full-pipeline, fig.align='center'}
+grViz("
+digraph pipeline {
+  graph [layout = dot, rankdir = TB, label = 'From Research Question to Defensible Dataset', labelloc = t, fontsize = 20]
+
+  node [shape = box, style = 'rounded,filled', fontname = Helvetica, fontsize = 13]
+
+  RQ [label = 'Research question\n(from Week 5)', fillcolor = '#AED6F1']
+  NEED [label = 'Data you would need:\nvariables, time window,\npopulation, unit', fillcolor = '#A9DFBF']
+  ACQ [label = 'Acquisition strategy:\nrepository / API /\nscraping / database', fillcolor = '#FAD7A0']
+  EVAL [label = 'Evaluate candidate:\ndocumentation, fit,\naccuracy, coverage,\nstability', fillcolor = '#D7BDE2']
+  GAP [label = 'Honestly document\nthe gap between ideal\nand available', fillcolor = '#F5B041']
+  METHODS [label = 'Methods section:\ndata, measurement,\nanalysis', fillcolor = '#FADBD8']
+
+  RQ -> NEED [label = ' specifies ']
+  NEED -> ACQ [label = ' drives ']
+  ACQ -> EVAL [label = ' produces ']
+  EVAL -> GAP [label = ' requires ']
+  GAP -> METHODS [label = ' justifies ']
+}
+")
+```
+
+**Example of a well-grounded data paragraph:**
+
+> *"The research question asks whether tweet sentiment from political candidates predicts weekly shifts in approval ratings beyond polling baselines. The ideal data would be the full tweet corpus for all major-party US presidential candidates, 2016–2024, paired with weekly approval ratings from a single consistent pollster. Because the X/Twitter API is no longer accessible at that scale, we instead use the pre-collected US Politicians Tweets Archive ([OSF DOI]), which covers 2018–2022 for 142 candidates (86% of the ideal population), and FiveThirtyEight's archived weekly approval ratings. Five randomly sampled rows were cross-checked against original tweet URLs and pollster releases with no discrepancies. The dataset's population excludes third-party candidates and tweets from candidates who deleted their accounts before collection — a limitation discussed in Section V. The full raw pull (17.3 GB, SHA-256 hash recorded) is archived to enable exact reproduction of the preliminary analysis."*
+
+Notice what that paragraph does: names the ideal, names the constraint, names the substitute, verifies accuracy, acknowledges coverage gaps, and enables reproduction. Every one of those moves comes from this week's material.
+
+---
+
+# Course Resources (from Capstone Project Resources)
+
+These are the resources pinned to your capstone — bookmark them now.
+
+## Literature resources
+
+- **Harrisburg University Library** — [library.harrisburgu.edu/home](https://library.harrisburgu.edu/home)
+- **Analytics research guide** — [library.harrisburgu.edu/ANLY_Research](https://library.harrisburgu.edu/ANLY_Research)
+- **Interlibrary loan** — [library.harrisburgu.edu/home/services](https://library.harrisburgu.edu/home/services) (use this when you cannot find a paper)
+- **O'Reilly for Higher Education** — [library.harrisburgu.edu/az.php?a=o&p=1](https://library.harrisburgu.edu/az.php?a=o&p=1) (free textbooks with tutorials)
+
+## Writing resources
+
+- **Brainfuse Online Tutoring Writing Lab** — [brainfuse.com/highed2/home.asp?a_id=F8C9BE87](https://www.brainfuse.com/highed2/home.asp?a_id=F8C9BE87&ss=&r=)
+- **Grammarly** — [grammarly.com](https://www.grammarly.com/)
+- **ProWritingAid** — [prowritingaid.com](https://prowritingaid.com/)
+
+## Data resources (covered in more depth above)
+
+- [GitHub](https://github.com/)
+- [OSF Search](https://osf.io/search/)
+- [Kaggle](https://www.kaggle.com/)
+- [FiveThirtyEight data](https://github.com/fivethirtyeight/data)
+- [AWS Open Data Registry](https://registry.opendata.aws/)
+- [Google BigQuery public data](https://cloud.google.com/bigquery/public-data/)
+- [UCI ML Repository](https://archive.ics.uci.edu/ml/index.php)
+- [Data.gov](https://catalog.data.gov/dataset)
+
+> **Rule the instructor grades against:** Any dataset from these sources must come with a detailed description of the source and the methods used to collect it. Review for reliability, quality, and accuracy before committing to it.
+
+## Analysis resources
+
+- **NLP video playlists:** [Intro](https://www.youtube.com/watch?v=bTc9hwMByJk&list=PLw93TUuxrFAb-PSloiBnNZv3-kr1UTBRn) · [Advanced](https://www.youtube.com/watch?v=F5zJJhAkUqw&list=PLw93TUuxrFAZzgAXLwWZoSKcgVfnP6_dn)
+- **Machine Learning lectures:** [Andrew Ng (Stanford CS229)](https://www.youtube.com/playlist?list=PLoROMvodv4rMiGQp3WXShtMGgzqpfVfbU)
+
+---
+
+# Key Terms
+
+| Term | Definition |
+|---|---|
+| **Data Mining** | Taking existing data and extracting useful patterns, features, or insights from it — as distinct from collecting new data |
+| **Secondary Data** | Data collected by someone else for some other purpose, which you reuse for your research |
+| **Structured Data** | Data already in tabular numeric form (CSV, SQL table) — ready for analysis with minimal preprocessing |
+| **Semi-structured Data** | Data with hierarchy but not flat tables — JSON, XML, nested API responses |
+| **Unstructured Data** | Raw text, images, audio, PDFs — requires a quantification step that introduces information loss |
+| **Dense vs Sparse Data** | Regular, evenly-spaced observations (dense) vs irregular, event-driven observations (sparse) — matters especially for time series |
+| **Transformed Data** | Data that has been modified from its raw form (anonymized, normalized, aggregated) — must be documented |
+| **Data Card / README** | The metadata file explaining the source, collection method, time window, transformations, and variable definitions of a dataset |
+| **API (Application Programming Interface)** | Programmatic endpoint to request data from a live service; common shapes include REST and GraphQL |
+| **Web Scraping** | Extracting data directly from HTML pages; legitimate for publicly accessible pages that don't require login |
+| **Common Crawl** | A broad scraping approach that follows links indefinitely — rarely appropriate for focused research |
+| **RSS Feed / Sitemap** | Machine-readable listing of a site's content — a cleaner alternative to raw scraping when available |
+| **Database (SQL, MongoDB)** | Structured storage systems typically holding private or institutional data; queried via SQL or similar |
+| **Synthetic Data** | Data generated by a model or simulation — useful for pipeline testing, not for real-world behavioral claims |
+| **Problem-driven Selection** | Picking data *after* defining the research question, so the data serves the question — not the other way around |
+| **Access Stability** | Whether you can re-pull the same dataset later; critical for reproducibility |
+
+---
+
+# Next Steps & To-Do
+
+Work through these in order — each feeds the next and together they produce the Week 6 **Finding Data Sources** in-class exercise output.
+
+- [ ] **Action 1 (Part 1):** Write a one-paragraph description of your *ideal* dataset for your capstone RQ — variables, time window, population, unit of analysis. Do **not** look for data yet.
+- [ ] **Action 2 (Part 2):** Identify **two candidate datasets** from the Data Resources list (or a domain-specific archive) that come closest to your ideal. Note each one's repository, license, and last-updated date.
+- [ ] **Action 3 (Part 2 — pilot pull):** Actually download or query a **sample** of your top-choice dataset. Not "plan to" — do it this week. A small pull is enough; the point is to prove the pipeline works.
+- [ ] **Action 4 (Part 1 — documentation check):** For that top choice, fill in all **six documentation items** (source, method, time window, inclusion/exclusion, transformations, variable definitions). If any is missing, note what you would need to do to get it.
+- [ ] **Action 5 (Part 3 — accuracy spot-check):** Pick **5–10 random rows** from your sample and verify them against a second independent source. Record the matches / mismatches in your project notes.
+- [ ] **Action 6 (Part 3 — coverage honesty):** Write **two sentences** naming who is missing from this dataset and what claims that forbids you from making.
+- [ ] **Action 7 (Part 4 — refined pitch):** Rewrite your capstone pitch with the **five problem-definition questions** answered in one paragraph, ending with "the data that fits these answers is [specific dataset]."
+- [ ] **Action 8 (Integration):** Draft the **data paragraph** for your methods section in the style of the *"ideal → constraint → substitute → accuracy → coverage → reproducibility"* example in "Putting It All Together." This paragraph is the deliverable you are working toward.

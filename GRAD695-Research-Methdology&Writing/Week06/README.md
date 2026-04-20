@@ -9,6 +9,10 @@ Survey design, qualitative research methods, content analysis, and data labeling
 
 ## Course Materials
 
+### Tutorial
+- [📄 View Tutorial (GitHub Pages)](https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week06/06_data_mining.html)
+- [`06_data_mining.Rmd`](06_data_mining.Rmd) — Source file
+
 ### Presentations
 - `Surveys.pptx`
 - `Content Analysis and Data Labeling.pptx`

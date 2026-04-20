@@ -9,6 +9,10 @@ Research writing fundamentals, proposal structure, and developing the introducti
 
 ## Course Materials
 
+### Tutorial
+- [📄 View Tutorial (GitHub Pages)](https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week04/04_ethics_in_research.html)
+- [`04_ethics_in_research.Rmd`](04_ethics_in_research.Rmd) — Source file
+
 ### Presentations
 - `Research Basics.pptx`
 

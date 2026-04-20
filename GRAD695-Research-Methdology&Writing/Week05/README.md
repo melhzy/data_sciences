@@ -9,6 +9,10 @@ Data mining techniques and evaluating data sources. Understanding how to collect
 
 ## Course Materials
 
+### Tutorial
+- [📄 View Tutorial (GitHub Pages)](https://melhzy.github.io/data_sciences/GRAD695-Research-Methdology%26Writing/Week05/05_research_basics.html)
+- [`05_research_basics.Rmd`](05_research_basics.Rmd) — Source file
+
 ### Presentations
 - `Data Mining.pptx`
 
